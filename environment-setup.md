@@ -13,32 +13,32 @@ JWT_SECRET="your-super-secure-jwt-secret-at-least-32-characters-long"
 NEXTAUTH_SECRET="your-nextauth-secret-for-session-encryption" 
 NEXTAUTH_URL="http://localhost:3000"
 
-# Azure Email Service
-AZURE_EMAIL_ENDPOINT="https://your-function-app.azurewebsites.net/api/send-email"
-AZURE_EMAIL_TOKEN="your-azure-function-access-token"
+# Azure Logic App (Your endpoint is already configured)
+KEY_CONAN_2FA="your-secret-key-for-azure-logic-app"
 
 # Optional: For development
 NODE_ENV="development"
 ```
 
-## Azure Email Service Setup
+## Azure Logic App Integration
 
-Your Azure Function should expect the following payload:
+Your Azure Logic App is already configured and will receive the following payload structure:
 
 ```typescript
 interface EmailPayload {
-  to: string
+  recipient_email: string
+  verification_code: string
+  verification_url?: string
+  user_name: string
+  organization_name: string
+  email_type: 'verification' | 'invitation' | 'welcome'
   subject: string
-  template: 'email-verification' | 'organization-invitation' | 'welcome'
-  data: {
-    userName?: string
-    verificationUrl?: string
-    organizationName?: string
-    inviterName?: string
-    role?: string
-    invitationUrl?: string
-    dashboardUrl?: string
-  }
+  
+  // Additional fields for specific email types:
+  invitation_url?: string      // For invitations
+  inviter_name?: string        // For invitations  
+  role?: string               // For invitations
+  dashboard_url?: string      // For welcome emails
 }
 ```
 

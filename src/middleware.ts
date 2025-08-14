@@ -1,102 +1,99 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const JWT_SECRET = process.env.JWT_SECRET!
-
-// Public routes that don't require authentication
-const publicRoutes = [
-  '/auth/login',
-  '/auth/register',
-  '/api/auth/login',
-  '/api/auth/logout',
-  '/_next',
-  '/favicon.ico',
-  '/images',
-  '/static'
-]
-
-// Check if a route is public
-function isPublicRoute(pathname: string): boolean {
-  return publicRoutes.some(route => pathname.startsWith(route))
+// Helper function to decode JWT payload (Edge Runtime compatible)
+function decodeJWT(token: string) {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    
+    const payload = JSON.parse(atob(parts[1]))
+    return payload
+  } catch {
+    return null
+  }
 }
 
-// Verify JWT token using Web Crypto API (Edge runtime compatible)
-async function verifyToken(token: string): Promise<boolean> {
-  try {
-    // Split JWT into parts
-    const parts = token.split('.')
-    if (parts.length !== 3) {
-      return false
-    }
-
-    const [headerB64, payloadB64, signatureB64] = parts
-    
-    // Decode payload to check expiration
-    const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')))
-    
-    // Check if token is expired
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-      return false
-    }
-    
-    // For now, just check basic structure and expiration
-    // In a full implementation, we'd verify the signature with Web Crypto API
-    return true
-    
-  } catch (error) {
-    return false
-  }
+// Helper function to check if token is expired
+function isTokenExpired(payload: any): boolean {
+  if (!payload.exp) return true
+  return Date.now() >= payload.exp * 1000
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Allow public routes
-  if (isPublicRoute(pathname)) {
+  // Public routes that don't require authentication
+  const publicRoutes = [
+    '/auth/login',
+    '/auth/register', 
+    '/auth/verify-email',
+    '/auth/verify-email-pending',
+    '/auth/accept-invitation',
+    '/auth/reset-password',
+    '/images',
+    '/static',
+    '/_next',
+    '/favicon.ico'
+  ]
+
+  // API routes that don't require authentication
+  const publicApiRoutes = [
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/verify-email',
+    '/api/auth/resend-verification',
+    '/api/organizations/check-domain'
+  ]
+
+  // Check if the current path is public
+  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
+  const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
+
+  if (isPublicRoute || isPublicApiRoute) {
     return NextResponse.next()
   }
 
-  // Get auth token from cookies
+  // Get token from cookie
   const token = request.cookies.get('auth-token')?.value
 
-  // If no token, redirect to login
   if (!token) {
-    const loginUrl = new URL('/auth/login', request.url)
-    
-    // Add redirect parameter to return user to original page after login
-    if (pathname !== '/') {
-      loginUrl.searchParams.set('redirect', pathname)
+    console.log('No auth token found, redirecting to login')
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    return NextResponse.redirect(new URL('/auth/login', request.url))
+  }
+
+  // Decode and validate token (Edge Runtime compatible)
+  const payload = decodeJWT(token)
+  
+  if (!payload || isTokenExpired(payload)) {
+    console.log('Invalid or expired token, redirecting to login')
     
-    return NextResponse.redirect(loginUrl)
-  }
-
-  // Verify token
-  const isValid = await verifyToken(token)
-  if (!isValid) {
-    const loginUrl = new URL('/auth/login', request.url)
+    // Clear the invalid token
+    const response = pathname.startsWith('/api/') 
+      ? NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      : NextResponse.redirect(new URL('/auth/login', request.url))
     
-    // Add redirect parameter to return user to original page after login
-    if (pathname !== '/') {
-      loginUrl.searchParams.set('redirect', pathname)
-    }
+    response.cookies.delete('auth-token')
+    return response
+  }
+
+  // Check if user account is active
+  if (payload.status !== 'active') {
+    console.log('User account not active, redirecting to login')
     
-    return NextResponse.redirect(loginUrl)
+    const response = pathname.startsWith('/api/') 
+      ? NextResponse.json({ error: 'Account not verified' }, { status: 403 })
+      : NextResponse.redirect(new URL('/auth/login?error=account-not-verified', request.url))
+    
+    response.cookies.delete('auth-token')
+    return response
   }
 
-  // If authenticated and trying to access auth pages, redirect to dashboard
-  if (pathname.startsWith('/auth/')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  // If accessing root, redirect to dashboard
-  if (pathname === '/') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
+  // Token is valid, allow the request to proceed
   return NextResponse.next()
 }
-
-// Using Edge runtime with Web Crypto API for JWT verification
 
 export const config = {
   matcher: [
@@ -105,8 +102,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

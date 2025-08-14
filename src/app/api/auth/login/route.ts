@@ -1,77 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserByEmail, verifyPassword, generateToken } from '@/lib/auth'
+import { getUserByEmail, verifyPassword, generateToken, updateLastLogin, recordFailedLogin, isAccountLocked } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { email, password, rememberMe } = body
+    const { email, password } = await request.json()
 
-    // Validate input
     if (!email || !password) {
       return NextResponse.json(
-        { success: false, message: 'Email and password are required' },
+        { success: false, error: 'Email and password are required' },
         { status: 400 }
       )
     }
 
-    // Get user from database
+    // Check if account is locked
+    const locked = await isAccountLocked(email)
+    if (locked) {
+      return NextResponse.json(
+        { success: false, error: 'Account is temporarily locked due to too many failed login attempts. Please try again later.' },
+        { status: 423 }
+      )
+    }
+
+    // Verify credentials
+    const isValidPassword = await verifyPassword(email, password)
+    if (!isValidPassword) {
+      await recordFailedLogin(email)
+      return NextResponse.json(
+        { success: false, error: 'Invalid email or password' },
+        { status: 401 }
+      )
+    }
+
+    // Get user data
     const user = await getUserByEmail(email)
     if (!user) {
       return NextResponse.json(
-        { success: false, message: 'Invalid email or password' },
-        { status: 401 }
+        { success: false, error: 'User not found' },
+        { status: 404 }
       )
     }
 
-    // Check if user is active
+    // Check if user account is active
     if (user.status !== 'active') {
-      return NextResponse.json(
-        { success: false, message: 'Account is not active' },
-        { status: 401 }
-      )
-    }
-
-    // Verify password
-    const isValidPassword = await verifyPassword(password, 'dummy-hash')
-    if (!isValidPassword) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid email or password' },
-        { status: 401 }
-      )
+      if (user.status === 'pending') {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Please verify your email address before logging in',
+            requiresVerification: true 
+          },
+          { status: 403 }
+        )
+      } else {
+        return NextResponse.json(
+          { success: false, error: 'Account is suspended or deactivated' },
+          { status: 403 }
+        )
+      }
     }
 
     // Generate JWT token
-    const token = generateToken(user.id, user.email)
+    const token = generateToken(user)
 
-    // Create response with user data
+    // Update last login
+    await updateLastLogin(user.id)
+
+    // Create response with auth cookie
     const response = NextResponse.json({
       success: true,
       message: 'Login successful',
       user: {
         id: user.id,
         email: user.email,
-        fullName: user.fullName,
-        avatarUrl: user.avatarUrl,
-        organizations: [], // TODO: Load organizations
-        currentOrganization: undefined
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: user.fullName
       }
     })
 
-    // Set auth cookie directly on the response
+    // Set httpOnly cookie with JWT token
     response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
+      maxAge: 7 * 24 * 60 * 60 // 7 days
     })
 
     return response
-
   } catch (error) {
-    console.error('Login API error:', error)
+    console.error('Login error:', error)
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     )
   }

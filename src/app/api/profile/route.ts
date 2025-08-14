@@ -1,66 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, updateUserProfile } from '@/lib/auth'
 
-export async function POST(request: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
-    const user = await getCurrentUser(request)
-    
+    const user = await getCurrentUser()
+
     if (!user) {
       return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
+        { success: false, error: 'Not authenticated' },
         { status: 401 }
       )
     }
 
-    const { fullName, company } = await request.json()
+    const body = await request.json()
+    const { firstName, lastName, company } = body
 
     // Validate input
-    if (!fullName || fullName.trim().length === 0) {
+    if (!firstName || !lastName) {
       return NextResponse.json(
-        { success: false, message: 'Full name is required' },
+        { success: false, error: 'First name and last name are required' },
         { status: 400 }
       )
     }
 
-    if (fullName.trim().length > 255) {
-      return NextResponse.json(
-        { success: false, message: 'Full name must be less than 255 characters' },
-        { status: 400 }
-      )
+    const fullName = `${firstName} ${lastName}`.trim()
+    
+    // Update profile data
+    const profileData = {
+      ...user.profileData,
+      company: company || user.profileData?.company || ''
     }
 
-    if (company && company.length > 255) {
-      return NextResponse.json(
-        { success: false, message: 'Company name must be less than 255 characters' },
-        { status: 400 }
-      )
-    }
+    const updatedUser = await updateUserProfile(user.id, {
+      firstName,
+      lastName,
+      fullName,
+      profileData
+    })
 
-    // In a real app, you would update the database here
-    // For now, we'll return the updated user data
-    const updatedUser = {
-      ...user,
-      fullName: fullName.trim(),
-      profileData: {
-        ...user.profileData,
-        company: company?.trim() || null
-      },
-      updatedAt: new Date().toISOString()
+    if (!updatedUser) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to update profile' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
       success: true,
       message: 'Profile updated successfully',
-      user: updatedUser
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        fullName: updatedUser.fullName,
+        avatarUrl: updatedUser.avatarUrl,
+        profileData: updatedUser.profileData
+      }
     })
-
   } catch (error) {
     console.error('Profile update error:', error)
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     )
   }
 }
-
-

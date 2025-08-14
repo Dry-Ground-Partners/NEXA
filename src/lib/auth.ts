@@ -1,156 +1,445 @@
-import jwt from 'jsonwebtoken'
+import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
-import type { User, AuthUser } from '@/types'
 
-const JWT_SECRET = process.env.JWT_SECRET!
-const TOKEN_EXPIRY = '7d' // 7 days
+const prisma = new PrismaClient()
 
-// Login credentials and auth response interfaces moved to API routes
+export interface User {
+  id: string
+  email: string
+  firstName: string | null
+  lastName: string | null
+  fullName: string | null
+  avatarUrl: string | null
+  status: string
+  emailVerifiedAt: Date | null
+  profileData: any
+  organizationMemberships?: OrganizationMembership[]
+}
 
-// Mock database functions - replace with actual database calls
+export interface Organization {
+  id: string
+  name: string
+  slug: string | null
+  logoUrl: string | null
+  planType: string
+  status: string
+}
+
+export interface OrganizationMembership {
+  id: string
+  role: string
+  status: string
+  organization: Organization
+  joinedAt: Date | null
+}
+
+/**
+ * Get user by email from database
+ */
 export async function getUserByEmail(email: string): Promise<User | null> {
-  // This would be replaced with actual database query
-  // For now, simulate the database response
-  if (email === 'admin@dryground.ai') {
-    return {
-      id: '1',
-      email: 'admin@dryground.ai',
-      emailVerifiedAt: new Date(),
-      firstName: 'Admin',
-      lastName: 'User',
-      fullName: 'Admin User',
-      avatarUrl: null,
-      timezone: 'UTC',
-      locale: 'en',
-      lastLoginAt: new Date(),
-      loginCount: 1,
-      failedLoginAttempts: 0,
-      lockedUntil: null,
-      profileData: { bio: "Platform administrator", job_title: "System Admin" },
-      notificationSettings: { email_notifications: true, marketing_emails: false },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      deletedAt: null,
-      status: 'active'
-    }
-  }
-  return null
-}
-
-export async function verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
-  // For development, we'll accept 'password123' for admin
-  if (plainPassword === 'password123') {
-    return true
-  }
-  
-  // In production, this would use bcrypt to compare with database hash
-  return bcrypt.compare(plainPassword, hashedPassword)
-}
-
-export function generateToken(userId: string, email: string): string {
-  const payload = {
-    userId,
-    email,
-    iat: Math.floor(Date.now() / 1000),
-  }
-  
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY })
-}
-
-export function verifyToken(token: string): { userId: string; email: string } | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string
-      email: string
-      iat: number
+    const user = await prisma.user.findUnique({
+      where: { 
+        email: email.toLowerCase() 
+      },
+      include: {
+        organizationMemberships: {
+          where: { status: 'active' },
+          include: {
+            organization: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                logoUrl: true,
+                planType: true,
+                status: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (!user) return null
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      avatarUrl: user.avatarUrl,
+      status: user.status,
+      emailVerifiedAt: user.emailVerifiedAt,
+      profileData: user.profileData,
+      organizationMemberships: user.organizationMemberships.map(membership => ({
+        id: membership.id,
+        role: membership.role,
+        status: membership.status,
+        joinedAt: membership.joinedAt,
+        organization: {
+          id: membership.organization.id,
+          name: membership.organization.name,
+          slug: membership.organization.slug,
+          logoUrl: membership.organization.logoUrl,
+          planType: membership.organization.planType,
+          status: membership.organization.status
+        }
+      }))
     }
-    return { userId: decoded.userId, email: decoded.email }
+  } catch (error) {
+    console.error('Error getting user by email:', error)
+    return null
+  }
+}
+
+/**
+ * Get user by ID from database
+ */
+export async function getUserById(id: string): Promise<User | null> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        organizationMemberships: {
+          where: { status: 'active' },
+          include: {
+            organization: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                logoUrl: true,
+                planType: true,
+                status: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (!user) return null
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      avatarUrl: user.avatarUrl,
+      status: user.status,
+      emailVerifiedAt: user.emailVerifiedAt,
+      profileData: user.profileData,
+      organizationMemberships: user.organizationMemberships.map(membership => ({
+        id: membership.id,
+        role: membership.role,
+        status: membership.status,
+        joinedAt: membership.joinedAt,
+        organization: {
+          id: membership.organization.id,
+          name: membership.organization.name,
+          slug: membership.organization.slug,
+          logoUrl: membership.organization.logoUrl,
+          planType: membership.organization.planType,
+          status: membership.organization.status
+        }
+      }))
+    }
+  } catch (error) {
+    console.error('Error getting user by ID:', error)
+    return null
+  }
+}
+
+/**
+ * Verify user password against database hash
+ */
+export async function verifyPassword(email: string, password: string): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { 
+        email: email.toLowerCase() 
+      },
+      select: {
+        passwordHash: true,
+        status: true
+      }
+    })
+
+    if (!user || !user.passwordHash) {
+      return false
+    }
+
+    // Only allow login for active users
+    if (user.status !== 'active') {
+      return false
+    }
+
+    return await bcrypt.compare(password, user.passwordHash)
+  } catch (error) {
+    console.error('Error verifying password:', error)
+    return false
+  }
+}
+
+/**
+ * Generate JWT token for user
+ */
+export function generateToken(user: User): string {
+  const payload = {
+    userId: user.id,
+    email: user.email,
+    status: user.status
+  }
+
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not set')
+  }
+
+  return jwt.sign(payload, secret, { expiresIn: '7d' })
+}
+
+/**
+ * Verify JWT token
+ */
+export function verifyToken(token: string): any {
+  try {
+    const secret = process.env.JWT_SECRET
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is not set')
+    }
+
+    return jwt.verify(token, secret)
   } catch (error) {
     return null
   }
 }
 
-// Note: Cookie setting/clearing is now handled directly in API routes
-// These functions were moved because cookies() from next/headers 
-// doesn't work properly when called indirectly from API routes
+/**
+ * Get current user from request context
+ */
+export async function getCurrentUser(): Promise<User | null> {
+  try {
+    const cookieStore = cookies()
+    const token = cookieStore.get('auth-token')?.value
 
-export async function getAuthToken(): Promise<string | null> {
-  const cookieStore = cookies()
-  const token = cookieStore.get('auth-token')
-  return token?.value || null
-}
-
-export async function getCurrentUser(): Promise<AuthUser | null> {
-  const token = await getAuthToken()
-  if (!token) return null
-
-  const decoded = verifyToken(token)
-  if (!decoded) return null
-
-  const user = await getUserByEmail(decoded.email)
-  if (!user) return null
-
-  // Mock organization memberships - in production, this would query the database
-  const mockOrganizations = [
-    {
-      id: '1',
-      userId: user.id,
-      organizationId: 'org-1',
-      role: 'owner' as const,
-      permissions: {},
-      invitedBy: null,
-      invitedAt: null,
-      joinedAt: new Date('2024-01-01'),
-      invitationToken: null,
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-      status: 'active' as const,
-      organization: {
-        id: 'org-1',
-        name: 'Dry Ground AI',
-        slug: 'dry-ground-ai',
-        domain: 'dryground.ai',
-        logoUrl: null,
-        brandColors: {},
-        website: 'https://dryground.ai',
-        industry: 'Technology',
-        address: {},
-        taxId: null,
-        billingEmail: 'admin@dryground.ai',
-        planType: 'enterprise' as const,
-        subscriptionStatus: 'active' as const,
-        subscriptionData: {},
-        usageLimits: {
-          ai_calls_per_month: 10000,
-          pdf_exports_per_month: 1000,
-          sessions_limit: 1000,
-          team_members_limit: 50,
-          storage_limit_mb: 10000,
-          features: {
-            custom_branding: true,
-            priority_support: true,
-            sso_enabled: true,
-            api_access: true
-          }
-        },
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-        deletedAt: null,
-        status: 'active' as const
-      }
+    if (!token) {
+      return null
     }
-  ]
 
-  return {
-    id: user.id,
-    email: user.email,
-    fullName: user.fullName,
-    avatarUrl: user.avatarUrl,
-    organizations: mockOrganizations,
-    currentOrganization: mockOrganizations[0]?.organization
+    const payload = verifyToken(token)
+    if (!payload || !payload.userId) {
+      return null
+    }
+
+    // Get fresh user data from database
+    const user = await getUserById(payload.userId)
+    
+    // Ensure user is still active
+    if (!user || user.status !== 'active') {
+      return null
+    }
+
+    return user
+  } catch (error) {
+    console.error('Error getting current user:', error)
+    return null
   }
 }
 
-// Note: Login and logout functions moved to API routes
-// This allows proper cookie management using NextResponse
+/**
+ * Update user's last login information
+ */
+export async function updateLastLogin(userId: string): Promise<void> {
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        lastLoginAt: new Date(),
+        loginCount: {
+          increment: 1
+        },
+        failedLoginAttempts: 0 // Reset failed attempts on successful login
+      }
+    })
+  } catch (error) {
+    console.error('Error updating last login:', error)
+  }
+}
+
+/**
+ * Record failed login attempt
+ */
+export async function recordFailedLogin(email: string): Promise<void> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: { id: true, failedLoginAttempts: true }
+    })
+
+    if (user) {
+      const newFailedAttempts = user.failedLoginAttempts + 1
+      const shouldLock = newFailedAttempts >= 5
+      
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: newFailedAttempts,
+          lockedUntil: shouldLock ? new Date(Date.now() + 30 * 60 * 1000) : null // Lock for 30 minutes
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Error recording failed login:', error)
+  }
+}
+
+/**
+ * Check if user account is locked
+ */
+export async function isAccountLocked(email: string): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: { lockedUntil: true }
+    })
+
+    if (!user || !user.lockedUntil) {
+      return false
+    }
+
+    // Check if lock has expired
+    if (user.lockedUntil <= new Date()) {
+      // Unlock the account
+      await prisma.user.update({
+        where: { email: email.toLowerCase() },
+        data: {
+          lockedUntil: null,
+          failedLoginAttempts: 0
+        }
+      })
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error checking account lock:', error)
+    return false
+  }
+}
+
+/**
+ * Update user profile
+ */
+export async function updateUserProfile(userId: string, data: {
+  firstName?: string
+  lastName?: string
+  fullName?: string
+  avatarUrl?: string
+  profileData?: any
+}): Promise<User | null> {
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...data,
+        updatedAt: new Date()
+      },
+      include: {
+        organizationMemberships: {
+          where: { status: 'active' },
+          include: {
+            organization: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                logoUrl: true,
+                planType: true,
+                status: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName,
+      fullName: updatedUser.fullName,
+      avatarUrl: updatedUser.avatarUrl,
+      status: updatedUser.status,
+      emailVerifiedAt: updatedUser.emailVerifiedAt,
+      profileData: updatedUser.profileData,
+      organizationMemberships: updatedUser.organizationMemberships.map(membership => ({
+        id: membership.id,
+        role: membership.role,
+        status: membership.status,
+        joinedAt: membership.joinedAt,
+        organization: {
+          id: membership.organization.id,
+          name: membership.organization.name,
+          slug: membership.organization.slug,
+          logoUrl: membership.organization.logoUrl,
+          planType: membership.organization.planType,
+          status: membership.organization.status
+        }
+      }))
+    }
+  } catch (error) {
+    console.error('Error updating user profile:', error)
+    return null
+  }
+}
+
+/**
+ * Change user password
+ */
+export async function changeUserPassword(userId: string, currentPassword: string, newPassword: string): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { passwordHash: true, email: true }
+    })
+
+    if (!user || !user.passwordHash) {
+      return false
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash)
+    if (!isCurrentPasswordValid) {
+      return false
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, 12)
+
+    // Update password
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash: newPasswordHash,
+        updatedAt: new Date()
+      }
+    })
+
+    return true
+  } catch (error) {
+    console.error('Error changing password:', error)
+    return false
+  }
+}
+
+// Clean up database connections
+export async function disconnectDatabase() {
+  await prisma.$disconnect()
+}

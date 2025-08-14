@@ -15,7 +15,7 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.7.0",
+    "@prisma/client": "^5.22.0",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-checkbox": "^1.0.4",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.9.0",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
@@ -47,7 +47,7 @@
     "eslint": "^8.53.0",
     "eslint-config-next": "^14.0.0",
     "postcss": "^8.4.31",
-    "prisma": "^5.7.0",
+    "prisma": "^5.22.0",
     "tailwindcss": "^3.3.5",
     "tsx": "^4.6.0",
     "typescript": "^5.2.2"

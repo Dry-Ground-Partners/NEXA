@@ -182,6 +182,10 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <img
             src="/images/nexaicon.png"
+            onError={(e) => {
+              console.log('Image failed to load:', e.target.src)
+              e.target.src = '/images/nexanonameicon.png'
+            }}
             alt="NEXA"
             className="h-[120px] w-auto mx-auto mb-4 object-contain"
           />

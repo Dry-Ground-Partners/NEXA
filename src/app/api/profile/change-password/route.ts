@@ -1,69 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
-import bcryptjs from 'bcryptjs'
+import { getCurrentUser, changeUserPassword } from '@/lib/auth'
 
-export async function POST(request: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
-    const user = await getCurrentUser(request)
-    
+    const user = await getCurrentUser()
+
     if (!user) {
       return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
+        { success: false, error: 'Not authenticated' },
         { status: 401 }
       )
     }
 
-    const { currentPassword, newPassword } = await request.json()
+    const body = await request.json()
+    const { currentPassword, newPassword, confirmPassword } = body
 
     // Validate input
-    if (!currentPassword) {
+    if (!currentPassword || !newPassword || !confirmPassword) {
       return NextResponse.json(
-        { success: false, message: 'Current password is required' },
+        { success: false, error: 'All password fields are required' },
         { status: 400 }
       )
     }
 
-    if (!newPassword) {
+    if (newPassword !== confirmPassword) {
       return NextResponse.json(
-        { success: false, message: 'New password is required' },
+        { success: false, error: 'New passwords do not match' },
         { status: 400 }
       )
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return NextResponse.json(
-        { success: false, message: 'Password must be at least 6 characters long' },
+        { success: false, error: 'New password must be at least 8 characters long' },
         { status: 400 }
       )
     }
 
-    // For our mock implementation, we'll check against the hardcoded password
-    // In a real app, you would verify against the hashed password in the database
-    if (user.email === 'admin@dryground.ai' && currentPassword !== 'password123') {
+    // Change password
+    const success = await changeUserPassword(user.id, currentPassword, newPassword)
+
+    if (!success) {
       return NextResponse.json(
-        { success: false, message: 'Current password is incorrect' },
+        { success: false, error: 'Current password is incorrect' },
         { status: 400 }
       )
     }
-
-    // Hash the new password
-    const hashedPassword = await bcryptjs.hash(newPassword, 12)
-
-    // In a real app, you would update the password in the database here
-    // For now, we'll just return success
 
     return NextResponse.json({
       success: true,
       message: 'Password changed successfully'
     })
-
   } catch (error) {
-    console.error('Change password error:', error)
+    console.error('Password change error:', error)
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     )
   }
 }
-
-

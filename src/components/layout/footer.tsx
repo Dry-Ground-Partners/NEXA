@@ -11,7 +11,10 @@ export function Footer() {
               <img
                 src="/images/dry_ground_ai_logo.svg"
                 alt="Dry Ground AI"
-                className="h-12 w-auto filter invert brightness-0 invert"
+                className="h-12 w-auto filter invert"
+                onError={(e) => {
+                  console.log('Footer logo failed to load:', e.target.src)
+                }}
               />
             </div>
           </div>

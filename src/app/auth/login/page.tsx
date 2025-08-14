@@ -67,6 +67,10 @@ export default function LoginPage() {
           <div className="mb-8">
             <img
               src="/images/nexaicon.png"
+              onError={(e) => {
+                console.log('Image failed to load:', e.target.src)
+                e.target.src = '/images/nexanonameicon.png'
+              }}
               alt="NEXA"
               className="h-[180px] w-auto mx-auto mb-8 object-contain"
             />

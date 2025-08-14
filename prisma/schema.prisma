@@ -15,12 +15,16 @@ enum UserStatus {
   pending
   suspended
   deleted
+
+  @@map("user_status")
 }
 
 enum OrganizationStatus {
   active
   suspended
   deleted
+
+  @@map("organization_status")
 }
 
 enum OrganizationPlan {
@@ -28,6 +32,8 @@ enum OrganizationPlan {
   starter
   professional
   enterprise
+
+  @@map("organization_plan")
 }
 
 enum SubscriptionStatus {
@@ -35,6 +41,8 @@ enum SubscriptionStatus {
   past_due
   canceled
   trialing
+
+  @@map("subscription_status")
 }
 
 enum MembershipRole {
@@ -43,12 +51,16 @@ enum MembershipRole {
   member
   viewer
   billing
+
+  @@map("membership_role")
 }
 
 enum MembershipStatus {
   active
   pending
   suspended
+
+  @@map("membership_status")
 }
 
 model User {

@@ -29,38 +29,35 @@ export function generateVerificationToken(): string {
 }
 
 /**
- * Send email verification email via Azure endpoint
+ * Send email verification email via Azure Logic App
  */
 export async function sendVerificationEmail(data: EmailVerificationData): Promise<boolean> {
   try {
     const verificationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/verify-email?token=${data.token}`
     
-    const emailData = {
-      to: data.email,
-      subject: 'Verify your NEXA account',
-      template: 'email-verification',
-      data: {
-        userName: data.userName,
-        verificationUrl,
-        organizationName: data.organizationName
-      }
+    const emailPayload = {
+      recipient_email: data.email,
+      verification_code: data.token,
+      verification_url: verificationUrl,
+      user_name: data.userName,
+      organization_name: data.organizationName || '',
+      email_type: 'verification',
+      subject: 'Verify your NEXA account'
     }
 
-    // Replace with your Azure endpoint URL
-    const azureEndpoint = process.env.AZURE_EMAIL_ENDPOINT
+    const azureEndpoint = 'https://prod-60.westus.logic.azure.com:443/workflows/2becfb6f393d4642890b33e6ba6fc906/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=xBWH5M1AaZLVFDlgnotk_Iox9ylXdmOlqklclk_LxJs'
 
-    if (!azureEndpoint) {
-      console.error('Azure email endpoint not configured')
-      return false
-    }
+    // Debug log for environment variable
+    console.log('KEY_CONAN_2FA env var:', process.env.KEY_CONAN_2FA ? 'SET' : 'NOT SET')
+    console.log('KEY_CONAN_2FA length:', (process.env.KEY_CONAN_2FA || '').length)
 
     const response = await fetch(azureEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.AZURE_EMAIL_TOKEN}`
+        'KEY_CONAN_2FA': process.env.KEY_CONAN_2FA || ''
       },
-      body: JSON.stringify(emailData)
+      body: JSON.stringify(emailPayload)
     })
 
     if (!response.ok) {
@@ -68,6 +65,7 @@ export async function sendVerificationEmail(data: EmailVerificationData): Promis
       return false
     }
 
+    console.log('Verification email sent successfully to:', data.email)
     return true
   } catch (error) {
     console.error('Error sending verification email:', error)
@@ -82,32 +80,27 @@ export async function sendInvitationEmail(data: InvitationEmailData): Promise<bo
   try {
     const invitationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/accept-invitation?token=${data.token}`
     
-    const emailData = {
-      to: data.email,
-      subject: `You're invited to join ${data.organizationName} on NEXA`,
-      template: 'organization-invitation',
-      data: {
-        inviterName: data.inviterName,
-        organizationName: data.organizationName,
-        role: data.role,
-        invitationUrl
-      }
+    const emailPayload = {
+      recipient_email: data.email,
+      verification_code: data.token,
+      invitation_url: invitationUrl,
+      user_name: '',
+      organization_name: data.organizationName,
+      inviter_name: data.inviterName,
+      role: data.role,
+      email_type: 'invitation',
+      subject: `You're invited to join ${data.organizationName} on NEXA`
     }
 
-    const azureEndpoint = process.env.AZURE_EMAIL_ENDPOINT
-
-    if (!azureEndpoint) {
-      console.error('Azure email endpoint not configured')
-      return false
-    }
+    const azureEndpoint = 'https://prod-60.westus.logic.azure.com:443/workflows/2becfb6f393d4642890b33e6ba6fc906/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=xBWH5M1AaZLVFDlgnotk_Iox9ylXdmOlqklclk_LxJs'
 
     const response = await fetch(azureEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.AZURE_EMAIL_TOKEN}`
+        'KEY_CONAN_2FA': process.env.KEY_CONAN_2FA || ''
       },
-      body: JSON.stringify(emailData)
+      body: JSON.stringify(emailPayload)
     })
 
     return response.ok
@@ -122,31 +115,26 @@ export async function sendInvitationEmail(data: InvitationEmailData): Promise<bo
  */
 export async function sendWelcomeEmail(email: string, userName: string, organizationName?: string): Promise<boolean> {
   try {
-    const emailData = {
-      to: email,
-      subject: 'Welcome to NEXA!',
-      template: 'welcome',
-      data: {
-        userName,
-        organizationName,
-        dashboardUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard`
-      }
+    const emailPayload = {
+      recipient_email: email,
+      verification_code: '',
+      verification_url: '',
+      user_name: userName,
+      organization_name: organizationName || '',
+      dashboard_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard`,
+      email_type: 'welcome',
+      subject: 'Welcome to NEXA!'
     }
 
-    const azureEndpoint = process.env.AZURE_EMAIL_ENDPOINT
-
-    if (!azureEndpoint) {
-      console.error('Azure email endpoint not configured')
-      return false
-    }
+    const azureEndpoint = 'https://prod-60.westus.logic.azure.com:443/workflows/2becfb6f393d4642890b33e6ba6fc906/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=xBWH5M1AaZLVFDlgnotk_Iox9ylXdmOlqklclk_LxJs'
 
     const response = await fetch(azureEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.AZURE_EMAIL_TOKEN}`
+        'KEY_CONAN_2FA': process.env.KEY_CONAN_2FA || ''
       },
-      body: JSON.stringify(emailData)
+      body: JSON.stringify(emailPayload)
     })
 
     return response.ok
