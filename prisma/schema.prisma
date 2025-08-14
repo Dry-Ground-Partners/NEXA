@@ -1,0 +1,273 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  active
+  pending
+  suspended
+  deleted
+}
+
+enum OrganizationStatus {
+  active
+  suspended
+  deleted
+}
+
+enum OrganizationPlan {
+  free
+  starter
+  professional
+  enterprise
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  canceled
+  trialing
+}
+
+enum MembershipRole {
+  owner
+  admin
+  member
+  viewer
+  billing
+}
+
+enum MembershipStatus {
+  active
+  pending
+  suspended
+}
+
+model User {
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email                 String    @unique @db.VarChar(255)
+  emailVerifiedAt       DateTime? @map("email_verified_at")
+  passwordHash          String?   @map("password_hash") @db.VarChar(255)
+  firstName             String?   @map("first_name") @db.VarChar(100)
+  lastName              String?   @map("last_name") @db.VarChar(100)
+  fullName              String?   @map("full_name") @db.VarChar(200)
+  avatarUrl             String?   @map("avatar_url") @db.VarChar(500)
+  timezone              String    @default("UTC") @db.VarChar(50)
+  locale                String    @default("en") @db.VarChar(10)
+  
+  // Authentication tracking
+  lastLoginAt           DateTime? @map("last_login_at")
+  loginCount            Int       @default(0) @map("login_count")
+  failedLoginAttempts   Int       @default(0) @map("failed_login_attempts")
+  lockedUntil           DateTime? @map("locked_until")
+  
+  // Profile & preferences (flexible JSON storage)
+  profileData           Json      @default("{}") @map("profile_data")
+  notificationSettings  Json      @default("{}") @map("notification_settings")
+  
+  // System fields
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt             DateTime? @map("deleted_at")
+  status                UserStatus @default(pending)
+
+  // Relations
+  sessions              UserSession[]
+  organizationMemberships OrganizationMembership[]
+  aiArchitectureSessions AIArchitectureSession[]
+  usageEvents           UsageEvent[]
+  auditLogs             AuditLog[]
+  invitedMemberships    OrganizationMembership[] @relation("InvitedBy")
+
+  @@map("users")
+}
+
+model Organization {
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                  String    @db.VarChar(255)
+  slug                  String?   @unique @db.VarChar(100)
+  domain                String?   @db.VarChar(255)
+  
+  // Branding & identity
+  logoUrl               String?   @map("logo_url") @db.VarChar(500)
+  brandColors           Json      @default("{}") @map("brand_colors")
+  website               String?   @db.VarChar(255)
+  industry              String?   @db.VarChar(100)
+  
+  // Business information
+  address               Json      @default("{}")
+  taxId                 String?   @map("tax_id") @db.VarChar(50)
+  billingEmail          String?   @map("billing_email") @db.VarChar(255)
+  
+  // Subscription & limits
+  planType              OrganizationPlan @default(free) @map("plan_type")
+  subscriptionStatus    SubscriptionStatus @default(active) @map("subscription_status")
+  subscriptionData      Json      @default("{}") @map("subscription_data")
+  usageLimits           Json      @default("{\"ai_calls_per_month\": 100, \"pdf_exports_per_month\": 10, \"sessions_limit\": 20, \"team_members_limit\": 3, \"storage_limit_mb\": 500, \"features\": {\"custom_branding\": false, \"priority_support\": false, \"sso_enabled\": false, \"api_access\": false}}") @map("usage_limits")
+  
+  // System fields
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt             DateTime? @map("deleted_at")
+  status                OrganizationStatus @default(active)
+
+  // Relations
+  memberships           OrganizationMembership[]
+  sessions              UserSession[]
+  aiArchitectureSessions AIArchitectureSession[]
+  domains               OrganizationDomain[]
+  usageEvents           UsageEvent[]
+  auditLogs             AuditLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationMembership {
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  organizationId        String    @map("organization_id") @db.Uuid
+  
+  // Role & permissions
+  role                  MembershipRole @default(member)
+  permissions           Json      @default("{}")
+  
+  // Invitation tracking
+  invitedBy             String?   @map("invited_by") @db.Uuid
+  invitedAt             DateTime? @map("invited_at")
+  joinedAt              DateTime? @map("joined_at")
+  invitationToken       String?   @map("invitation_token") @db.VarChar(255)
+  
+  // System fields
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+  status                MembershipStatus @default(pending)
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inviter               User?     @relation("InvitedBy", fields: [invitedBy], references: [id])
+
+  @@unique([userId, organizationId])
+  @@map("organization_memberships")
+}
+
+model UserSession {
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  organizationId        String?   @map("organization_id") @db.Uuid
+  
+  // Session data
+  sessionToken          String    @unique @map("session_token") @db.VarChar(255)
+  refreshToken          String?   @unique @map("refresh_token") @db.VarChar(255)
+  ipAddress             String?   @map("ip_address") @db.Inet
+  userAgent             String?   @map("user_agent")
+  
+  // Security tracking
+  expiresAt             DateTime  @map("expires_at")
+  lastActivityAt        DateTime  @default(now()) @map("last_activity_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  revokedAt             DateTime? @map("revoked_at")
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization          Organization? @relation(fields: [organizationId], references: [id])
+
+  @@map("user_sessions")
+}
+
+model AIArchitectureSession {
+  id                    Int       @id @default(autoincrement())
+  uuid                  String    @unique @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  organizationId        String    @map("organization_id") @db.Uuid
+  
+  // Basic session info
+  title                 String?   @db.VarChar(255)
+  client                String?   @db.VarChar(255)
+  
+  // JSON Document Storage for different workflows (like original NEXA)
+  sessionObjects        Json      @default("{}") @map("session_objects")
+  sowObjects            Json      @default("{}") @map("sow_objects")
+  loeObjects            Json      @default("{}") @map("loe_objects")
+  diagramTextsJson      Json      @default("{}") @map("diagram_texts_json")
+  visualAssetsJson      Json      @default("{}") @map("visual_assets_json")
+  
+  // Metadata
+  sessionType           String    @default("solution") @map("session_type") @db.VarChar(50)
+  isTemplate            Boolean   @default(false) @map("is_template")
+  tags                  Json      @default("[]")
+  
+  // System fields
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt             DateTime? @map("deleted_at")
+
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  usageEvents           UsageEvent[]
+
+  @@map("ai_architecture_sessions")
+}
+
+model OrganizationDomain {
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organizationId        String    @map("organization_id") @db.Uuid
+  domain                String    @db.VarChar(255)
+  autoJoinRole          MembershipRole @default(member) @map("auto_join_role")
+  verificationRequired  Boolean   @default(true) @map("verification_required")
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, domain])
+  @@map("organization_domains")
+}
+
+model UsageEvent {
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organizationId        String    @map("organization_id") @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  eventType             String    @map("event_type") @db.VarChar(50)
+  eventData             Json      @default("{}") @map("event_data")
+  creditsConsumed       Int       @default(1) @map("credits_consumed")
+  sessionId             Int?      @map("session_id")
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session               AIArchitectureSession? @relation(fields: [sessionId], references: [id])
+
+  @@map("usage_events")
+}
+
+model AuditLog {
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organizationId        String    @map("organization_id") @db.Uuid
+  userId                String?   @map("user_id") @db.Uuid
+  action                String    @db.VarChar(100)
+  resourceType          String    @map("resource_type") @db.VarChar(50)
+  resourceId            String?   @map("resource_id") @db.Uuid
+  oldValues             Json      @default("{}") @map("old_values")
+  newValues             Json      @default("{}") @map("new_values")
+  ipAddress             String?   @map("ip_address") @db.Inet
+  userAgent             String?   @map("user_agent")
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                  User?     @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+

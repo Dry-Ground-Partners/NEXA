@@ -1,0 +1,216 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@layer base {
+  :root {
+    /* NEXA Design System - Light Mode (unused but kept for compatibility) */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* NEXA Design System - Dark Mode (Primary) */
+    --background: 0 0% 4%;           /* #0a0a0a - Almost black page background */
+    --foreground: 210 11% 91%;       /* #e9ecef - Light gray text */
+    --card: 0 0% 0%;                 /* #000000 - Pure black content cards */
+    --card-foreground: 210 11% 91%;  /* #e9ecef - Light gray text on cards */
+    --popover: 0 0% 0%;              /* #000000 - Pure black popovers */
+    --popover-foreground: 210 11% 91%; /* #e9ecef - Light gray text in popovers */
+    --primary: 0 0% 100%;            /* #ffffff - White primary */
+    --primary-foreground: 0 0% 0%;   /* #000000 - Black text on white */
+    --secondary: 210 11% 13%;        /* #212529 - Dark gray secondary */
+    --secondary-foreground: 210 9% 81%; /* #ced4da - Lighter gray text */
+    --muted: 215 14% 34%;            /* #495057 - Medium gray muted */
+    --muted-foreground: 210 9% 81%;  /* #ced4da - Muted text */
+    --accent: 0 0% 100%;             /* #ffffff - White accent */
+    --accent-foreground: 0 0% 0%;    /* #000000 - Black text on accent */
+    --destructive: 0 72% 51%;        /* #EF4444 - Red destructive */
+    --destructive-foreground: 210 40% 98%; /* Light text on destructive */
+    --border: 215 14% 34%;           /* #495057 - Medium gray borders */
+    --input: 210 11% 13%;            /* #212529 - Dark gray inputs */
+    --ring: 0 0% 100%;               /* #ffffff - White focus ring */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* NEXA-specific base styles */
+  .nexa-background {
+    background-color: #0a0a0a;
+  }
+
+  .nexa-card {
+    background-color: #000000;
+    border: 1px solid #495057;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .nexa-input {
+    background-color: #212529;
+    border: 1px solid #495057;
+    color: #e9ecef;
+  }
+
+  .nexa-input:focus {
+    border-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+  }
+
+  .nexa-button-primary {
+    background-color: #ffffff;
+    color: #000000;
+    border: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .nexa-button-primary:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+  }
+
+  .nexa-text-muted {
+    color: #ced4da;
+  }
+
+  .nexa-border {
+    border-color: #495057;
+  }
+}
+
+@layer components {
+  /* Tool card component matching NEXA design */
+  .tool-card {
+    @apply nexa-card p-8 h-full transition-all duration-300 hover:bg-gray-900 hover:border-gray-600 hover:-translate-y-0.5 hover:shadow-nexa-hover cursor-pointer;
+  }
+
+  /* Auth card component */
+  .auth-card {
+    @apply nexa-card p-10 w-full max-w-md mx-auto;
+  }
+
+  /* Form styling */
+  .nexa-form-group {
+    @apply mb-5;
+  }
+
+  .nexa-form-label {
+    @apply block text-sm font-medium text-nexa-muted mb-2;
+  }
+
+  .nexa-form-input {
+    @apply w-full px-4 py-3 nexa-input rounded-lg text-base transition-all duration-200 focus:outline-none focus:ring-0;
+  }
+
+  .nexa-form-input:focus {
+    @apply nexa-input border-white shadow-nexa-focus;
+  }
+
+  /* Button variants */
+  .nexa-btn {
+    @apply inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-lg transition-all duration-300 focus:outline-none focus:ring-0;
+  }
+
+  .nexa-btn-primary {
+    @apply nexa-btn bg-white text-black hover:bg-gray-100 hover:-translate-y-0.5;
+  }
+
+  .nexa-btn-secondary {
+    @apply nexa-btn bg-nexa-input text-nexa-text border border-nexa-border hover:bg-gray-700;
+  }
+
+  /* Navigation styles */
+  .nav-button {
+    @apply flex flex-col items-center p-4 nexa-card min-w-[120px] transition-all duration-300 hover:bg-gray-900 hover:border-gray-600 hover:-translate-y-0.5 hover:shadow-nexa-hover;
+  }
+
+  /* Alert styles */
+  .nexa-alert {
+    @apply p-4 rounded-lg mb-6 border;
+  }
+
+  .nexa-alert-error {
+    @apply nexa-alert bg-red-500/10 border-red-500/30 text-red-400;
+  }
+
+  .nexa-alert-success {
+    @apply nexa-alert bg-green-500/10 border-green-500/30 text-green-400;
+  }
+
+  .nexa-alert-info {
+    @apply nexa-alert bg-blue-500/10 border-blue-500/30 text-blue-400;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Custom scrollbar for dark theme */
+  .nexa-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .nexa-scrollbar::-webkit-scrollbar-track {
+    background: #212529;
+  }
+
+  .nexa-scrollbar::-webkit-scrollbar-thumb {
+    background: #495057;
+    border-radius: 4px;
+  }
+
+  .nexa-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #6c757d;
+  }
+
+  /* Loading animation */
+  .nexa-loading {
+    @apply animate-spin;
+  }
+
+  /* Fade in animation */
+  .nexa-fade-in {
+    @apply animate-fade-in;
+  }
+
+  /* Hover lift effect */
+  .nexa-hover-lift {
+    @apply transition-transform duration-300 hover:-translate-y-1;
+  }
+}
+
+

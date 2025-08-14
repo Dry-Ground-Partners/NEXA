@@ -1,0 +1,11 @@
+# This file represents the large NEXA logo for auth pages
+# In a real implementation, this would be the actual PNG file
+# For now, we'll update the code to use text-based logos
+# 
+# The actual NEXA logo should be:
+# - Large PNG format for auth pages
+# - 180px height
+# - White/light colored logo for dark theme
+# - Clean, professional appearance
+
+
