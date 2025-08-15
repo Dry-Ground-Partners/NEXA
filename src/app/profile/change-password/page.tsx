@@ -125,10 +125,10 @@ export default function ChangePasswordPage() {
         <div className="text-center mb-8">
           <div className="mb-8">
             <img
-              src="/images/nexaicon.png"
+              src="/images/nexaicon.png?v=1"
               onError={(e) => {
                 console.log('Image failed to load:', e.target.src)
-                e.target.src = '/images/nexanonameicon.png'
+                e.target.src = '/images/nexanonameicon.png?v=1'
               }}
               alt="NEXA"
               className="h-[120px] w-auto mx-auto mb-6 object-contain"

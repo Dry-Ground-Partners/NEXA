@@ -59,10 +59,10 @@ export default function VerifyEmailPage() {
         {/* Logo */}
         <div className="mb-6">
           <img
-            src="/images/nexaicon.png"
+            src="/images/nexaicon.png?v=1"
             onError={(e) => {
               console.log('Image failed to load:', e.target.src)
-              e.target.src = '/images/nexanonameicon.png'
+              e.target.src = '/images/nexanonameicon.png?v=1'
             }}
             alt="NEXA"
             className="h-[80px] w-auto mx-auto mb-4 object-contain"

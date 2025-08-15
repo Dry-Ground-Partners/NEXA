@@ -63,18 +63,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center nexa-background p-5">
       <Card variant="nexa" className="w-full max-w-md p-10">
         {/* Logo Section */}
-        <div className="text-center mb-8">
-          <div className="mb-8">
-            <img
-              src="/images/nexaicon.png"
-              onError={(e) => {
-                console.log('Image failed to load:', e.target.src)
-                e.target.src = '/images/nexanonameicon.png'
-              }}
-              alt="NEXA"
-              className="h-[180px] w-auto mx-auto mb-8 object-contain"
-            />
-          </div>
+        <div className="text-center">
+          <img
+            src="/images/nexaicon.png?v=1"
+            onError={(e) => {
+              console.log('Image failed to load:', e.target.src)
+              e.target.src = '/images/nexanonameicon.png?v=1'
+            }}
+            alt="NEXA"
+            className="h-[252px] w-auto mx-auto object-contain"
+          />
         </div>
 
         {/* Title */}
@@ -127,24 +125,26 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Remember Me */}
-          <div className="flex items-center space-x-2 mb-5">
-            <Checkbox
-              id="rememberMe"
-              name="rememberMe"
-              checked={formData.rememberMe}
-              onCheckedChange={(checked) => 
-                setFormData(prev => ({ ...prev, rememberMe: !!checked }))
-              }
-              className="data-[state=checked]:bg-white data-[state=checked]:text-black"
-            />
-            <Label 
-              htmlFor="rememberMe" 
-              className="text-sm text-nexa-muted cursor-pointer"
-            >
-              Remember Me
-            </Label>
-          </div>
+          {/* Remember Me - Only show if password is entered */}
+          {formData.password && (
+            <div className="flex items-center space-x-2 mb-5">
+              <Checkbox
+                id="rememberMe"
+                name="rememberMe"
+                checked={formData.rememberMe}
+                onCheckedChange={(checked) => 
+                  setFormData(prev => ({ ...prev, rememberMe: !!checked }))
+                }
+                className="data-[state=checked]:bg-white data-[state=checked]:text-black"
+              />
+              <Label 
+                htmlFor="rememberMe" 
+                className="text-sm text-nexa-muted cursor-pointer"
+              >
+                Remember Me
+              </Label>
+            </div>
+          )}
 
           {/* Submit Button */}
           <Button

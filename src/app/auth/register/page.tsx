@@ -177,22 +177,19 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center nexa-background p-5">
-      <Card variant="nexa" className="w-full max-w-2xl p-8">
+      <Card variant="nexa" className="w-full max-w-md p-10">
         {/* Logo Section */}
-        <div className="text-center mb-8">
+        <div className="text-center">
           <img
-            src="/images/nexaicon.png"
+            src="/images/nexaicon.png?v=1"
             onError={(e) => {
               console.log('Image failed to load:', e.target.src)
-              e.target.src = '/images/nexanonameicon.png'
+              e.target.src = '/images/nexanonameicon.png?v=1'
             }}
             alt="NEXA"
-            className="h-[120px] w-auto mx-auto mb-4 object-contain"
+            className="h-[168px] w-auto mx-auto object-contain"
           />
-          <h1 className="text-2xl font-bold text-white mb-2">
-            {invitationToken ? 'Accept Invitation' : 'Create Your NEXA Account'}
-          </h1>
-          <p className="text-nexa-muted">
+          <p className="text-nexa-muted mb-8">
             {invitationToken 
               ? 'Complete your registration to join the organization'
               : 'Start building AI-powered architecture solutions'
@@ -226,28 +223,7 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Registration Type Selection */}
-          {!invitationToken && (
-            <div className="mb-6">
-              <Label className="text-nexa-muted mb-3 block">How do you want to get started?</Label>
-              <Tabs value={registrationType} onValueChange={(value) => setRegistrationType(value as RegistrationType)}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="solo" className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Solo
-                  </TabsTrigger>
-                  <TabsTrigger value="create" className="flex items-center gap-2">
-                    <Building className="w-4 h-4" />
-                    Create Org
-                  </TabsTrigger>
-                  <TabsTrigger value="join" className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Join Org
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          )}
+
 
           {/* Personal Information */}
           <div className="grid grid-cols-2 gap-4">
@@ -354,25 +330,27 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* Confirm Password */}
-          <div>
-            <Label htmlFor="confirmPassword" className="text-nexa-muted">
-              Confirm Password <span className="text-red-400">*</span>
-            </Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-              className="mt-1"
-              placeholder="Confirm your password"
-              required
-              disabled={loading}
-            />
-            {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-              <p className="text-red-400 text-sm mt-1">Passwords do not match</p>
-            )}
-          </div>
+          {/* Confirm Password - Only show if password is entered */}
+          {formData.password && (
+            <div>
+              <Label htmlFor="confirmPassword" className="text-nexa-muted">
+                Confirm Password <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                className="mt-1"
+                placeholder="Confirm your password"
+                required
+                disabled={loading}
+              />
+              {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                <p className="text-red-400 text-sm mt-1">Passwords do not match</p>
+              )}
+            </div>
+          )}
 
           {/* Submit Button */}
           <Button 

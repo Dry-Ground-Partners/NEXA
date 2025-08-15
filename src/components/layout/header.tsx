@@ -74,7 +74,7 @@ export function Header({ user, currentPage = "Dashboard" }: HeaderProps) {
               onClick={toggleNav}
             >
               <img
-                src="/images/nexanonameicon.png"
+                src="/images/nexanonameicon.png?v=1"
                 alt="NEXA"
                 className="w-10 h-10 object-contain"
               />
