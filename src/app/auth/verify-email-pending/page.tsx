@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -10,6 +11,16 @@ import { Mail, CheckCircle, Clock, RefreshCw } from 'lucide-react'
 export default function VerifyEmailPendingPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [email, setEmail] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    // Get email from URL parameters
+    const emailParam = searchParams.get('email')
+    if (emailParam) {
+      setEmail(emailParam)
+    }
+  }, [searchParams])
 
   const handleResendEmail = async () => {
     setLoading(true)
@@ -17,7 +28,13 @@ export default function VerifyEmailPendingPage() {
 
     try {
       const response = await fetch('/api/auth/resend-verification', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email
+        })
       })
 
       const data = await response.json()
@@ -36,7 +53,7 @@ export default function VerifyEmailPendingPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center nexa-background p-5">
-      <Card variant="nexa" className="w-full max-width-md p-8 text-center">
+      <Card variant="nexa" className="w-full max-w-md p-10 text-center">
         {/* Success Icon */}
         <div className="mb-6">
           <div className="w-20 h-20 bg-nexa-accent rounded-full flex items-center justify-center mx-auto mb-4">
@@ -64,6 +81,15 @@ export default function VerifyEmailPendingPage() {
           </div>
         </div>
 
+        {!email && (
+          <Alert variant="nexaError" className="mb-6">
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              Unable to determine email address. Please return to the registration page and try again.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {message && (
           <Alert variant={message.includes('sent') ? 'nexaSuccess' : 'nexaError'} className="mb-6">
             <CheckCircle className="h-4 w-4" />
@@ -77,7 +103,7 @@ export default function VerifyEmailPendingPage() {
             onClick={handleResendEmail}
             variant="outline"
             className="w-full"
-            disabled={loading}
+            disabled={loading || !email}
           >
             {loading ? (
               <>

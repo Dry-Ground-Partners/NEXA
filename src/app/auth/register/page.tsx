@@ -151,7 +151,7 @@ export default function RegisterPage() {
         setSuccess(data.message)
         // Redirect to verification pending page after 2 seconds
         setTimeout(() => {
-          router.push('/auth/verify-email-pending')
+          router.push(`/auth/verify-email-pending?email=${encodeURIComponent(formData.email)}`)
         }, 2000)
       } else {
         setError(data.error || 'Registration failed')

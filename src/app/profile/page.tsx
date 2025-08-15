@@ -134,40 +134,38 @@ export default function ProfilePage() {
     <DashboardLayout>
       <div className="nexa-background min-h-screen p-6">
         <div className="max-w-6xl mx-auto">
-          {/* Back link */}
-          <Link 
-            href="/dashboard"
-            className="inline-flex items-center gap-2 text-white hover:text-nexa-accent transition-colors mb-6"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
-          </Link>
-
-          {/* Page Title */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Profile & Settings</h1>
-            <p className="text-nexa-muted">Manage your account, organizations, and preferences</p>
-          </div>
-
-          {/* Tab system with folder-like design */}
+          {/* Tab system with seamless folder-like design */}
           <Tabs defaultValue="account" className="w-full">
-            <TabsList className="mb-0">
-              <TabsTrigger value="account" className="flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Account
-              </TabsTrigger>
-              <TabsTrigger value="organizations" className="flex items-center gap-2">
-                <Building className="w-4 h-4" />
-                Organizations
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Settings
-              </TabsTrigger>
-            </TabsList>
+            {/* Header row with Back link and Tabs */}
+            <div className="flex items-end justify-between mb-0">
+              {/* Back link - positioned inline with tabs */}
+              <Link 
+                href="/dashboard"
+                className="inline-flex items-center gap-2 text-white hover:text-nexa-accent transition-colors pb-3"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </Link>
 
-            {/* Card container that looks like a folder */}
-            <Card variant="nexa" className="border-t-0 rounded-t-none p-8">
+              {/* Tab strip pushed to the right */}
+              <TabsList className="mb-0">
+                <TabsTrigger value="account" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Account
+                </TabsTrigger>
+                <TabsTrigger value="organizations" className="flex items-center gap-2">
+                  <Building className="w-4 h-4" />
+                  Organizations
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* Card container with rounded corners and seamless tab integration */}
+            <Card variant="nexa" className="border-t border-nexa-border p-8 mt-0 relative z-0">
               
               {/* Account Tab */}
               <TabsContent value="account" className="mt-0">
