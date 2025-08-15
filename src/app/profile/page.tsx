@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { ArrowLeft, User, Calendar, Shield, Building, Plus, Settings, Users, Crown, Mail, Globe, ChevronRight } from 'lucide-react'
+import { ArrowLeft, User, Calendar, Shield, Building, Plus, Settings, Users, Crown, Mail, Globe, ChevronRight, Lightbulb } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import type { OrganizationMembership, Organization } from '@/types'
 
@@ -137,7 +137,7 @@ export default function ProfilePage() {
           {/* Tab system with seamless folder-like design */}
           <Tabs defaultValue="account" className="w-full">
             {/* Header row with Back link and Tabs */}
-            <div className="flex items-end justify-between mb-0">
+            <div className="flex items-end gap-8 mb-0">
               {/* Back link - positioned inline with tabs */}
               <Link 
                 href="/dashboard"
@@ -147,8 +147,12 @@ export default function ProfilePage() {
                 Back to Dashboard
               </Link>
 
-              {/* Tab strip pushed to the right */}
+              {/* Tab strip closer to back link */}
               <TabsList className="mb-0">
+                <TabsTrigger value="nexa" className="flex items-center gap-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-transparent bg-clip-text font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-400 data-[state=active]:via-purple-400 data-[state=active]:to-pink-400 data-[state=active]:text-transparent data-[state=active]:bg-clip-text">
+                  <Settings className="w-4 h-4 text-blue-400" />
+                  NEXA AI
+                </TabsTrigger>
                 <TabsTrigger value="account" className="flex items-center gap-2">
                   <User className="w-4 h-4" />
                   Account
@@ -167,6 +171,45 @@ export default function ProfilePage() {
             {/* Card container with rounded corners and seamless tab integration */}
             <Card variant="nexa" className="border-t border-nexa-border p-8 mt-0 relative z-0">
               
+              {/* NEXA AI Tab */}
+              <TabsContent value="nexa" className="mt-0">
+                <div className="text-center py-12">
+                  <div className="w-24 h-24 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Settings className="w-12 h-12 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 text-transparent bg-clip-text mb-4">
+                    NEXA AI Dashboard
+                  </h3>
+                  <p className="text-nexa-muted mb-8 max-w-2xl mx-auto">
+                    Advanced AI-powered architecture solutions, real-time collaboration, and intelligent project management. 
+                    Experience the future of enterprise architecture with NEXA's cutting-edge capabilities.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                    <Card variant="nexa" className="p-6 text-center">
+                      <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <Lightbulb className="w-6 h-6 text-blue-400" />
+                      </div>
+                      <h4 className="text-white font-semibold mb-2">AI Solutions</h4>
+                      <p className="text-nexa-muted text-sm">Intelligent architecture recommendations</p>
+                    </Card>
+                    <Card variant="nexa" className="p-6 text-center">
+                      <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <Users className="w-6 h-6 text-purple-400" />
+                      </div>
+                      <h4 className="text-white font-semibold mb-2">Team Collaboration</h4>
+                      <p className="text-nexa-muted text-sm">Real-time project coordination</p>
+                    </Card>
+                    <Card variant="nexa" className="p-6 text-center">
+                      <div className="w-12 h-12 bg-pink-500/20 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <Globe className="w-6 h-6 text-pink-400" />
+                      </div>
+                      <h4 className="text-white font-semibold mb-2">Enterprise Scale</h4>
+                      <p className="text-nexa-muted text-sm">Multi-organization management</p>
+                    </Card>
+                  </div>
+                </div>
+              </TabsContent>
+
               {/* Account Tab */}
               <TabsContent value="account" className="mt-0">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
