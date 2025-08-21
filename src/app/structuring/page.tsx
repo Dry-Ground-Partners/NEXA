@@ -195,7 +195,7 @@ export default function StructuringPage() {
             <div className="flex items-end justify-between mb-0">
               <div className="flex items-end gap-8">
                 {/* Structuring label - positioned inline with tabs */}
-                <div className="inline-flex items-center justify-center gap-2 text-white pb-3">
+                <div className="inline-flex items-center justify-center gap-2 text-white pb-3 ml-16">
                   <Layers className="w-4 h-4" />
                   <span className="text-center">Structuring</span>
                 </div>
@@ -222,7 +222,7 @@ export default function StructuringPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-nexa-card border-t border-l border-r border-nexa-border text-white rounded-t-lg relative hover:text-white hover:bg-nexa-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-white/10 text-white border-t border-l border-r border-white rounded-t-lg relative hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
                 >
                   {saving ? (
                     <>
@@ -238,7 +238,7 @@ export default function StructuringPage() {
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-nexa-card border-t border-l border-r border-red-600 text-red-500 rounded-t-lg relative hover:text-red-500 hover:bg-nexa-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
+                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-red-500/10 text-red-500 border-t border-l border-r border-red-600 rounded-t-lg relative hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
@@ -444,8 +444,7 @@ export default function StructuringPage() {
                 {activeMainTab !== 'solution' ? (
                   <Button
                     onClick={handleNextTab}
-                    variant="outline"
-                    className="border-nexa-border text-white hover:bg-white/10"
+                    className="bg-white text-black hover:bg-gray-100"
                   >
                     Next
                     <ArrowRight className="h-4 w-4 ml-2" />

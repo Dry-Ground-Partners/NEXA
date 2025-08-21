@@ -269,27 +269,13 @@
     100% { background-position: 0% 50%; }
   }
 
-  /* Advanced glassmorphism with animated dots */
+  /* Frosted glass with moving horizontal lines */
   .glassmorphism {
     position: relative;
     overflow: hidden;
   }
 
-  .glassmorphism:hover::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: inherit;
-    z-index: 1;
-    animation: glassAppear 0.3s ease-out;
-  }
-
+  /* Moving horizontal lines behind the glass */
   .glassmorphism:hover::after {
     content: '';
     position: absolute;
@@ -298,19 +284,30 @@
     right: 0;
     bottom: 0;
     background-image: 
-      radial-gradient(circle at 20% 50%, white 1px, transparent 1px),
-      radial-gradient(circle at 80% 20%, white 1px, transparent 1px),
-      radial-gradient(circle at 40% 80%, white 1px, transparent 1px),
-      radial-gradient(circle at 60% 30%, white 1px, transparent 1px),
-      radial-gradient(circle at 30% 70%, white 1px, transparent 1px),
-      radial-gradient(circle at 70% 60%, white 1px, transparent 1px),
-      radial-gradient(circle at 90% 40%, white 1px, transparent 1px),
-      radial-gradient(circle at 10% 90%, white 1px, transparent 1px);
-    background-size: 50px 50px, 60px 60px, 40px 40px, 55px 55px, 45px 45px, 50px 50px, 35px 35px, 65px 65px;
-    background-position: 0% 0%, 10% 10%, 20% 20%, 30% 30%, 40% 40%, 50% 50%, 60% 60%, 70% 70%;
-    opacity: 0.3;
+      linear-gradient(0deg, transparent 48%, rgba(255, 255, 255, 0.4) 49%, rgba(255, 255, 255, 0.4) 51%, transparent 52%),
+      linear-gradient(0deg, transparent 68%, rgba(255, 255, 255, 0.3) 69%, rgba(255, 255, 255, 0.3) 71%, transparent 72%),
+      linear-gradient(0deg, transparent 28%, rgba(255, 255, 255, 0.5) 29%, rgba(255, 255, 255, 0.5) 31%, transparent 32%),
+      linear-gradient(0deg, transparent 88%, rgba(255, 255, 255, 0.2) 89%, rgba(255, 255, 255, 0.2) 91%, transparent 92%);
+    background-size: 100% 20px, 100% 30px, 100% 25px, 100% 15px;
+    background-position: 0% 0%, 0% 0%, 0% 0%, 0% 0%;
+    z-index: 1;
+    animation: linesFlow 2s linear infinite;
+  }
+
+  /* Frosted glass layer on top of moving lines */
+  .glassmorphism:hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    backdrop-filter: blur(6px) saturate(200%);
+    -webkit-backdrop-filter: blur(6px) saturate(200%);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: inherit;
     z-index: 2;
-    animation: dotFlow 2s linear infinite;
   }
 
   .glassmorphism > * {
@@ -318,25 +315,12 @@
     z-index: 3;
   }
 
-  @keyframes glassAppear {
-    from {
-      opacity: 0;
-      backdrop-filter: blur(0px);
-      -webkit-backdrop-filter: blur(0px);
-    }
-    to {
-      opacity: 1;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
-  }
-
-  @keyframes dotFlow {
+  @keyframes linesFlow {
     0% {
-      background-position: 0% 0%, 10% 10%, 20% 20%, 30% 30%, 40% 40%, 50% 50%, 60% 60%, 70% 70%;
+      background-position: -100% 0%, -100% 0%, -100% 0%, -100% 0%;
     }
     100% {
-      background-position: 100% 0%, 110% 10%, 120% 20%, 130% 30%, 140% 40%, 150% 50%, 160% 60%, 170% 70%;
+      background-position: 100% 0%, 100% 0%, 100% 0%, 100% 0%;
     }
   }
 }
