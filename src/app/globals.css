@@ -211,6 +211,134 @@
   .nexa-hover-lift {
     @apply transition-transform duration-300 hover:-translate-y-1;
   }
+
+  /* Custom slider for difficulty */
+  .slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .slider::-webkit-slider-track {
+    background: #374151;
+    height: 8px;
+    border-radius: 4px;
+  }
+
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background: #ffffff;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    border: 2px solid #4b5563;
+    cursor: pointer;
+  }
+
+  .slider::-moz-range-track {
+    background: #374151;
+    height: 8px;
+    border-radius: 4px;
+    border: none;
+  }
+
+  .slider::-moz-range-thumb {
+    background: #ffffff;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    border: 2px solid #4b5563;
+    cursor: pointer;
+  }
+
+  /* Original neon gradient animation from old codebase */
+  .neon-gradient-text {
+    background: linear-gradient(45deg, #00ff88, #00ccff, #ff00ff, #ffff00);
+    background-size: 400% 400%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: neon-gradient 2s ease-in-out infinite;
+  }
+
+  @keyframes neon-gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Advanced glassmorphism with animated dots */
+  .glassmorphism {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glassmorphism:hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: inherit;
+    z-index: 1;
+    animation: glassAppear 0.3s ease-out;
+  }
+
+  .glassmorphism:hover::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 20% 50%, white 1px, transparent 1px),
+      radial-gradient(circle at 80% 20%, white 1px, transparent 1px),
+      radial-gradient(circle at 40% 80%, white 1px, transparent 1px),
+      radial-gradient(circle at 60% 30%, white 1px, transparent 1px),
+      radial-gradient(circle at 30% 70%, white 1px, transparent 1px),
+      radial-gradient(circle at 70% 60%, white 1px, transparent 1px),
+      radial-gradient(circle at 90% 40%, white 1px, transparent 1px),
+      radial-gradient(circle at 10% 90%, white 1px, transparent 1px);
+    background-size: 50px 50px, 60px 60px, 40px 40px, 55px 55px, 45px 45px, 50px 50px, 35px 35px, 65px 65px;
+    background-position: 0% 0%, 10% 10%, 20% 20%, 30% 30%, 40% 40%, 50% 50%, 60% 60%, 70% 70%;
+    opacity: 0.3;
+    z-index: 2;
+    animation: dotFlow 2s linear infinite;
+  }
+
+  .glassmorphism > * {
+    position: relative;
+    z-index: 3;
+  }
+
+  @keyframes glassAppear {
+    from {
+      opacity: 0;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+    }
+    to {
+      opacity: 1;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+  }
+
+  @keyframes dotFlow {
+    0% {
+      background-position: 0% 0%, 10% 10%, 20% 20%, 30% 30%, 40% 40%, 50% 50%, 60% 60%, 70% 70%;
+    }
+    100% {
+      background-position: 100% 0%, 110% 10%, 120% 20%, 130% 30%, 140% 40%, 150% 50%, 160% 60%, 170% 70%;
+    }
+  }
 }
 
 
