@@ -36,7 +36,7 @@ export default function StructuringPage() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   
-  // Tab state
+  // Main tab state
   const [activeMainTab, setActiveMainTab] = useState('project')
   
   // Form state
@@ -60,14 +60,17 @@ export default function StructuringPage() {
     const fetchUser = async () => {
       try {
         const response = await fetch('/api/auth/me')
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success) {
-            setUser(result.user)
-          }
+        const data = await response.json()
+        
+        if (data.success) {
+          setUser(data.user)
+        } else {
+          // Redirect to login if not authenticated
+          window.location.href = '/auth/login'
         }
       } catch (error) {
         console.error('Error fetching user:', error)
+        window.location.href = '/auth/login'
       } finally {
         setLoading(false)
       }
@@ -76,19 +79,19 @@ export default function StructuringPage() {
     fetchUser()
   }, [])
 
+  // Content tab management
   const addContentTab = () => {
     const newId = Math.max(...contentTabs.map(tab => tab.id)) + 1
-    const newTab = { id: newId, text: '' }
-    setContentTabs([...contentTabs, newTab])
+    setContentTabs([...contentTabs, { id: newId, text: '' }])
     setActiveContentTab(newId)
   }
 
   const deleteContentTab = () => {
-    if (contentTabs.length <= 1) return
+    if (contentTabs.length === 1) return // Prevent deleting last tab
     
-    const updatedTabs = contentTabs.filter(tab => tab.id !== activeContentTab)
-    setContentTabs(updatedTabs)
-    setActiveContentTab(updatedTabs[0]?.id || 1)
+    const filteredTabs = contentTabs.filter(tab => tab.id !== activeContentTab)
+    setContentTabs(filteredTabs)
+    setActiveContentTab(filteredTabs[0]?.id || 1)
   }
 
   const updateContentTab = (id: number, text: string) => {
@@ -97,19 +100,19 @@ export default function StructuringPage() {
     ))
   }
 
+  // Solution tab management
   const addSolutionTab = () => {
     const newId = Math.max(...solutionTabs.map(tab => tab.id)) + 1
-    const newTab = { id: newId, text: '' }
-    setSolutionTabs([...solutionTabs, newTab])
+    setSolutionTabs([...solutionTabs, { id: newId, text: '' }])
     setActiveSolutionTab(newId)
   }
 
   const deleteSolutionTab = () => {
-    if (solutionTabs.length <= 1) return
+    if (solutionTabs.length === 1) return // Prevent deleting last tab
     
-    const updatedTabs = solutionTabs.filter(tab => tab.id !== activeSolutionTab)
-    setSolutionTabs(updatedTabs)
-    setActiveSolutionTab(updatedTabs[0]?.id || 1)
+    const filteredTabs = solutionTabs.filter(tab => tab.id !== activeSolutionTab)
+    setSolutionTabs(filteredTabs)
+    setActiveSolutionTab(filteredTabs[0]?.id || 1)
   }
 
   const updateSolutionTab = (id: number, text: string) => {
@@ -118,24 +121,54 @@ export default function StructuringPage() {
     ))
   }
 
+  // AI Functions (non-functional for UI-only version)
   const handleDiagnose = async () => {
+    const allContent = contentTabs.map(tab => tab.text).join('\n\n').trim()
+    
+    if (!allContent) {
+      alert('Please add content before diagnosing.')
+      return
+    }
+
     setDiagnosing(true)
     
-    // Simulate AI diagnosis
+    // Simulate AI processing delay
     setTimeout(() => {
-      alert('Analysis complete! Found potential optimization opportunities.')
+      // Mock: Add some sample pain points as solution tabs
+      const mockPainPoints = [
+        "Manual processes causing inefficiency and time waste",
+        "Data management issues affecting decision making",
+        "Communication gaps between teams and stakeholders"
+      ]
+      
+      const newSolutionTabs: SolutionTab[] = mockPainPoints.map((point, index) => ({
+        id: solutionTabs.length + index + 1,
+        text: point
+      }))
+      
+      setSolutionTabs([...solutionTabs, ...newSolutionTabs])
+      setActiveSolutionTab(newSolutionTabs[newSolutionTabs.length - 1].id)
       setDiagnosing(false)
-    }, 3000)
+    }, 2000)
   }
 
   const handleGenerateSolution = async () => {
+    const currentTab = solutionTabs.find(tab => tab.id === activeSolutionTab)
+    
+    if (!currentTab?.text.trim()) {
+      alert('Please add content to the current solution tab before generating.')
+      return
+    }
+
     setGenerating(true)
     
-    // Simulate AI solution generation
+    // Simulate AI processing delay
     setTimeout(() => {
-      alert('Solution generated! Check the Solution tabs for recommendations.')
+      const enhancedText = `${currentTab.text}\n\nEnhanced solution: This solution can be improved by implementing automated workflows, establishing clear communication channels, and setting up proper monitoring systems to track progress and identify bottlenecks early.`
+      
+      updateSolutionTab(activeSolutionTab, enhancedText)
       setGenerating(false)
-    }, 3000)
+    }, 2000)
   }
 
   const handleSave = async () => {
@@ -155,19 +188,20 @@ export default function StructuringPage() {
     }
   }
 
+  // Main tab navigation
+  const handlePreviousTab = () => {
+    if (activeMainTab === 'content') {
+      setActiveMainTab('project')
+    } else if (activeMainTab === 'solution') {
+      setActiveMainTab('content')
+    }
+  }
+
   const handleNextTab = () => {
     if (activeMainTab === 'project') {
       setActiveMainTab('content')
     } else if (activeMainTab === 'content') {
       setActiveMainTab('solution')
-    }
-  }
-
-  const handlePreviousTab = () => {
-    if (activeMainTab === 'solution') {
-      setActiveMainTab('content')
-    } else if (activeMainTab === 'content') {
-      setActiveMainTab('project')
     }
   }
 
@@ -189,107 +223,104 @@ export default function StructuringPage() {
     >
       <div className="nexa-background min-h-screen p-6">
         <div className="max-w-6xl mx-auto">
-          {/* Tab system with seamless folder-like design */}
-          <Tabs value={activeMainTab} className="w-full" onValueChange={setActiveMainTab}>
-            {/* Header row with Structuring label and Tabs */}
-            <div className="flex items-end justify-between mb-0">
-              <div className="flex items-end gap-8">
-                {/* Structuring label - positioned inline with tabs */}
-                <div className="inline-flex items-center justify-center gap-2 text-white pb-3 ml-16">
-                  <Layers className="w-4 h-4" />
-                  <span className="text-center">Structuring</span>
-                </div>
-
-                {/* Tab strip */}
-                <TabsList className="mb-0">
-                  <TabsTrigger value="project" className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
+          
+          {/* Tab Navigation Row */}
+          <div className="flex items-end justify-between mb-0">
+            {/* Left: Label + Tab Strip */}
+            <div className="flex items-end gap-8">
+              {/* Structuring Label */}
+              <div className="flex items-center gap-2 text-white pb-3 ml-16">
+                <Layers className="w-4 h-4" />
+                <span>Structuring</span>
+              </div>
+              
+              {/* Main Tabs */}
+              <Tabs value={activeMainTab} onValueChange={setActiveMainTab}>
+                <TabsList>
+                  <TabsTrigger value="project">
+                    <FileText className="w-4 h-4 mr-2" />
                     Project
                   </TabsTrigger>
-                  <TabsTrigger value="content" className="flex items-center gap-2">
-                    <Search className="w-4 h-4" />
+                  <TabsTrigger value="content">
+                    <Search className="w-4 h-4 mr-2" />
                     Content
                   </TabsTrigger>
-                  <TabsTrigger value="solution" className="flex items-center gap-2">
-                    <Lightbulb className="w-4 h-4" />
+                  <TabsTrigger value="solution">
+                    <Lightbulb className="w-4 h-4 mr-2" />
                     Solution
                   </TabsTrigger>
                 </TabsList>
-              </div>
-
-              {/* Action tabs aligned right */}
-              <TabsList className="mb-0">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-white/10 text-white border-t border-l border-r border-white rounded-t-lg relative hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
-                >
-                  {saving ? (
-                    <>
-                      <RotateCw className={`h-4 w-4 mr-2 ${saving ? 'animate-spin' : ''}`} />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-red-500/10 text-red-500 border-t border-l border-r border-red-600 rounded-t-lg relative hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </button>
-              </TabsList>
+              </Tabs>
             </div>
+            
+            {/* Right: Action Buttons */}
+            <div className="flex">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-white/10 text-white border-t border-l border-r border-white rounded-t-lg relative hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+              >
+                {saving ? (
+                  <>
+                    <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleDelete}
+                className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-red-500/10 text-red-500 border-t border-l border-r border-red-600 rounded-t-lg relative hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </button>
+            </div>
+          </div>
 
-            {/* Card container with rounded corners and seamless tab integration */}
-            <Card variant="nexa" className="border-t border-nexa-border p-8 mt-0 relative z-0 rounded-tl-lg rounded-bl-lg rounded-br-lg rounded-tr-none">
+          {/* Content Card */}
+          <Card variant="nexa" className="rounded-tr-none border-t border-nexa-border p-8 mt-0">
+            <Tabs value={activeMainTab} onValueChange={setActiveMainTab}>
               
-              {/* Project Tab */}
-              <TabsContent value="project" className="mt-0">
-                <div className="mb-8">
-                  <h2 className="text-white text-xl font-semibold mb-6">Project Information</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="nexa-form-group">
-                      <Label variant="nexa" htmlFor="title">
-                        Title
-                      </Label>
-                      <Input
-                        variant="nexa"
-                        id="title"
-                        placeholder="Enter project title..."
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                      />
-                    </div>
-                    <div className="nexa-form-group">
-                      <Label variant="nexa" htmlFor="client">
-                        Client
-                      </Label>
-                      <Input
-                        variant="nexa"
-                        id="client"
-                        placeholder="Enter client name..."
-                        value={client}
-                        onChange={(e) => setClient(e.target.value)}
-                      />
-                    </div>
+              {/* Project Tab Content */}
+              <TabsContent value="project">
+                <h2 className="text-white text-xl font-semibold mb-6">Project Information</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label variant="nexa" htmlFor="title">Title</Label>
+                    <Input
+                      variant="nexa"
+                      id="title"
+                      placeholder="Enter project title..."
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label variant="nexa" htmlFor="client">Client</Label>
+                    <Input
+                      variant="nexa"
+                      id="client"
+                      placeholder="Enter client name..."
+                      value={client}
+                      onChange={(e) => setClient(e.target.value)}
+                    />
                   </div>
                 </div>
               </TabsContent>
 
-              {/* Content Tab */}
-              <TabsContent value="content" className="mt-0">
+              {/* Content Tab Content */}
+              <TabsContent value="content">
                 <div className="space-y-8">
-                  {/* Content Section */}
                   <div>
                     <h2 className="text-white text-xl font-semibold mb-4">Content</h2>
                     
                     <Tabs value={activeContentTab.toString()} onValueChange={(value) => setActiveContentTab(parseInt(value))}>
+                      {/* Content Tab Navigation */}
                       <div className="flex items-center justify-between mb-4">
                         <TabsList className="bg-black border-b border-nexa-border flex-1 justify-start">
                           {contentTabs.map((tab) => (
@@ -297,24 +328,26 @@ export default function StructuringPage() {
                               {tab.id}
                             </TabsTrigger>
                           ))}
-                          <button
+                          <button 
                             onClick={addContentTab}
-                            className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg relative hover:text-white hover:bg-nexa-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ml-1"
+                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg hover:text-white hover:bg-nexa-card/80 transition-all ml-1"
                           >
                             <Plus className="h-4 w-4" />
                           </button>
                         </TabsList>
-                        <button
+                        
+                        <button 
                           onClick={deleteContentTab}
                           disabled={contentTabs.length === 1}
-                          className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg relative hover:text-white hover:bg-nexa-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:opacity-50 disabled:pointer-events-none ml-2"
+                          className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg hover:text-white hover:bg-nexa-card/80 transition-all disabled:opacity-50 disabled:pointer-events-none ml-2"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                       
+                      {/* Content Tab Areas */}
                       {contentTabs.map((tab) => (
-                        <TabsContent key={tab.id} value={tab.id.toString()} className="mt-4">
+                        <TabsContent key={tab.id} value={tab.id.toString()}>
                           <Textarea
                             variant="nexa"
                             placeholder="Enter your content here..."
@@ -333,20 +366,17 @@ export default function StructuringPage() {
                     <Button
                       onClick={handleDiagnose}
                       disabled={diagnosing}
-                      variant="outline"
-                      className="w-full border-nexa-border text-white glassmorphism p-6 text-lg font-medium transition-all duration-300 group"
+                      className="w-full border border-nexa-border text-white bg-transparent p-6 text-lg font-medium rounded-xl transition-all duration-300 diagnose-button"
                     >
                       {diagnosing ? (
                         <>
-                          <RotateCw className={`h-6 w-6 mr-3 ${diagnosing ? 'animate-spin' : ''}`} />
+                          <RotateCw className="h-6 w-6 mr-3 animate-spin" />
                           Diagnosing...
                         </>
                       ) : (
                         <>
                           <Search className="h-6 w-6 mr-3" />
-                          <span className="group-hover:neon-gradient-text">
-                            Diagnose
-                          </span>
+                          <span className="diagnose-text">Diagnose</span>
                         </>
                       )}
                     </Button>
@@ -354,14 +384,14 @@ export default function StructuringPage() {
                 </div>
               </TabsContent>
 
-              {/* Solution Tab */}
-              <TabsContent value="solution" className="mt-0">
+              {/* Solution Tab Content */}
+              <TabsContent value="solution">
                 <div className="space-y-8">
-                  {/* Solution Section */}
                   <div>
                     <h2 className="text-white text-xl font-semibold mb-4">Solution</h2>
                     
                     <Tabs value={activeSolutionTab.toString()} onValueChange={(value) => setActiveSolutionTab(parseInt(value))}>
+                      {/* Solution Tab Navigation */}
                       <div className="flex items-center justify-between mb-4">
                         <TabsList className="bg-black border-b border-nexa-border flex-1 justify-start">
                           {solutionTabs.map((tab) => (
@@ -369,24 +399,26 @@ export default function StructuringPage() {
                               {tab.id}
                             </TabsTrigger>
                           ))}
-                          <button
+                          <button 
                             onClick={addSolutionTab}
-                            className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg relative hover:text-white hover:bg-nexa-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ml-1"
+                            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg hover:text-white hover:bg-nexa-card/80 transition-all ml-1"
                           >
                             <Plus className="h-4 w-4" />
                           </button>
                         </TabsList>
-                        <button
+                        
+                        <button 
                           onClick={deleteSolutionTab}
                           disabled={solutionTabs.length === 1}
-                          className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg relative hover:text-white hover:bg-nexa-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:opacity-50 disabled:pointer-events-none ml-2"
+                          className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg hover:text-white hover:bg-nexa-card/80 transition-all disabled:opacity-50 disabled:pointer-events-none ml-2"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                       
+                      {/* Solution Tab Areas */}
                       {solutionTabs.map((tab) => (
-                        <TabsContent key={tab.id} value={tab.id.toString()} className="mt-4">
+                        <TabsContent key={tab.id} value={tab.id.toString()}>
                           <Textarea
                             variant="nexa"
                             placeholder="Enter your solution here..."
@@ -405,20 +437,17 @@ export default function StructuringPage() {
                     <Button
                       onClick={handleGenerateSolution}
                       disabled={generating}
-                      variant="outline"
-                      className="w-full border-nexa-border text-white glassmorphism p-6 text-lg font-medium transition-all duration-300 group"
+                      className="w-full border border-nexa-border text-white bg-transparent p-6 text-lg font-medium rounded-xl transition-all duration-300 generate-solution-button"
                     >
                       {generating ? (
                         <>
-                          <RotateCw className={`h-6 w-6 mr-3 ${generating ? 'animate-spin' : ''}`} />
+                          <RotateCw className="h-6 w-6 mr-3 animate-spin" />
                           Generating...
                         </>
                       ) : (
                         <>
                           <Lightbulb className="h-6 w-6 mr-3" />
-                          <span className="group-hover:neon-gradient-text">
-                            Generate Solution
-                          </span>
+                          <span className="generate-solution-text">Generate Solution</span>
                         </>
                       )}
                     </Button>
@@ -426,35 +455,37 @@ export default function StructuringPage() {
                 </div>
               </TabsContent>
 
-              {/* Navigation Buttons */}
-              <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
-                {activeMainTab !== 'project' ? (
-                  <Button
-                    onClick={handlePreviousTab}
-                    variant="outline"
-                    className="border-nexa-border text-white hover:bg-white/10"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Previous
-                  </Button>
-                ) : (
-                  <div />
-                )}
-                
-                {activeMainTab !== 'solution' ? (
-                  <Button
-                    onClick={handleNextTab}
-                    className="bg-white text-black hover:bg-gray-100"
-                  >
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                ) : (
-                  <div />
-                )}
-              </div>
-            </Card>
-          </Tabs>
+            </Tabs>
+
+            {/* Navigation Controls */}
+            <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
+              {activeMainTab !== 'project' ? (
+                <Button 
+                  onClick={handlePreviousTab} 
+                  variant="outline"
+                  className="border-nexa-border text-white hover:bg-white/10"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Previous
+                </Button>
+              ) : (
+                <div />
+              )}
+              
+              {activeMainTab !== 'solution' ? (
+                <Button 
+                  onClick={handleNextTab}
+                  className="bg-white text-black hover:bg-gray-100"
+                >
+                  Next
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              ) : (
+                <div />
+              )}
+            </div>
+
+          </Card>
         </div>
       </div>
     </DashboardLayout>

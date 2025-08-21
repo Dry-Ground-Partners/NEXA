@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { 
   Info,
   Plus,
@@ -25,7 +26,8 @@ import {
   Trash2,
   Upload,
   X,
-  RotateCw
+  RotateCw,
+  Cog
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
 
@@ -65,9 +67,9 @@ export default function SolutioningPage() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   
-  // Current step state
-  const [currentStep, setCurrentStep] = useState(1)
-  const [currentTab, setCurrentTab] = useState('basic')
+  // Tab state
+  const [activeMainTab, setActiveMainTab] = useState('basic')
+  const [activeSubTab, setActiveSubTab] = useState('additional') // 'additional' or 'structured'
   
   // Session data
   const [sessionData, setSessionData] = useState<SessionData>({
@@ -152,24 +154,49 @@ export default function SolutioningPage() {
   // Get current solution
   const currentSolution = sessionData.solutions[sessionData.currentSolution]
 
-  // Navigation functions
-  const nextStep = () => {
-    if (currentStep === 1) {
-      // Validate required fields
-      if (!sessionData.basic.title || !sessionData.basic.recipient || !sessionData.basic.engineer) {
-        alert('Please fill in all required fields.')
-        return
+  // Navigation functions for Additional Content section
+  const handleAdditionalNext = () => {
+    // From Additional Content, Next toggles to Structured Solution in same tab
+    setActiveSubTab('structured')
+  }
+
+  const handleAdditionalPrevious = () => {
+    // From Additional Content, Back goes to previous main tab
+    if (activeMainTab.startsWith('solution-')) {
+      const currentSolutionNum = parseInt(activeMainTab.split('-')[1])
+      if (currentSolutionNum === 1) {
+        setActiveMainTab('basic')
+      } else {
+        const prevSolution = currentSolutionNum - 1
+        setActiveMainTab(`solution-${prevSolution}`)
+        setActiveSubTab('structured') // Go to Structured Solution of previous tab
+        switchSolution(prevSolution)
       }
     }
-    setCurrentStep(currentStep + 1)
   }
 
-  const prevStep = () => {
-    setCurrentStep(Math.max(1, currentStep - 1))
+  // Navigation functions for Structured Solution section
+  const handleStructuredNext = () => {
+    // From Structured Solution, Next goes to next main tab
+    const currentSolutionNum = parseInt(activeMainTab.split('-')[1])
+    const nextSolution = Math.min(currentSolutionNum + 1, sessionData.solutionCount)
+    if (nextSolution > currentSolutionNum) {
+      setActiveMainTab(`solution-${nextSolution}`)
+      setActiveSubTab('additional') // Go to Additional Content of next tab
+      switchSolution(nextSolution)
+    }
   }
 
-  const goToStructuredSolution = () => {
-    setCurrentStep(3) // Step 2.1
+  const handleStructuredPrevious = () => {
+    // From Structured Solution, Back toggles to Additional Content in same tab
+    setActiveSubTab('additional')
+  }
+
+  // Main tab navigation (for Basic tab)
+  const handleBasicNext = () => {
+    setActiveMainTab('solution-1')
+    setActiveSubTab('additional')
+    switchSolution(1)
   }
 
   // Solution management
@@ -191,7 +218,8 @@ export default function SolutioningPage() {
         [newSolutionId]: newSolution
       }
     }))
-    setCurrentTab(`solution-${newSolutionId}`)
+    setActiveMainTab(`solution-${newSolutionId}`)
+    setActiveSubTab('additional')
   }
 
   const switchSolution = (solutionId: number) => {
@@ -199,7 +227,9 @@ export default function SolutioningPage() {
       ...prev,
       currentSolution: solutionId
     }))
-    setCurrentTab(`solution-${solutionId}`)
+    setActiveMainTab(`solution-${solutionId}`)
+    // Reset to Additional Content when switching solutions via tab click
+    setActiveSubTab('additional')
   }
 
   // Mock AI functions
@@ -294,7 +324,6 @@ This diagram shows a comprehensive system architecture with the following compon
         }
       }))
       setLoadingStates(prev => ({ ...prev, structuring: false }))
-      setCurrentStep(3) // Go to structured solution
     }, 4000)
   }
 
@@ -374,7 +403,7 @@ Development Tools:
     }, 2000)
   }
 
-  const handleSave = async () => {
+  const handleSaveSolution = async () => {
     setLoadingStates(prev => ({ ...prev, saving: true }))
     setTimeout(() => {
       alert('Solution saved successfully!')
@@ -382,7 +411,7 @@ Development Tools:
     }, 1000)
   }
 
-  const handleDelete = async () => {
+  const deleteSolution = async () => {
     if (confirm('Are you sure you want to delete this solution?')) {
       if (sessionData.solutionCount === 1) {
         alert('Cannot delete the last remaining solution.')
@@ -398,7 +427,21 @@ Development Tools:
         currentSolution: 1,
         solutions: newSolutions
       }))
-      setCurrentTab('solution-1')
+      setActiveMainTab('solution-1')
+    }
+  }
+
+  // Save and Delete functions for session
+  const handleSave = async () => {
+    // Mock save functionality
+    setTimeout(() => {
+      alert('Solutioning session saved successfully!')
+    }, 1000)
+  }
+
+  const handleDelete = async () => {
+    if (confirm('Are you sure you want to delete this solutioning session?')) {
+      window.location.href = '/dashboard'
     }
   }
 
@@ -467,156 +510,154 @@ Development Tools:
         email: user.email
       } : undefined}
     >
-      <div className="container mx-auto p-6">
-        <div className="max-w-4xl mx-auto">
-          
-          {/* Page Header Section */}
-          <div className="text-center mb-8">
-            <h1 className="text-white text-3xl font-bold mb-4">Solution Overview Generator</h1>
-            {sessionData.solutionCount > 1 && (
-              <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                Solution {sessionData.currentSolution} of {sessionData.solutionCount}
-              </span>
-            )}
-          </div>
+      <div className="nexa-background min-h-screen p-6">
+        <div className="max-w-6xl mx-auto">
+          {/* Tab system with seamless folder-like design */}
+          <Tabs value={activeMainTab} className="w-full" onValueChange={setActiveMainTab}>
+            {/* Header row with Solutioning label and Tabs */}
+            <div className="flex items-end justify-between mb-0">
+              <div className="flex items-end gap-8">
+                {/* Solutioning label - positioned inline with tabs */}
+                <div className="inline-flex items-center justify-center gap-2 text-white pb-3 ml-16">
+                  <Cog className="w-4 h-4" />
+                  <span className="text-center">Solutioning</span>
+                </div>
 
-          {/* Solution Tabs System */}
-          <div className="flex gap-2 mb-6 overflow-x-auto">
-            <Button
-              onClick={() => setCurrentTab('basic')}
-              variant={currentTab === 'basic' ? 'default' : 'outline'}
-              className={`flex items-center gap-2 ${
-                currentTab === 'basic' 
-                  ? 'bg-white text-black' 
-                  : 'border-nexa-border text-white hover:bg-white/10'
-              }`}
-            >
-              <Info className="h-4 w-4" />
-              Basic
-            </Button>
-            
-            {Object.keys(sessionData.solutions).map(solutionId => (
-              <Button
-                key={solutionId}
-                onClick={() => {
-                  switchSolution(parseInt(solutionId))
-                  setCurrentTab(`solution-${solutionId}`)
-                }}
-                variant={currentTab === `solution-${solutionId}` ? 'default' : 'outline'}
-                className={`${
-                  currentTab === `solution-${solutionId}`
-                    ? 'bg-white text-black'
-                    : 'border-nexa-border text-white hover:bg-white/10'
-                }`}
-              >
-                {solutionId}
-              </Button>
-            ))}
-            
-            <Button
-              onClick={addSolution}
-              variant="outline"
-              className="border-nexa-border text-white hover:bg-white/10"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+                {/* Tab strip */}
+                <TabsList className="mb-0">
+                  <TabsTrigger value="basic" className="flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    Basic
+                  </TabsTrigger>
+                  {Object.keys(sessionData.solutions).map(solutionId => (
+                    <TabsTrigger 
+                      key={solutionId}
+                      value={`solution-${solutionId}`} 
+                      className="flex items-center gap-2"
+                      onClick={() => switchSolution(parseInt(solutionId))}
+                    >
+                      {solutionId}
+                    </TabsTrigger>
+                  ))}
+                  <button
+                    onClick={addSolution}
+                    className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg relative hover:text-white hover:bg-nexa-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ml-1"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </TabsList>
+              </div>
 
-          <Card variant="nexa" className="p-8">
-            
-            {/* Step 1: Basic Information */}
-            {currentStep === 1 && (
-              <div id="step1" className="space-y-6">
-                <h2 className="text-white text-xl font-semibold mb-6">Basic Information</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="nexa-form-group">
-                    <Label variant="nexa" htmlFor="date">
-                      Date
-                    </Label>
-                    <Input
-                      variant="nexa"
-                      type="date"
-                      id="date"
-                      value={sessionData.basic.date}
-                      onChange={(e) => setSessionData(prev => ({
-                        ...prev,
-                        basic: { ...prev.basic, date: e.target.value }
-                      }))}
-                    />
-                  </div>
+              {/* Action tabs aligned right */}
+              <TabsList className="mb-0">
+                <button
+                  onClick={handleSave}
+                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-white/10 text-white border-t border-l border-r border-white rounded-t-lg relative hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-red-500/10 text-red-500 border-t border-l border-r border-red-600 rounded-t-lg relative hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </button>
+              </TabsList>
+            </div>
+
+            {/* Card container with rounded corners and seamless tab integration */}
+            <Card variant="nexa" className="border-t border-nexa-border p-8 mt-0 relative z-0 rounded-tl-lg rounded-bl-lg rounded-br-lg rounded-tr-none">
+              
+              {/* Basic Tab */}
+              <TabsContent value="basic" className="mt-0">
+                <div className="space-y-6">
+                  <h2 className="text-white text-xl font-semibold mb-6">Basic Information</h2>
                   
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="nexa-form-group">
+                      <Label variant="nexa" htmlFor="date">
+                        Date
+                      </Label>
+                      <Input
+                        variant="nexa"
+                        type="date"
+                        id="date"
+                        value={sessionData.basic.date}
+                        onChange={(e) => setSessionData(prev => ({
+                          ...prev,
+                          basic: { ...prev.basic, date: e.target.value }
+                        }))}
+                      />
+                    </div>
+                    
+                    <div className="nexa-form-group">
+                      <Label variant="nexa" htmlFor="engineer">
+                        Engineer Name
+                      </Label>
+                      <Input
+                        variant="nexa"
+                        id="engineer"
+                        placeholder="e.g., John Rockstar Engineer"
+                        value={sessionData.basic.engineer}
+                        onChange={(e) => setSessionData(prev => ({
+                          ...prev,
+                          basic: { ...prev.basic, engineer: e.target.value }
+                        }))}
+                        required
+                      />
+                    </div>
+                  </div>
+
                   <div className="nexa-form-group">
-                    <Label variant="nexa" htmlFor="engineer">
-                      Engineer Name
+                    <Label variant="nexa" htmlFor="title">
+                      Report Title
                     </Label>
                     <Input
                       variant="nexa"
-                      id="engineer"
-                      placeholder="e.g., John Rockstar Engineer"
-                      value={sessionData.basic.engineer}
+                      id="title"
+                      placeholder="e.g., Intelligent Client Engine: From Data to Dynamic Engagement"
+                      value={sessionData.basic.title}
                       onChange={(e) => setSessionData(prev => ({
                         ...prev,
-                        basic: { ...prev.basic, engineer: e.target.value }
+                        basic: { ...prev.basic, title: e.target.value }
+                      }))}
+                      required
+                    />
+                    <div className="text-nexa-muted text-xs mt-1">
+                      Use colon (:) to separate title and subtitle
+                    </div>
+                  </div>
+
+                  <div className="nexa-form-group">
+                    <Label variant="nexa" htmlFor="recipient">
+                      Prepared For
+                    </Label>
+                    <Input
+                      variant="nexa"
+                      id="recipient"
+                      placeholder="e.g., Valued Client LLC"
+                      value={sessionData.basic.recipient}
+                      onChange={(e) => setSessionData(prev => ({
+                        ...prev,
+                        basic: { ...prev.basic, recipient: e.target.value }
                       }))}
                       required
                     />
                   </div>
                 </div>
+              </TabsContent>
 
-                <div className="nexa-form-group">
-                  <Label variant="nexa" htmlFor="title">
-                    Report Title
-                  </Label>
-                  <Input
-                    variant="nexa"
-                    id="title"
-                    placeholder="e.g., Intelligent Client Engine: From Data to Dynamic Engagement"
-                    value={sessionData.basic.title}
-                    onChange={(e) => setSessionData(prev => ({
-                      ...prev,
-                      basic: { ...prev.basic, title: e.target.value }
-                    }))}
-                    required
-                  />
-                  <div className="text-nexa-muted text-xs mt-1">
-                    Use colon (:) to separate title and subtitle
-                  </div>
-                </div>
-
-                <div className="nexa-form-group">
-                  <Label variant="nexa" htmlFor="recipient">
-                    Prepared For
-                  </Label>
-                  <Input
-                    variant="nexa"
-                    id="recipient"
-                    placeholder="e.g., Valued Client LLC"
-                    value={sessionData.basic.recipient}
-                    onChange={(e) => setSessionData(prev => ({
-                      ...prev,
-                      basic: { ...prev.basic, recipient: e.target.value }
-                    }))}
-                    required
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    onClick={nextStep}
-                    className="bg-white text-black hover:bg-gray-100"
-                  >
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Additional Content */}
-            {currentStep === 2 && (
-              <div id="step2" className="space-y-6">
-                <h2 className="text-white text-xl font-semibold mb-6">Additional Content</h2>
+              {/* Solution Tabs */}
+              {Object.keys(sessionData.solutions).map(solutionId => (
+                <TabsContent key={solutionId} value={`solution-${solutionId}`} className="mt-0">
+                  <div className="space-y-8">
+                    
+                    {/* Additional Content Section */}
+                    {activeSubTab === 'additional' && (
+                      <div>
+                        <h2 className="text-white text-xl font-semibold mb-6">Additional Content</h2>
                 
                 {/* Solution Image Section */}
                 <div className="space-y-4">
@@ -669,87 +710,98 @@ Development Tools:
 
                 {/* Solution Explanation Section */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label variant="nexa">Solution Explanation</Label>
+                  <Label variant="nexa">Solution Explanation</Label>
+                  <div className="relative">
+                    <Textarea
+                      variant="nexa"
+                      rows={8}
+                      placeholder="Provide a detailed explanation of your solution..."
+                      value={currentSolution.variables.solutionExplanation}
+                      onChange={(e) => setSessionData(prev => ({
+                        ...prev,
+                        solutions: {
+                          ...prev.solutions,
+                          [prev.currentSolution]: {
+                            ...prev.solutions[prev.currentSolution],
+                            variables: {
+                              ...prev.solutions[prev.currentSolution].variables,
+                              solutionExplanation: e.target.value
+                            }
+                          }
+                        }
+                      }))}
+                    />
                     <Button
                       onClick={enhanceExplanation}
                       disabled={loadingStates.enhancing}
                       variant="outline"
                       size="sm"
-                      className="border-nexa-border text-white hover:bg-white/10"
+                      className="absolute top-3 right-3 border-nexa-border text-white hover:bg-white/10"
                     >
                       {loadingStates.enhancing ? (
                         <RotateCw className="h-4 w-4 mr-2 animate-spin" />
                       ) : (
                         <Zap className="h-4 w-4 mr-2" />
                       )}
-                      Enhance explanation
-                    </Button>
-                  </div>
-                  <Textarea
-                    variant="nexa"
-                    rows={8}
-                    placeholder="Provide a detailed explanation of your solution..."
-                    value={currentSolution.variables.solutionExplanation}
-                    onChange={(e) => setSessionData(prev => ({
-                      ...prev,
-                      solutions: {
-                        ...prev.solutions,
-                        [prev.currentSolution]: {
-                          ...prev.solutions[prev.currentSolution],
-                          variables: {
-                            ...prev.solutions[prev.currentSolution].variables,
-                            solutionExplanation: e.target.value
-                          }
-                        }
-                      }
-                    }))}
-                  />
-                </div>
-
-                <div className="flex justify-between">
-                  <Button
-                    onClick={prevStep}
-                    variant="outline"
-                    className="border-nexa-border text-white hover:bg-white/10"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                  
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={structureSolution}
-                      disabled={loadingStates.structuring}
-                      className="bg-blue-600 text-white hover:bg-blue-700"
-                    >
-                      {loadingStates.structuring ? (
-                        <RotateCw className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Zap className="h-4 w-4 mr-2" />
-                      )}
-                      Structure Solution
-                    </Button>
-                    
-                    <Button
-                      onClick={nextStep}
-                      className="bg-white text-black hover:bg-gray-100"
-                    >
-                      Next
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                      Enhance
                     </Button>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Step 2.1: Structured Solution */}
-            {currentStep === 3 && (
-              <div id="step2_1" className="space-y-6">
-                <h2 className="text-white text-xl font-semibold mb-6">Structured Solution</h2>
+                        {/* Navigation buttons for Additional Content */}
+                        <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
+                          {parseInt(solutionId) === 1 ? (
+                            <Button
+                              onClick={() => setActiveMainTab('basic')}
+                              variant="outline"
+                              className="border-nexa-border text-white hover:bg-white/10"
+                            >
+                              <ArrowLeft className="h-4 w-4 mr-2" />
+                              Previous
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={handleAdditionalPrevious}
+                              variant="outline"
+                              className="border-nexa-border text-white hover:bg-white/10"
+                            >
+                              <ArrowLeft className="h-4 w-4 mr-2" />
+                              Previous
+                            </Button>
+                          )}
+                          
+                          <div className="flex gap-3">
+                            <Button
+                              onClick={handleAdditionalNext}
+                              className="bg-white text-black hover:bg-gray-100"
+                            >
+                              Next
+                              <ArrowRight className="h-4 w-4 ml-2" />
+                            </Button>
+                            <Button
+                              onClick={structureSolution}
+                              disabled={loadingStates.structuring}
+                              className="bg-blue-600 text-white hover:bg-blue-700"
+                            >
+                              {loadingStates.structuring ? (
+                                <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Zap className="h-4 w-4 mr-2" />
+                              )}
+                              Structure Solution
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Structured Solution Section */}
+                    {activeSubTab === 'structured' && (
+                      <div>
+                        <h2 className="text-white text-xl font-semibold mb-6">Structured Solution</h2>
                 
                 {/* Quick Access Toolbar */}
-                <div className="grid grid-cols-5 md:grid-cols-10 gap-2 mb-6">
+                <div className="flex flex-wrap gap-2 mb-6">
                   <Button
                     onClick={() => setModals(prev => ({ ...prev, aiAnalysis: true }))}
                     variant="outline"
@@ -831,34 +883,6 @@ Development Tools:
                   >
                     <Download className="h-4 w-4" />
                   </Button>
-                  
-                  <Button
-                    onClick={handleSave}
-                    disabled={loadingStates.saving}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-24 border-nexa-border text-white hover:bg-white/10"
-                    title="Save Solution"
-                  >
-                    {loadingStates.saving ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-1" />
-                        Save
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleDelete}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-red-600 border-red-500 text-white hover:bg-red-700"
-                    title="Delete Solution"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </div>
 
                 {/* Structured Content Fields */}
@@ -879,7 +903,7 @@ Development Tools:
                     ) : (
                       <div 
                         onClick={() => toggleEdit('title')}
-                        className="min-h-[40px] p-3 bg-gray-100 border border-nexa-border rounded-lg cursor-pointer text-black"
+                        className="min-h-[40px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white"
                       >
                         {currentSolution.structure.title || 'No content yet...'}
                       </div>
@@ -903,7 +927,7 @@ Development Tools:
                     ) : (
                       <div 
                         onClick={() => toggleEdit('steps')}
-                        className="min-h-[150px] p-3 bg-gray-100 border border-nexa-border rounded-lg cursor-pointer text-black whitespace-pre-wrap"
+                        className="min-h-[150px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white whitespace-pre-wrap"
                       >
                         {currentSolution.structure.steps || 'No content yet...'}
                       </div>
@@ -943,7 +967,7 @@ Development Tools:
                     ) : (
                       <div 
                         onClick={() => toggleEdit('approach')}
-                        className="min-h-[100px] p-3 bg-gray-100 border border-nexa-border rounded-lg cursor-pointer text-black"
+                        className="min-h-[100px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white"
                       >
                         {currentSolution.structure.approach || 'No content yet...'}
                       </div>
@@ -995,7 +1019,7 @@ Development Tools:
                   {/* Layout Selection */}
                   <div>
                     <Label variant="nexa">PDF Layout Selection</Label>
-                    <div className="grid grid-cols-5 gap-3 mt-3">
+                    <div className="flex gap-3 mt-3">
                       {[1, 2, 3, 4, 5].map(layoutNum => (
                         <Button
                           key={layoutNum}
@@ -1024,32 +1048,53 @@ Development Tools:
                       ))}
                     </div>
                   </div>
-                </div>
+                        </div>
 
-                <div className="flex justify-between">
+                        {/* Navigation buttons for Structured Solution */}
+                        <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
+                          <Button
+                            onClick={handleStructuredPrevious}
+                            variant="outline"
+                            className="border-nexa-border text-white hover:bg-white/10"
+                          >
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Previous
+                          </Button>
+                          
+                          {parseInt(solutionId) < sessionData.solutionCount ? (
+                            <Button
+                              onClick={handleStructuredNext}
+                              className="bg-white text-black hover:bg-gray-100"
+                            >
+                              Next
+                              <ArrowRight className="h-4 w-4 ml-2" />
+                            </Button>
+                          ) : (
+                            <div />
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                </TabsContent>
+              ))}
+
+              {/* Navigation Buttons for Basic Tab */}
+              {activeMainTab === 'basic' && (
+                <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
+                  <div />
                   <Button
-                    onClick={prevStep}
-                    variant="outline"
-                    className="border-nexa-border text-white hover:bg-white/10"
+                    onClick={handleBasicNext}
+                    className="bg-white text-black hover:bg-gray-100"
                   >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
-                  
-                  {sessionData.solutionCount === sessionData.currentSolution && (
-                    <Button
-                      onClick={addSolution}
-                      className="bg-white text-black hover:bg-gray-100"
-                    >
-                      Next Solution
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  )}
                 </div>
-              </div>
-            )}
-
-          </Card>
+              )}
+            </Card>
+          </Tabs>
         </div>
       </div>
 
