@@ -25,6 +25,23 @@ export interface TextEnhancementResponse {
   error?: string
 }
 
+// Interfaces for solution structuring
+export interface SolutionStructureRequest {
+  aiAnalysis: string
+  solutionExplanation: string
+}
+
+export interface SolutionStructureResponse {
+  success: boolean
+  structure?: {
+    title: string
+    steps: string
+    approach: string
+    difficulty: number
+  }
+  error?: string
+}
+
 /**
  * Analyze an image using LangSmith nexa-solutioning-vision prompt with OpenAI Vision API
  */
@@ -176,6 +193,69 @@ export async function enhanceTextWithLangSmith(request: TextEnhancementRequest):
 
   } catch (error) {
     console.error('❌ Error in text enhancement:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
+  }
+}
+
+/**
+ * Structure a solution using LangSmith nexa-solutioning-structure prompt
+ */
+export async function structureSolutionWithLangSmith(request: SolutionStructureRequest): Promise<SolutionStructureResponse> {
+  try {
+    // Pull the prompt from LangSmith hub
+    const promptTemplate = await hub.pull('nexa-solutioning-structure', {
+      includeModel: true
+    })
+
+    // Invoke the prompt with the AI analysis and solution explanation
+    const result = await promptTemplate.invoke({
+      ai_analysis: request.aiAnalysis,
+      solution_explanation: request.solutionExplanation
+    })
+
+    // Extract the JSON content from the result
+    let structuredResponse: any
+    if (typeof result === 'string') {
+      // If it's a string, try to parse it as JSON
+      structuredResponse = JSON.parse(result)
+    } else if (result && typeof result === 'object' && 'content' in result) {
+      // If it's an AIMessage with content
+      const content = (result as any).content
+      structuredResponse = JSON.parse(content)
+    } else if (result && typeof result === 'object' && 'text' in result) {
+      // Alternative text property
+      const text = (result as any).text
+      structuredResponse = JSON.parse(text)
+    } else {
+      throw new Error('Unexpected response format from LangSmith')
+    }
+
+    // Validate the response structure
+    if (!structuredResponse || typeof structuredResponse !== 'object') {
+      throw new Error('Invalid JSON response from LangSmith')
+    }
+
+    const { title, steps, approach, difficulty } = structuredResponse
+
+    if (!title || !steps || !approach || typeof difficulty !== 'number') {
+      throw new Error('Missing required fields in LangSmith response')
+    }
+
+    return {
+      success: true,
+      structure: {
+        title: title.trim(),
+        steps: steps.trim(),
+        approach: approach.trim(),
+        difficulty: difficulty
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Error in solution structuring:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred'

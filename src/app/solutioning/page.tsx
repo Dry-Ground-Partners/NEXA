@@ -348,21 +348,25 @@ export default function SolutioningPage() {
 
     setLoadingStates(prev => ({ ...prev, structuring: true }))
     
-    setTimeout(() => {
-      const mockStructure = {
-        title: 'Intelligent Multi-Layer System Architecture',
-        steps: `1. Design and implement the user interface layer with responsive frameworks
-2. Develop the API Gateway with authentication and rate limiting capabilities  
-3. Build the core processing engine with business logic implementation
-4. Set up the database layer with proper indexing and backup strategies
-5. Integrate external services with error handling and retry mechanisms
-6. Implement monitoring and logging across all system components
-7. Deploy with container orchestration and automated scaling
-8. Conduct comprehensive testing including load and security testing`,
-        approach: 'This solution employs a microservices architecture pattern with event-driven communication. The approach prioritizes scalability, maintainability, and security through proper separation of concerns. Each layer has distinct responsibilities and can be developed, tested, and deployed independently. The architecture supports horizontal scaling and provides multiple points for performance optimization.',
-        difficulty: 73
+    try {
+      const response = await fetch('/api/solutioning/structure-solution', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          aiAnalysis: analysis,
+          solutionExplanation: explanation
+        })
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Solution structuring failed')
       }
 
+      // Update the session data with the structured solution
       setSessionData(prev => ({
         ...prev,
         solutions: {
@@ -371,13 +375,20 @@ export default function SolutioningPage() {
             ...prev.solutions[prev.currentSolution],
             structure: {
               ...prev.solutions[prev.currentSolution].structure,
-              ...mockStructure
+              ...result.structure
             }
           }
         }
       }))
+
+      showAnimatedNotification('Solution structured successfully!', 'success')
+      
+    } catch (error) {
+      console.error('❌ Solution structuring failed:', error)
+      showAnimatedNotification('Solution structuring failed. Please try again.', 'error')
+    } finally {
       setLoadingStates(prev => ({ ...prev, structuring: false }))
-    }, 4000)
+    }
   }
 
   const enhanceExplanation = async () => {
