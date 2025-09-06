@@ -22,6 +22,9 @@ import {
   Eye
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
+import type { VisualsSessionData } from '@/lib/sessions'
+import { createDefaultVisualsData } from '@/lib/sessions'
+import { useCallback } from 'react'
 
 interface DiagramSet {
   id: number
@@ -50,6 +53,8 @@ export default function VisualsPage() {
   const [activeMainTab, setActiveMainTab] = useState('information')
   
   // Form state
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [engineer, setEngineer] = useState('')
   const [title, setTitle] = useState('')
   const [client, setClient] = useState('')
   
@@ -81,6 +86,105 @@ export default function VisualsPage() {
   const [generatingDescription, setGeneratingDescription] = useState<number | null>(null)
   const [generatingSketch, setGeneratingSketch] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  // Session management
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionData, setSessionData] = useState<VisualsSessionData | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+
+  // Image upload utilities
+  const validateImage = (file: File): string | null => {
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/svg+xml']
+    const maxSize = 5 * 1024 * 1024 // 5MB
+
+    if (!validTypes.includes(file.type)) {
+      return 'Invalid file type. Please upload PNG, JPG, GIF, or SVG images.'
+    }
+
+    if (file.size > maxSize) {
+      return 'File size too large. Please upload images smaller than 5MB.'
+    }
+
+    return null
+  }
+
+  const processImageFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        resolve(result)
+      }
+      
+      reader.onerror = () => {
+        reject(new Error('Failed to read image file'))
+      }
+      
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handleImageUpload = async (file: File) => {
+    if (!modal.diagramId) return
+
+    setUploadingImage(true)
+    console.log('📸 Processing image upload:', file.name, file.type, file.size)
+
+    try {
+      // Validate image
+      const validationError = validateImage(file)
+      if (validationError) {
+        alert(validationError)
+        return
+      }
+
+      // Process image to base64
+      const imageDataUrl = await processImageFile(file)
+      console.log('✅ Image processed successfully')
+
+      // Update diagram set
+      updateDiagramSet(modal.diagramId, 'image', imageDataUrl)
+      
+      // Close modal
+      closeModal()
+
+    } catch (error) {
+      console.error('❌ Error processing image:', error)
+      alert('Failed to process image. Please try again.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      handleImageUpload(file)
+    }
+  }
+
+  const handlePaste = async (event: ClipboardEvent) => {
+    if (!modal.isOpen || !modal.isImageField) return
+
+    const items = event.clipboardData?.items
+    if (!items) return
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item.type.indexOf('image') !== -1) {
+        event.preventDefault()
+        const file = item.getAsFile()
+        if (file) {
+          console.log('📋 Pasting image from clipboard:', file.type, file.size)
+          await handleImageUpload(file)
+        }
+        break
+      }
+    }
+  }
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -103,6 +207,81 @@ export default function VisualsPage() {
 
     fetchUser()
   }, [])
+
+  // Debug: Log diagram sets changes
+  useEffect(() => {
+    console.log('📋 Diagram sets updated:', diagramSets.map(set => ({ 
+      id: set.id, 
+      sketchLength: set.sketch?.length || 0,
+      sketchPreview: set.sketch?.substring(0, 50) || 'empty'
+    })))
+  }, [diagramSets])
+
+  // Auto-save functionality
+  const autoSave = useCallback(async () => {
+    if (!sessionId || saving || !hasUnsavedChanges) return
+    
+    try {
+      const currentData = collectCurrentData()
+      console.log('💾 Auto-saving visuals session...')
+      
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          data: currentData,
+          sessionType: 'visuals'
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setHasUnsavedChanges(false)
+        setSessionData(currentData)
+        console.log('✅ Auto-save successful')
+      } else {
+        console.error('❌ Auto-save failed:', result.error)
+      }
+    } catch (error) {
+      console.error('💥 Auto-save error:', error)
+    }
+  }, [sessionId, saving, hasUnsavedChanges, diagramSets, date, engineer, title, client, activeDiagramTab, activeMainTab])
+
+  // Track changes for auto-save
+  useEffect(() => {
+    if (sessionId) {
+      setHasUnsavedChanges(true)
+    }
+  }, [
+    date, engineer, title, client,
+    diagramSets, activeDiagramTab, activeMainTab,
+    sessionId
+  ])
+
+  // Auto-save debounced
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      autoSave()
+    }, 2000) // 2 second delay
+
+    return () => clearTimeout(timer)
+  }, [autoSave])
+
+  // Add paste event listener for image upload
+  useEffect(() => {
+    const handleGlobalPaste = (event: ClipboardEvent) => {
+      handlePaste(event)
+    }
+
+    document.addEventListener('paste', handleGlobalPaste)
+    
+    return () => {
+      document.removeEventListener('paste', handleGlobalPaste)
+    }
+  }, [modal.isOpen, modal.isImageField, modal.diagramId])
 
   // Diagram set management
   const addDiagramSet = () => {
@@ -129,9 +308,17 @@ export default function VisualsPage() {
   }
 
   const updateDiagramSet = (id: number, field: keyof DiagramSet, value: any) => {
-    setDiagramSets(diagramSets.map(set => 
-      set.id === id ? { ...set, [field]: value } : set
-    ))
+    console.log('🔄 updateDiagramSet called:', { id, field, valueType: typeof value, valueLength: value?.length })
+    console.log('📄 Value preview:', typeof value === 'string' ? value.substring(0, 100) : value)
+    
+    setDiagramSets(prevSets => {
+      const updatedSets = prevSets.map(set => 
+        set.id === id ? { ...set, [field]: value } : set
+      )
+      const updatedValue = updatedSets.find(set => set.id === id)?.[field]
+      console.log('📊 Updated diagram sets:', typeof updatedValue === 'string' ? updatedValue.substring(0, 100) : updatedValue)
+      return updatedSets
+    })
   }
 
   // Modal management
@@ -139,6 +326,9 @@ export default function VisualsPage() {
     const diagramSet = diagramSets.find(set => set.id === diagramId)
     const isImageField = field === 'image'
     const content = isImageField ? '' : (diagramSet?.[field as keyof DiagramSet] as string || '')
+    
+    console.log('🔓 openModal called:', { diagramId, field, contentLength: content.length })
+    console.log('📄 Modal content preview:', typeof content === 'string' ? content.substring(0, 100) : content)
     
     setModal({
       isOpen: true,
@@ -164,18 +354,23 @@ export default function VisualsPage() {
   const saveModal = () => {
     if (modal.diagramId && modal.field) {
       if (!modal.isImageField) {
-        updateDiagramSet(modal.diagramId, modal.field as keyof DiagramSet, modal.content)
+        // Special handling for sketch to update both content and expansion in one go
+        if (modal.field === 'sketch' && modal.content.trim()) {
+          setDiagramSets(prevSets => prevSets.map(set => 
+            set.id === modal.diagramId 
+              ? { ...set, sketch: modal.content, isExpanded: true }
+              : set
+          ))
+        } else {
+          updateDiagramSet(modal.diagramId, modal.field as keyof DiagramSet, modal.content)
+        }
       }
-      
-      // If sketch content is added, expand the row
-      if (modal.field === 'sketch' && modal.content.trim()) {
-        updateDiagramSet(modal.diagramId, 'isExpanded', true)
-      }
+      // For image fields, the upload handlers already update the state and close modal
     }
     closeModal()
   }
 
-  // AI Functions (mock for UI-only version)
+  // AI Functions - LangSmith Integration
   const generateDescription = async (diagramId: number) => {
     const diagramSet = diagramSets.find(set => set.id === diagramId)
     if (!diagramSet?.ideation.trim()) {
@@ -185,12 +380,41 @@ export default function VisualsPage() {
 
     setGeneratingDescription(diagramId)
     
-    setTimeout(() => {
-      const mockDescription = `Generated diagram description based on: "${diagramSet.ideation.substring(0, 50)}..."\n\nNodes:\n- Main Component: Central processing unit\n- Input Interface: User interaction layer\n- Data Store: Information repository\n- Output System: Result delivery mechanism\n\nConnections:\n- User Input → Main Component (data flow)\n- Main Component ↔ Data Store (bidirectional)\n- Main Component → Output System (processed results)`
-      
-      updateDiagramSet(diagramId, 'planning', mockDescription)
+    try {
+      console.log('🎨 Starting planning generation from ideation...')
+      console.log('📝 Ideation content:', diagramSet.ideation)
+
+      const response = await fetch('/api/visuals/generate-planning', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          solution: diagramSet.ideation
+        })
+      })
+
+      const result = await response.json()
+      console.log('📊 API response:', result)
+
+      if (!result.success) {
+        console.error('❌ Planning generation failed:', result.error)
+        alert(`Planning generation failed: ${result.error}`)
+        return
+      }
+
+      console.log('✅ Planning generated successfully')
+      console.log('📄 Planning content:', result.data)
+
+      // Update the planning field with the generated content
+      updateDiagramSet(diagramId, 'planning', result.data)
+
+    } catch (error) {
+      console.error('❌ Error generating planning:', error)
+      alert('Failed to generate planning. Please try again.')
+    } finally {
       setGeneratingDescription(null)
-    }, 2000)
+    }
   }
 
   const generateSketch = async (diagramId: number) => {
@@ -202,21 +426,143 @@ export default function VisualsPage() {
 
     setGeneratingSketch(diagramId)
     
-    setTimeout(() => {
-      const mockSketch = `Implementation sketch for diagram ${diagramId}:\n\n• Technical Architecture:\n  - Frontend: React components with state management\n  - Backend: RESTful API with database integration\n  - Data Flow: Unidirectional with event handling\n\n• Key Components:\n  - User interface with form validation\n  - Processing engine with error handling\n  - Storage layer with data persistence\n  - Output formatter with multiple formats\n\n• Implementation Notes:\n  - Use responsive design patterns\n  - Implement proper error boundaries\n  - Add comprehensive testing coverage`
-      
-      updateDiagramSet(diagramId, 'sketch', mockSketch)
+    try {
+      console.log('🎨 Starting sketch generation from planning...')
+      console.log('📝 Planning content:', diagramSet.planning)
+
+      const response = await fetch('/api/visuals/generate-sketch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          planning: diagramSet.planning
+        })
+      })
+
+      const result = await response.json()
+      console.log('📊 API response:', result)
+
+      if (!result.success) {
+        console.error('❌ Sketch generation failed:', result.error)
+        alert(`Sketch generation failed: ${result.error}`)
+        return
+      }
+
+      console.log('✅ Sketch generated successfully')
+      console.log('📄 Sketch content type:', typeof result.data)
+      console.log('📄 Sketch content length:', result.data?.length)
+      console.log('📄 Sketch content preview:', result.data?.substring(0, 200))
+      console.log('📄 Full sketch content:', result.data)
+
+      // Update the sketch field with the generated content and expand
+      console.log('🔄 Updating diagram set with sketch content...')
+      updateDiagramSet(diagramId, 'sketch', result.data)
       updateDiagramSet(diagramId, 'isExpanded', true)
+      console.log('✅ Diagram set updated')
+
+    } catch (error) {
+      console.error('❌ Error generating sketch:', error)
+      alert('Failed to generate sketch. Please try again.')
+    } finally {
       setGeneratingSketch(null)
-    }, 2000)
+    }
+  }
+
+  // Data collection
+  const collectCurrentData = (): VisualsSessionData => {
+    return {
+      basic: {
+        date,
+        engineer,
+        title,
+        client
+      },
+      diagramSets: diagramSets.map(set => ({
+        id: set.id,
+        ideation: set.ideation,
+        planning: set.planning,
+        sketch: set.sketch,
+        image: set.image,
+        expandedContent: set.expandedContent,
+        isExpanded: set.isExpanded
+      })),
+      uiState: {
+        activeDiagramTab,
+        activeMainTab
+      },
+      lastSaved: new Date().toISOString(),
+      version: sessionData?.version || 0
+    }
   }
 
   const handleSave = async () => {
     setSaving(true)
-    setTimeout(() => {
-      alert('Visuals session saved successfully!')
+    
+    try {
+      const currentData = collectCurrentData()
+      console.log('💾 Saving visuals session...', { sessionId, title, client })
+      
+      if (sessionId) {
+        // Update existing session
+        const response = await fetch(`/api/sessions/${sessionId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            data: currentData,
+            sessionType: 'visuals'
+          })
+        })
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          setHasUnsavedChanges(false)
+          setSessionData(currentData)
+          console.log('✅ Session updated successfully')
+        } else {
+          console.error('❌ Failed to update session:', result.error)
+          alert(`Failed to save session: ${result.error}`)
+        }
+      } else {
+        // Create new session
+        const response = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            title: title || 'Untitled Visuals Session',
+            client: client || '',
+            sessionType: 'visuals',
+            data: currentData
+          })
+        })
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          setSessionId(result.session.uuid)
+          setHasUnsavedChanges(false)
+          setSessionData(currentData)
+          console.log('✅ New session created:', result.session.uuid)
+          
+          // Update URL with session ID
+          const newUrl = `/visuals?session=${result.session.uuid}`
+          window.history.pushState({}, '', newUrl)
+        } else {
+          console.error('❌ Failed to create session:', result.error)
+          alert(`Failed to save session: ${result.error}`)
+        }
+      }
+    } catch (error) {
+      console.error('💥 Error saving session:', error)
+      alert('Failed to save session. Please try again.')
+    } finally {
       setSaving(false)
-    }, 1000)
+    }
   }
 
   const handleDelete = async () => {
@@ -238,8 +584,45 @@ export default function VisualsPage() {
   }
 
   const openDrawIo = (diagramId: number) => {
-    // Mock Draw.io integration
-    alert(`Opening Draw.io for Diagram ${diagramId}...\nThis would open app.diagrams.net with the diagram data.`)
+    const diagramSet = diagramSets.find(set => set.id === diagramId)
+    
+    if (!diagramSet?.sketch.trim()) {
+      alert('No sketch content available to download. Please generate a sketch first.')
+      return
+    }
+
+    console.log('📥 Downloading XML file for diagram:', diagramId)
+    console.log('📄 XML content length:', diagramSet.sketch.length)
+
+    try {
+      // Create XML content (the sketch should already be XML format)
+      const xmlContent = diagramSet.sketch
+
+      // Create a blob with the XML content
+      const blob = new Blob([xmlContent], { type: 'application/xml' })
+      
+      // Create a temporary URL for the blob
+      const url = URL.createObjectURL(blob)
+      
+      // Create a temporary anchor element and trigger download
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `diagram-${diagramId}-sketch.xml`
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Clean up the URL
+      URL.revokeObjectURL(url)
+      
+      console.log('✅ XML file download triggered successfully')
+      
+    } catch (error) {
+      console.error('❌ Error downloading XML file:', error)
+      alert('Failed to download XML file. Please try again.')
+    }
   }
 
   if (loading) {
@@ -289,19 +672,24 @@ export default function VisualsPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-white/10 text-white border-t border-l border-r border-white rounded-t-lg relative hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+                  className={`inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all border-t border-l border-r rounded-t-lg relative focus-visible:outline-none focus-visible:ring-2 mr-1 ${
+                    saving
+                      ? 'save-button-saving bg-white/10 text-white border-white'
+                      : hasUnsavedChanges 
+                        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 hover:bg-yellow-500/30 focus-visible:ring-yellow-400/20' 
+                        : 'bg-white/10 text-white border-white hover:bg-white/20 focus-visible:ring-white/20'
+                  }`}
                 >
-                  {saving ? (
-                    <>
-                      <RotateCw className={`h-4 w-4 mr-2 ${saving ? 'animate-spin' : ''}`} />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
+                  <>
+                    {saving ? (
+                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
                       <Save className="h-4 w-4 mr-2" />
-                      Save
-                    </>
-                  )}
+                    )}
+                    <span className={saving ? "shimmer-text" : ""}>
+                      {hasUnsavedChanges ? 'Save*' : 'Save'}
+                    </span>
+                  </>
                 </button>
                 <button
                   onClick={handleDelete}
@@ -323,6 +711,33 @@ export default function VisualsPage() {
             <div className="mb-8">
               <h2 className="text-white text-xl font-semibold mb-6">Basic Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="nexa-form-group">
+                  <Label variant="nexa" htmlFor="date">
+                    Date
+                  </Label>
+                  <Input
+                    variant="nexa"
+                    type="date"
+                    id="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                </div>
+                
+                <div className="nexa-form-group">
+                  <Label variant="nexa" htmlFor="engineer">
+                    Engineer Name
+                  </Label>
+                  <Input
+                    variant="nexa"
+                    id="engineer"
+                    placeholder="e.g., John Rockstar Engineer"
+                    value={engineer}
+                    onChange={(e) => setEngineer(e.target.value)}
+                    required
+                  />
+                </div>
+                
                 <div className="nexa-form-group">
                   <Label variant="nexa" htmlFor="title">
                     Title
@@ -397,7 +812,7 @@ export default function VisualsPage() {
                           }`}
                         >
                           <div className="text-nexa-muted text-xs mb-1 font-medium">Ideation</div>
-                          <div className="text-white text-sm overflow-hidden">
+                          <div className="text-white text-sm overflow-hidden line-clamp-2">
                             {diagramSet.ideation || 'Click to add ideation details...'}
                           </div>
                         </div>
@@ -431,7 +846,7 @@ export default function VisualsPage() {
                           }`}
                         >
                           <div className="text-nexa-muted text-xs mb-1 font-medium">Planning</div>
-                          <div className="text-white text-sm overflow-hidden">
+                          <div className="text-white text-sm overflow-hidden line-clamp-2">
                             {diagramSet.planning || 'Click to add planning details...'}
                           </div>
                         </div>
@@ -465,8 +880,12 @@ export default function VisualsPage() {
                           }`}
                         >
                           <div className="text-nexa-muted text-xs mb-1 font-medium">Sketch</div>
-                          <div className="text-white text-sm overflow-hidden">
+                          <div className="text-white text-sm overflow-hidden line-clamp-1">
                             {diagramSet.sketch || 'Click to add sketch details...'}
+                          </div>
+                          {/* Debug info */}
+                          <div className="text-xs text-gray-500 mt-1">
+                            Content: {diagramSet.sketch?.length || 0} chars
                           </div>
                         </div>
                       </div>
@@ -561,7 +980,7 @@ export default function VisualsPage() {
                                 }`}
                               >
                                 <div className="text-nexa-muted text-xs mb-1 font-medium">Expanded Content</div>
-                                <div className="text-white text-sm overflow-hidden">
+                                <div className="text-white text-sm overflow-hidden line-clamp-2">
                                   {diagramSet.expandedContent || 'Click to add expanded content...'}
                                 </div>
                               </div>
@@ -613,7 +1032,7 @@ export default function VisualsPage() {
 
       {/* Diagram Modal */}
       {modal.isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-black border border-nexa-border rounded-lg w-full max-w-2xl mx-4">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-nexa-border">
@@ -633,20 +1052,80 @@ export default function VisualsPage() {
               {modal.isImageField ? (
                 /* Image Content */
                 <div className="space-y-4">
-                  <div className="border-2 border-dashed border-nexa-border rounded-lg p-8 text-center">
-                    <Upload className="h-12 w-12 text-nexa-muted mx-auto mb-4" />
-                    <div className="text-white font-medium mb-2">Upload Solution Diagram</div>
-                    <div className="text-nexa-muted text-sm mb-4">
-                      Upload an image or Ctrl+V to paste from clipboard
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="border-nexa-border text-white hover:bg-white/10"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload from Device
-                    </Button>
+                  <div 
+                    className="border-2 border-dashed border-nexa-border rounded-lg p-8 text-center transition-colors hover:border-nexa-light"
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      const files = e.dataTransfer.files
+                      if (files.length > 0) {
+                        handleImageUpload(files[0])
+                      }
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragEnter={(e) => e.preventDefault()}
+                  >
+                    {uploadingImage ? (
+                      <>
+                        <RotateCw className="h-12 w-12 text-nexa-muted mx-auto mb-4 animate-spin" />
+                        <div className="text-white font-medium mb-2">Processing Image...</div>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-12 w-12 text-nexa-muted mx-auto mb-4" />
+                        <div className="text-white font-medium mb-2">Upload Solution Diagram</div>
+                        <div className="text-nexa-muted text-sm mb-4">
+                          Drag & drop, upload from device, or Ctrl+V to paste from clipboard
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileInputChange}
+                          className="hidden"
+                          id="image-upload-input"
+                          disabled={uploadingImage}
+                        />
+                        <Button
+                          variant="outline"
+                          className="border-nexa-border text-white hover:bg-white/10"
+                          onClick={() => document.getElementById('image-upload-input')?.click()}
+                          disabled={uploadingImage}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload from Device
+                        </Button>
+                      </>
+                    )}
                   </div>
+                  
+                  {/* Current image preview if exists */}
+                  {modal.diagramId && diagramSets.find(set => set.id === modal.diagramId)?.image && (
+                    <div className="space-y-2">
+                      <div className="text-white text-sm font-medium">Current Image:</div>
+                      <div className="border border-nexa-border rounded-lg p-2 bg-black/50">
+                        <img 
+                          src={diagramSets.find(set => set.id === modal.diagramId)?.image || ''} 
+                          alt="Current diagram" 
+                          className="max-w-full h-32 object-contain mx-auto"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs border-red-500 text-red-400 hover:bg-red-500/20"
+                          onClick={() => {
+                            if (modal.diagramId) {
+                              updateDiagramSet(modal.diagramId, 'image', null)
+                              closeModal()
+                            }
+                          }}
+                        >
+                          Remove Image
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="text-nexa-muted text-xs text-center">
                     Supported formats: PNG, JPG, GIF, SVG • Max size: 5MB
                   </div>
@@ -672,19 +1151,31 @@ export default function VisualsPage() {
 
             {/* Modal Footer */}
             <div className="flex justify-end gap-3 p-6 border-t border-nexa-border">
-              <Button
-                onClick={closeModal}
-                variant="outline"
-                className="border-nexa-border text-white hover:bg-white/10"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={saveModal}
-                className="bg-white text-black hover:bg-gray-100"
-              >
-                Save
-              </Button>
+              {modal.isImageField ? (
+                <Button
+                  onClick={closeModal}
+                  variant="outline"
+                  className="border-nexa-border text-white hover:bg-white/10"
+                >
+                  Close
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    onClick={closeModal}
+                    variant="outline"
+                    className="border-nexa-border text-white hover:bg-white/10"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={saveModal}
+                    className="bg-white text-black hover:bg-gray-100"
+                  >
+                    Save
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

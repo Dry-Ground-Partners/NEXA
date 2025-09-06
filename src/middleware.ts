@@ -30,6 +30,7 @@ export async function middleware(request: NextRequest) {
     '/auth/verify-email-pending',
     '/auth/accept-invitation',
     '/auth/reset-password',
+    '/onboarding', // Allow onboarding for authenticated users without orgs
     '/images',
     '/static',
     '/_next',
@@ -45,9 +46,16 @@ export async function middleware(request: NextRequest) {
     '/api/organizations/check-domain'
   ]
 
+  // API routes that require authentication but not organization membership
+  const authOnlyApiRoutes = [
+    '/api/auth/me',
+    '/api/onboarding'
+  ]
+
   // Check if the current path is public
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
   const isPublicApiRoute = publicApiRoutes.some(route => pathname.startsWith(route))
+  const isAuthOnlyApiRoute = authOnlyApiRoutes.some(route => pathname.startsWith(route))
 
   if (isPublicRoute || isPublicApiRoute) {
     return NextResponse.next()
@@ -89,6 +97,19 @@ export async function middleware(request: NextRequest) {
     
     response.cookies.delete('auth-token')
     return response
+  }
+
+  // Check if user has organization membership (skip for onboarding-related paths and auth-only APIs)
+  const isOnboardingPath = pathname.startsWith('/onboarding')
+  
+  if (!isOnboardingPath && !isAuthOnlyApiRoute && !payload.hasOrganization) {
+    console.log('User has no organization, redirecting to onboarding')
+    
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Organization required' }, { status: 403 })
+    }
+    
+    return NextResponse.redirect(new URL('/onboarding', request.url))
   }
 
   // Token is valid, allow the request to proceed

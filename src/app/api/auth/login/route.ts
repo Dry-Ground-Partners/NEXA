@@ -65,16 +65,27 @@ export async function POST(request: NextRequest) {
     // Update last login
     await updateLastLogin(user.id)
 
+    // Check if user has organization membership for redirect
+    const hasOrganization = user.organizationMemberships && user.organizationMemberships.length > 0
+    const redirectTo = hasOrganization ? '/dashboard' : '/onboarding'
+
+    console.log(`🔄 Login redirect: ${user.email} → ${redirectTo} (orgs: ${user.organizationMemberships?.length || 0})`)
+
     // Create response with auth cookie
     const response = NextResponse.json({
       success: true,
       message: 'Login successful',
+      redirectTo: redirectTo,
       user: {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        fullName: user.fullName
+        fullName: user.fullName,
+        avatarUrl: user.avatarUrl,
+        status: user.status,
+        emailVerifiedAt: user.emailVerifiedAt,
+        organizationMemberships: user.organizationMemberships
       }
     })
 

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { 
   ArrowRight,
   ArrowLeft,
@@ -16,7 +17,12 @@ import {
   Download,
   Save,
   Database,
-  RotateCw
+  RotateCw,
+  Info,
+  Calculator,
+  Users,
+  Lightbulb,
+  BarChart3
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
 
@@ -53,64 +59,55 @@ interface BestOption {
   weeks: number
 }
 
-interface LOEData {
-  basic: {
-    project: string
-    client: string
-    preparedBy: string
-    date: string
-  }
-  overview: string
-  workstreams: Workstream[]
-  resources: Resource[]
-  buffer: {
-    weeks: number
-    hours: number
-  }
-  assumptions: Assumption[]
-  goodOptions: GoodOption[]
-  bestOptions: BestOption[]
-}
-
 export default function LOEPage() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
-  const [currentStep, setCurrentStep] = useState(1)
   
-  // LOE Data State
-  const [loeData, setLOEData] = useState<LOEData>({
-    basic: {
+  // Tab state - matching structuring/visuals/solutioning/sow pattern
+  const [activeMainTab, setActiveMainTab] = useState('info')
+  
+  // LOE Data State - restructured for tab-based access
+  const [loeData, setLOEData] = useState({
+    info: {
       project: '',
       client: '',
       preparedBy: 'Dry Ground Partners',
       date: new Date().toISOString().split('T')[0]
     },
+    workstreams: {
     overview: '',
     workstreams: [
       { id: 1, workstream: '', activities: '', duration: 2 }
-    ],
+      ] as Workstream[]
+    },
+    resources: {
     resources: [
       { id: 1, role: 'Project Manager', personWeeks: 3.0, personHours: 60 },
       { id: 2, role: 'Solution Architect', personWeeks: 4.0, personHours: 80 },
       { id: 3, role: 'Developer', personWeeks: 8.0, personHours: 160 },
       { id: 4, role: 'Quality Assurance', personWeeks: 2.0, personHours: 40 },
       { id: 5, role: 'Business Analyst', personWeeks: 3.0, personHours: 60 }
-    ],
+      ] as Resource[],
     buffer: {
       weeks: 1.0,
       hours: 20
+      }
     },
+    assumptions: {
     assumptions: [
       { id: 1, text: 'Client will provide necessary access and resources in a timely manner' },
       { id: 2, text: 'All stakeholders will be available for interviews and feedback sessions' },
       { id: 3, text: 'Technical infrastructure requirements will be defined during requirements phase' }
-    ],
+      ] as Assumption[]
+    },
+    variations: {
     goodOptions: [
       { id: 1, feature: '', hours: 0, weeks: 0 }
-    ],
+      ] as GoodOption[],
     bestOptions: [
       { id: 1, feature: '', hours: 0, weeks: 0 }
-    ]
+      ] as BestOption[]
+    }
   })
 
   // Loading states
@@ -120,6 +117,7 @@ export default function LOEPage() {
     saving: false,
     deleting: false
   })
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -143,28 +141,21 @@ export default function LOEPage() {
     fetchUser()
   }, [])
 
-  // Navigation functions
-  const nextStep = () => {
-    if (currentStep === 1) {
-      // Validate Step 1
-      if (!loeData.basic.project || !loeData.basic.client || !loeData.basic.preparedBy) {
-        alert('Please fill in all required fields (Project, Client, and Prepared By).')
-        return
-      }
-      if (!loeData.overview.trim()) {
-        alert('Please provide a project overview.')
-        return
-      }
-      if (loeData.workstreams.some(ws => !ws.workstream.trim() || !ws.activities.trim() || ws.duration < 1)) {
-        alert('Please complete all workstream fields with valid durations (minimum 1 week).')
-        return
-      }
+  // Navigation functions - matching pattern from other pages
+  const handleNext = () => {
+    const tabOrder = ['info', 'workstreams', 'resources', 'assumptions', 'variations']
+    const currentIndex = tabOrder.indexOf(activeMainTab)
+    if (currentIndex < tabOrder.length - 1) {
+      setActiveMainTab(tabOrder[currentIndex + 1])
     }
-    setCurrentStep(2)
   }
 
-  const prevStep = () => {
-    setCurrentStep(1)
+  const handlePrevious = () => {
+    const tabOrder = ['info', 'workstreams', 'resources', 'assumptions', 'variations']
+    const currentIndex = tabOrder.indexOf(activeMainTab)
+    if (currentIndex > 0) {
+      setActiveMainTab(tabOrder[currentIndex - 1])
+    }
   }
 
   // Calculation helpers
@@ -173,51 +164,68 @@ export default function LOEPage() {
 
   // Workstream functions
   const addWorkstream = () => {
-    const newId = Math.max(...loeData.workstreams.map(ws => ws.id)) + 1
+    const newId = Math.max(...loeData.workstreams.workstreams.map(ws => ws.id)) + 1
     setLOEData(prev => ({
       ...prev,
-      workstreams: [...prev.workstreams, { id: newId, workstream: '', activities: '', duration: 2 }]
+      workstreams: {
+        ...prev.workstreams,
+        workstreams: [...prev.workstreams.workstreams, { id: newId, workstream: '', activities: '', duration: 2 }]
+      }
     }))
   }
 
   const removeWorkstream = (id: number) => {
-    if (loeData.workstreams.length === 1) return
+    if (loeData.workstreams.workstreams.length === 1) return
     setLOEData(prev => ({
       ...prev,
-      workstreams: prev.workstreams.filter(ws => ws.id !== id)
+      workstreams: {
+        ...prev.workstreams,
+        workstreams: prev.workstreams.workstreams.filter(ws => ws.id !== id)
+      }
     }))
   }
 
   const updateWorkstream = (id: number, field: keyof Workstream, value: string | number) => {
     setLOEData(prev => ({
       ...prev,
-      workstreams: prev.workstreams.map(ws => 
+      workstreams: {
+        ...prev.workstreams,
+        workstreams: prev.workstreams.workstreams.map(ws => 
         ws.id === id ? { ...ws, [field]: value } : ws
       )
+      }
     }))
   }
 
   // Resource functions
   const addResource = () => {
-    const newId = Math.max(...loeData.resources.map(res => res.id)) + 1
+    const newId = Math.max(...loeData.resources.resources.map(res => res.id)) + 1
     setLOEData(prev => ({
       ...prev,
-      resources: [...prev.resources, { id: newId, role: '', personWeeks: 1.0, personHours: 20 }]
+      resources: {
+        ...prev.resources,
+        resources: [...prev.resources.resources, { id: newId, role: '', personWeeks: 1.0, personHours: 20 }]
+      }
     }))
   }
 
   const removeResource = (id: number) => {
-    if (loeData.resources.length === 1) return
+    if (loeData.resources.resources.length === 1) return
     setLOEData(prev => ({
       ...prev,
-      resources: prev.resources.filter(res => res.id !== id)
+      resources: {
+        ...prev.resources,
+        resources: prev.resources.resources.filter(res => res.id !== id)
+      }
     }))
   }
 
   const updateResource = (id: number, field: keyof Resource, value: string | number) => {
     setLOEData(prev => ({
       ...prev,
-      resources: prev.resources.map(res => {
+      resources: {
+        ...prev.resources,
+        resources: prev.resources.resources.map(res => {
         if (res.id === id) {
           const updated = { ...res, [field]: value }
           // Auto-calculate the other field
@@ -230,6 +238,7 @@ export default function LOEPage() {
         }
         return res
       })
+      }
     }))
   }
 
@@ -237,60 +246,80 @@ export default function LOEPage() {
   const updateBuffer = (field: 'weeks' | 'hours', value: number) => {
     setLOEData(prev => ({
       ...prev,
+      resources: {
+        ...prev.resources,
       buffer: {
         weeks: field === 'weeks' ? value : hoursToWeeks(value),
         hours: field === 'hours' ? value : weeksToHours(value)
+        }
       }
     }))
   }
 
   // Assumption functions
   const addAssumption = () => {
-    const newId = Math.max(...loeData.assumptions.map(ass => ass.id)) + 1
+    const newId = Math.max(...loeData.assumptions.assumptions.map(ass => ass.id)) + 1
     setLOEData(prev => ({
       ...prev,
-      assumptions: [...prev.assumptions, { id: newId, text: '' }]
+      assumptions: {
+        ...prev.assumptions,
+        assumptions: [...prev.assumptions.assumptions, { id: newId, text: '' }]
+      }
     }))
   }
 
   const removeAssumption = (id: number) => {
-    if (loeData.assumptions.length === 1) return
+    if (loeData.assumptions.assumptions.length === 1) return
     setLOEData(prev => ({
       ...prev,
-      assumptions: prev.assumptions.filter(ass => ass.id !== id)
+      assumptions: {
+        ...prev.assumptions,
+        assumptions: prev.assumptions.assumptions.filter(ass => ass.id !== id)
+      }
     }))
   }
 
   const updateAssumption = (id: number, text: string) => {
     setLOEData(prev => ({
       ...prev,
-      assumptions: prev.assumptions.map(ass => 
+      assumptions: {
+        ...prev.assumptions,
+        assumptions: prev.assumptions.assumptions.map(ass => 
         ass.id === id ? { ...ass, text } : ass
       )
+      }
     }))
   }
 
   // Good Option functions
   const addGoodOption = () => {
-    const newId = Math.max(...loeData.goodOptions.map(opt => opt.id)) + 1
+    const newId = Math.max(...loeData.variations.goodOptions.map(opt => opt.id)) + 1
     setLOEData(prev => ({
       ...prev,
-      goodOptions: [...prev.goodOptions, { id: newId, feature: '', hours: 0, weeks: 0 }]
+      variations: {
+        ...prev.variations,
+        goodOptions: [...prev.variations.goodOptions, { id: newId, feature: '', hours: 0, weeks: 0 }]
+      }
     }))
   }
 
   const removeGoodOption = (id: number) => {
-    if (loeData.goodOptions.length === 1) return
+    if (loeData.variations.goodOptions.length === 1) return
     setLOEData(prev => ({
       ...prev,
-      goodOptions: prev.goodOptions.filter(opt => opt.id !== id)
+      variations: {
+        ...prev.variations,
+        goodOptions: prev.variations.goodOptions.filter(opt => opt.id !== id)
+      }
     }))
   }
 
   const updateGoodOption = (id: number, field: keyof GoodOption, value: string | number) => {
     setLOEData(prev => ({
       ...prev,
-      goodOptions: prev.goodOptions.map(opt => {
+      variations: {
+        ...prev.variations,
+        goodOptions: prev.variations.goodOptions.map(opt => {
         if (opt.id === id) {
           const updated = { ...opt, [field]: value }
           if (field === 'weeks') {
@@ -302,30 +331,39 @@ export default function LOEPage() {
         }
         return opt
       })
+      }
     }))
   }
 
   // Best Option functions
   const addBestOption = () => {
-    const newId = Math.max(...loeData.bestOptions.map(opt => opt.id)) + 1
+    const newId = Math.max(...loeData.variations.bestOptions.map(opt => opt.id)) + 1
     setLOEData(prev => ({
       ...prev,
-      bestOptions: [...prev.bestOptions, { id: newId, feature: '', hours: 0, weeks: 0 }]
+      variations: {
+        ...prev.variations,
+        bestOptions: [...prev.variations.bestOptions, { id: newId, feature: '', hours: 0, weeks: 0 }]
+      }
     }))
   }
 
   const removeBestOption = (id: number) => {
-    if (loeData.bestOptions.length === 1) return
+    if (loeData.variations.bestOptions.length === 1) return
     setLOEData(prev => ({
       ...prev,
-      bestOptions: prev.bestOptions.filter(opt => opt.id !== id)
+      variations: {
+        ...prev.variations,
+        bestOptions: prev.variations.bestOptions.filter(opt => opt.id !== id)
+      }
     }))
   }
 
   const updateBestOption = (id: number, field: keyof BestOption, value: string | number) => {
     setLOEData(prev => ({
       ...prev,
-      bestOptions: prev.bestOptions.map(opt => {
+      variations: {
+        ...prev.variations,
+        bestOptions: prev.variations.bestOptions.map(opt => {
         if (opt.id === id) {
           const updated = { ...opt, [field]: value }
           if (field === 'weeks') {
@@ -337,34 +375,35 @@ export default function LOEPage() {
         }
         return opt
       })
+      }
     }))
   }
 
   // Calculation functions
   const getTotalResourceHours = () => {
-    return loeData.resources.reduce((total, res) => total + res.personHours, 0)
+    return loeData.resources.resources.reduce((total, res) => total + res.personHours, 0)
   }
 
   const getTotalResourceWeeks = () => {
-    return loeData.resources.reduce((total, res) => total + res.personWeeks, 0)
+    return loeData.resources.resources.reduce((total, res) => total + res.personWeeks, 0)
   }
 
   const getBufferPercentage = () => {
     const totalHours = getTotalResourceHours()
-    return totalHours > 0 ? Math.round((loeData.buffer.hours / totalHours) * 100) : 0
+    return totalHours > 0 ? Math.round((loeData.resources.buffer.hours / totalHours) * 100) : 0
   }
 
   const getGoodTotalReduction = () => {
     return {
-      hours: loeData.goodOptions.reduce((total, opt) => total + opt.hours, 0),
-      weeks: loeData.goodOptions.reduce((total, opt) => total + opt.weeks, 0)
+      hours: loeData.variations.goodOptions.reduce((total, opt) => total + opt.hours, 0),
+      weeks: loeData.variations.goodOptions.reduce((total, opt) => total + opt.weeks, 0)
     }
   }
 
   const getBestTotalAddition = () => {
     return {
-      hours: loeData.bestOptions.reduce((total, opt) => total + opt.hours, 0),
-      weeks: loeData.bestOptions.reduce((total, opt) => total + opt.weeks, 0)
+      hours: loeData.variations.bestOptions.reduce((total, opt) => total + opt.hours, 0),
+      weeks: loeData.variations.bestOptions.reduce((total, opt) => total + opt.weeks, 0)
     }
   }
 
@@ -386,19 +425,16 @@ export default function LOEPage() {
   }
 
   const handleSave = () => {
-    setLoadingStates(prev => ({ ...prev, saving: true }))
+    setSaving(true)
     setTimeout(() => {
       alert('LOE session saved successfully!')
-      setLoadingStates(prev => ({ ...prev, saving: false }))
+      setSaving(false)
     }, 1000)
   }
 
   const handleDelete = () => {
     if (confirm('Are you sure you want to delete this LOE session?')) {
-      setLoadingStates(prev => ({ ...prev, deleting: true }))
-      setTimeout(() => {
         window.location.href = '/dashboard'
-      }, 1000)
     }
   }
 
@@ -418,23 +454,81 @@ export default function LOEPage() {
         email: user.email
       } : undefined}
     >
-      <div className="container mx-auto p-6">
-        <div className="max-w-5xl mx-auto">
-          
-          {/* Page Title Section */}
-          <div className="text-center mb-8">
-            <h1 className="text-white text-4xl font-bold mb-2">Level of Effort</h1>
-            <p className="text-nexa-muted text-lg">Estimate project complexity and resource requirements</p>
+      <div className="nexa-background min-h-screen p-6">
+        <div className="max-w-6xl mx-auto">
+          {/* Tab system matching structuring/visuals/solutioning/sow pattern */}
+          <Tabs value={activeMainTab} className="w-full" onValueChange={setActiveMainTab}>
+            {/* Header row with LoE label and Tabs */}
+            <div className="flex items-end justify-between mb-0">
+              <div className="flex items-end gap-6">
+                {/* LoE label - positioned inline with tabs */}
+                <div className="flex items-center gap-2 text-white pb-3 ml-16">
+                  <Calculator className="w-4 h-4" />
+                  <span>Effort</span>
+                </div>
+
+                {/* Tab strip */}
+                <TabsList className="mb-0">
+                  <TabsTrigger value="info" className="flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    Info
+                  </TabsTrigger>
+                  <TabsTrigger value="workstreams" className="flex items-center gap-2">
+                    <Calculator className="w-4 h-4" />
+                    Workstreams
+                  </TabsTrigger>
+                  <TabsTrigger value="resources" className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Resources
+                  </TabsTrigger>
+                  <TabsTrigger value="assumptions" className="flex items-center gap-2">
+                    <Lightbulb className="w-4 h-4" />
+                    Assumptions
+                  </TabsTrigger>
+                  <TabsTrigger value="variations" className="flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Variations
+                  </TabsTrigger>
+                </TabsList>
           </div>
 
-          <Card variant="nexa" className="p-10">
-            
-            {/* Step 1: Overview & Workstreams */}
-            {currentStep === 1 && (
-              <div className="space-y-8">
-                <h2 className="text-white text-xl font-semibold mb-6">Overview & Workstreams</h2>
-                
-                {/* Basic Information (2x2 Grid) */}
+              {/* Action buttons aligned right */}
+              <div className="flex">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-white/10 text-white border-t border-l border-r border-white rounded-t-lg relative hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 mr-1"
+                >
+                  {saving ? (
+                    <>
+                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-red-500/10 text-red-500 border-t border-l border-r border-red-600 rounded-t-lg relative hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            {/* Card container - matching structuring/visuals/sow */}
+            <Card variant="nexa" className="rounded-tr-none border-t border-nexa-border p-8 mt-0">
+              
+              {/* Info Tab - Basic Information */}
+              <TabsContent value="info" className="mt-0">
+                <div className="space-y-6">
+                  <h2 className="text-white text-xl font-semibold mb-6">Project Information</h2>
+                  
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="nexa-form-group">
                     <Label variant="nexa" htmlFor="project">
@@ -444,10 +538,10 @@ export default function LOEPage() {
                       variant="nexa"
                       id="project"
                       placeholder="Enter project name..."
-                      value={loeData.basic.project}
+                        value={loeData.info.project}
                       onChange={(e) => setLOEData(prev => ({
                         ...prev,
-                        basic: { ...prev.basic, project: e.target.value }
+                          info: { ...prev.info, project: e.target.value }
                       }))}
                       required
                     />
@@ -461,10 +555,10 @@ export default function LOEPage() {
                       variant="nexa"
                       id="client"
                       placeholder="Enter client name..."
-                      value={loeData.basic.client}
+                        value={loeData.info.client}
                       onChange={(e) => setLOEData(prev => ({
                         ...prev,
-                        basic: { ...prev.basic, client: e.target.value }
+                          info: { ...prev.info, client: e.target.value }
                       }))}
                       required
                     />
@@ -478,10 +572,10 @@ export default function LOEPage() {
                       variant="nexa"
                       id="preparedBy"
                       placeholder="Enter your name..."
-                      value={loeData.basic.preparedBy}
+                        value={loeData.info.preparedBy}
                       onChange={(e) => setLOEData(prev => ({
                         ...prev,
-                        basic: { ...prev.basic, preparedBy: e.target.value }
+                          info: { ...prev.info, preparedBy: e.target.value }
                       }))}
                       required
                     />
@@ -495,15 +589,22 @@ export default function LOEPage() {
                       variant="nexa"
                       type="date"
                       id="date"
-                      value={loeData.basic.date}
+                        value={loeData.info.date}
                       onChange={(e) => setLOEData(prev => ({
                         ...prev,
-                        basic: { ...prev.basic, date: e.target.value }
+                          info: { ...prev.info, date: e.target.value }
                       }))}
                       required
                     />
                   </div>
                 </div>
+                </div>
+              </TabsContent>
+
+              {/* Workstreams Tab - Project Overview and Workstreams */}
+              <TabsContent value="workstreams" className="mt-0">
+                <div className="space-y-6">
+                  <h2 className="text-white text-xl font-semibold mb-6">Project Overview & Workstreams</h2>
 
                 {/* Project Overview Section */}
                 <div className="nexa-form-group">
@@ -515,8 +616,11 @@ export default function LOEPage() {
                     variant="nexa"
                     rows={6}
                     placeholder="Provide a comprehensive overview of the project, including objectives, scope, and key requirements..."
-                    value={loeData.overview}
-                    onChange={(e) => setLOEData(prev => ({ ...prev, overview: e.target.value }))}
+                      value={loeData.workstreams.overview}
+                      onChange={(e) => setLOEData(prev => ({ 
+                        ...prev, 
+                        workstreams: { ...prev.workstreams, overview: e.target.value }
+                      }))}
                     required
                   />
                   <div className="text-nexa-muted text-xs mt-2">
@@ -558,7 +662,7 @@ export default function LOEPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {loeData.workstreams.map((workstream, index) => (
+                          {loeData.workstreams.workstreams.map((workstream, index) => (
                           <tr key={workstream.id} className="border-b border-nexa-border">
                             <td className="p-3">
                               <Input
@@ -607,118 +711,13 @@ export default function LOEPage() {
                     </table>
                   </div>
                 </div>
-
-                {/* Step Navigation */}
-                <div className="flex justify-center mt-8">
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-black font-semibold">
-                        1
                       </div>
-                      <span className="text-white text-sm">Overview & Workstreams</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-nexa-border text-nexa-muted font-semibold">
-                        2
-                      </div>
-                      <span className="text-nexa-muted text-sm">Resources & Assumptions</span>
-                    </div>
-                  </div>
-                </div>
+              </TabsContent>
 
-                <div className="flex justify-end">
-                  <Button
-                    onClick={nextStep}
-                    className="bg-gray-800 text-white hover:bg-gray-700"
-                  >
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Resources & Assumptions */}
-            {currentStep === 2 && (
-              <div className="space-y-8">
-                <h2 className="text-white text-xl font-semibold mb-6">Resources & Assumptions</h2>
-                
-                {/* Action Buttons Bar */}
-                <div className="flex flex-wrap gap-2 p-4 bg-gray-900 rounded-lg border border-nexa-border">
-                  <Button
-                    onClick={handlePreviewPDF}
-                    disabled={loadingStates.previewing}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
-                    title="Preview PDF"
-                  >
-                    {loadingStates.previewing ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <FileText className="h-4 w-4" />
-                    )}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleGeneratePDF}
-                    disabled={loadingStates.generating}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-green-600 border-green-500 text-white hover:bg-green-700"
-                    title="Generate PDF"
-                  >
-                    {loadingStates.generating ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Download className="h-4 w-4" />
-                    )}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleSave}
-                    disabled={loadingStates.saving}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-24 bg-gray-800 border-nexa-border text-white hover:bg-gray-700"
-                    title="Save"
-                  >
-                    {loadingStates.saving ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-1" />
-                        Save
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Button
-                    onClick={() => alert('Save to Database functionality')}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-yellow-600 border-yellow-500 text-white hover:bg-yellow-700 hidden"
-                    title="Save to Database"
-                  >
-                    <Database className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    onClick={handleDelete}
-                    disabled={loadingStates.deleting}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-red-600 border-red-500 text-white hover:bg-red-700"
-                    title="Delete"
-                  >
-                    {loadingStates.deleting ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+              {/* Resources Tab - Resource Allocation including buffer */}
+              <TabsContent value="resources" className="mt-0">
+                <div className="space-y-6">
+                  <h2 className="text-white text-xl font-semibold mb-6">Resource Allocation Including Buffer</h2>
 
                 {/* Resource Allocation Section */}
                 <div>
@@ -754,7 +753,7 @@ export default function LOEPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {loeData.resources.map((resource, index) => (
+                          {loeData.resources.resources.map((resource, index) => (
                           <tr key={resource.id} className="border-b border-nexa-border">
                             <td className="p-3">
                               <Input
@@ -829,7 +828,7 @@ export default function LOEPage() {
                         step="0.5"
                         min="0"
                         id="bufferWeeks"
-                        value={loeData.buffer.weeks}
+                          value={loeData.resources.buffer.weeks}
                         onChange={(e) => updateBuffer('weeks', parseFloat(e.target.value) || 0)}
                       />
                     </div>
@@ -844,7 +843,7 @@ export default function LOEPage() {
                         step="10"
                         min="0"
                         id="bufferHours"
-                        value={loeData.buffer.hours}
+                          value={loeData.resources.buffer.hours}
                         onChange={(e) => updateBuffer('hours', parseInt(e.target.value) || 0)}
                       />
                     </div>
@@ -862,11 +861,17 @@ export default function LOEPage() {
                     Add contingency time for unforeseen circumstances (typically 10-20% of total effort)
                   </div>
                 </div>
+                </div>
+              </TabsContent>
 
-                {/* Assumptions Section */}
+              {/* Assumptions Tab */}
+              <TabsContent value="assumptions" className="mt-0">
+                <div className="space-y-6">
+                  <h2 className="text-white text-xl font-semibold mb-6">Assumptions</h2>
+                  
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <Label variant="nexa">Assumptions</Label>
+                      <Label variant="nexa">Project Assumptions</Label>
                     <Button
                       onClick={addAssumption}
                       variant="outline"
@@ -879,7 +884,7 @@ export default function LOEPage() {
                   </div>
                   
                   <div className="space-y-3">
-                    {loeData.assumptions.map((assumption, index) => (
+                      {loeData.assumptions.assumptions.map((assumption, index) => (
                       <div key={assumption.id} className="flex gap-2">
                         <Textarea
                           variant="nexa"
@@ -891,7 +896,7 @@ export default function LOEPage() {
                         />
                         <Button
                           onClick={() => removeAssumption(assumption.id)}
-                          disabled={loeData.assumptions.length === 1}
+                            disabled={loeData.assumptions.assumptions.length === 1}
                           variant="outline"
                           size="sm"
                           className="h-auto border-red-600 text-red-500 hover:bg-red-500/10"
@@ -901,6 +906,46 @@ export default function LOEPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+                </div>
+              </TabsContent>
+
+              {/* Variations Tab - Good (Lower Effort) Option and Best (Enhanced) Option */}
+              <TabsContent value="variations" className="mt-0">
+                <div className="space-y-6">
+                  <h2 className="text-white text-xl font-semibold mb-6">Good (Lower Effort) Option & Best (Enhanced) Option</h2>
+                  
+                  {/* Action Buttons Bar */}
+                  <div className="flex flex-wrap gap-2 p-4 bg-gray-900 rounded-lg border border-nexa-border">
+                    <Button
+                      onClick={handlePreviewPDF}
+                      disabled={loadingStates.previewing}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0 bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
+                      title="Preview PDF"
+                    >
+                      {loadingStates.previewing ? (
+                        <RotateCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileText className="h-4 w-4" />
+                      )}
+                    </Button>
+                    
+                    <Button
+                      onClick={handleGeneratePDF}
+                      disabled={loadingStates.generating}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0 bg-green-600 border-green-500 text-white hover:bg-green-700"
+                      title="Generate PDF"
+                    >
+                      {loadingStates.generating ? (
+                        <RotateCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                    </Button>
                 </div>
 
                 {/* Options Section (Good/Better/Best) */}
@@ -940,7 +985,7 @@ export default function LOEPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {loeData.goodOptions.map((option, index) => (
+                            {loeData.variations.goodOptions.map((option, index) => (
                             <tr key={option.id} className="border-b border-green-600">
                               <td className="p-2">
                                 <Textarea
@@ -1040,7 +1085,7 @@ export default function LOEPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {loeData.bestOptions.map((option, index) => (
+                            {loeData.variations.bestOptions.map((option, index) => (
                             <tr key={option.id} className="border-b border-blue-600">
                               <td className="p-2">
                                 <Textarea
@@ -1106,40 +1151,38 @@ export default function LOEPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Step Navigation */}
-                <div className="flex justify-center mt-8">
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-600 text-white font-semibold">
-                        1
                       </div>
-                      <span className="text-green-400 text-sm">Overview & Workstreams</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-black font-semibold">
-                        2
-                      </div>
-                      <span className="text-white text-sm">Resources & Assumptions</span>
-                    </div>
-                  </div>
-                </div>
+              </TabsContent>
 
-                <div className="flex justify-start">
+              {/* Navigation Buttons */}
+              <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
+                {activeMainTab !== 'info' ? (
                   <Button
-                    onClick={prevStep}
+                    onClick={handlePrevious}
                     variant="outline"
                     className="border-nexa-border text-white hover:bg-white/10"
                   >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Previous
                   </Button>
-                </div>
+                ) : (
+                  <div />
+                )}
+                
+                {activeMainTab !== 'variations' ? (
+                  <Button
+                    onClick={handleNext}
+                    className="bg-white text-black hover:bg-gray-100"
+                  >
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
+                  <div />
+                )}
               </div>
-            )}
-
           </Card>
+          </Tabs>
         </div>
       </div>
     </DashboardLayout>

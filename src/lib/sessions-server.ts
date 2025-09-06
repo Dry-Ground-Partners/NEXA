@@ -1,0 +1,351 @@
+import { PrismaClient } from '@prisma/client'
+import { getCurrentUser } from '@/lib/auth'
+import type { StructuringSessionData, VisualsSessionData, SessionResponse, SessionSummary } from '@/lib/sessions'
+
+const prisma = new PrismaClient()
+
+/**
+ * Create a new structuring session (SERVER-SIDE ONLY)
+ */
+export async function createStructuringSession(
+  data: StructuringSessionData
+): Promise<SessionResponse | null> {
+  try {
+    const user = await getCurrentUser()
+    console.log('🔍 Debug - User object:', JSON.stringify(user, null, 2))
+    
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+    
+    if (!user.organizationMemberships || user.organizationMemberships.length === 0) {
+      console.log('❌ Debug - No organization memberships found')
+      throw new Error('No organization memberships found')
+    }
+
+    const organizationId = user.organizationMemberships[0].organization.id
+    console.log('✅ Debug - Using organization:', organizationId)
+
+    const session = await prisma.aIArchitectureSession.create({
+      data: {
+        userId: user.id,
+        organizationId: organizationId,
+        title: data.basic.title || null,
+        client: data.basic.client || null,
+        sessionType: 'structuring',
+        diagramTextsJson: data as any, // Per user request: save to diagram_texts_json
+        isTemplate: false,
+        tags: []
+      }
+    })
+
+    return {
+      id: session.id.toString(),
+      uuid: session.uuid,
+      title: session.title,
+      client: session.client,
+      sessionType: session.sessionType,
+      isTemplate: session.isTemplate,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      data: session.diagramTextsJson
+    }
+  } catch (error) {
+    console.error('Error creating structuring session:', error)
+    return null
+  }
+}
+
+/**
+ * Update an existing structuring session (SERVER-SIDE ONLY)
+ */
+export async function updateStructuringSession(
+  sessionId: string,
+  data: StructuringSessionData
+): Promise<boolean> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    // Update version number
+    const updatedData = {
+      ...data,
+      version: (data.version || 0) + 1,
+      lastSaved: new Date().toISOString()
+    }
+
+    await prisma.aIArchitectureSession.update({
+      where: {
+        uuid: sessionId,
+        userId: user.id // Ensure user can only update their own sessions
+      },
+      data: {
+        title: updatedData.basic.title || null,
+        client: updatedData.basic.client || null,
+        diagramTextsJson: updatedData as any,
+        updatedAt: new Date()
+      }
+    })
+
+    return true
+  } catch (error) {
+    console.error('Error updating structuring session:', error)
+    return false
+  }
+}
+
+/**
+ * Create a new visuals session (SERVER-SIDE ONLY)
+ */
+export async function createVisualsSession(
+  data: VisualsSessionData
+): Promise<SessionResponse | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    if (!user.organizationMemberships || user.organizationMemberships.length === 0) {
+      console.log('❌ Debug - No organization memberships found')
+      throw new Error('No organization memberships found')
+    }
+
+    const organizationId = user.organizationMemberships[0].organization.id
+    console.log('✅ Debug - Using organization:', organizationId)
+
+    const session = await prisma.aIArchitectureSession.create({
+      data: {
+        userId: user.id,
+        organizationId: organizationId,
+        title: data.basic.title || null,
+        client: data.basic.client || null,
+        sessionType: 'visuals',
+        visualAssetsJson: data as any, // Save to visual_assets_json column
+        isTemplate: false,
+        tags: []
+      }
+    })
+
+    return {
+      id: session.id.toString(),
+      uuid: session.uuid,
+      title: session.title,
+      client: session.client,
+      sessionType: session.sessionType,
+      isTemplate: session.isTemplate,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      data: session.visualAssetsJson
+    }
+  } catch (error) {
+    console.error('Error creating visuals session:', error)
+    return null
+  }
+}
+
+/**
+ * Update an existing visuals session (SERVER-SIDE ONLY)
+ */
+export async function updateVisualsSession(
+  sessionId: string,
+  data: VisualsSessionData
+): Promise<boolean> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    // Update version number
+    const updatedData = {
+      ...data,
+      version: (data.version || 0) + 1,
+      lastSaved: new Date().toISOString()
+    }
+
+    await prisma.aIArchitectureSession.update({
+      where: {
+        uuid: sessionId,
+        userId: user.id // Ensure user can only update their own sessions
+      },
+      data: {
+        title: updatedData.basic.title || null,
+        client: updatedData.basic.client || null,
+        visualAssetsJson: updatedData as any, // Save to visual_assets_json column
+        updatedAt: new Date()
+      }
+    })
+
+    return true
+  } catch (error) {
+    console.error('Error updating visuals session:', error)
+    return false
+  }
+}
+
+/**
+ * Get a structuring session by UUID (SERVER-SIDE ONLY)
+ */
+export async function getStructuringSession(
+  sessionId: string
+): Promise<SessionResponse | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    const session = await prisma.aIArchitectureSession.findFirst({
+      where: {
+        uuid: sessionId,
+        userId: user.id,
+        deletedAt: null
+      }
+    })
+
+    if (!session) {
+      return null
+    }
+
+    return {
+      id: session.id.toString(),
+      uuid: session.uuid,
+      title: session.title,
+      client: session.client,
+      sessionType: session.sessionType,
+      isTemplate: session.isTemplate,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      data: session.diagramTextsJson
+    }
+  } catch (error) {
+    console.error('Error getting structuring session:', error)
+    return null
+  }
+}
+
+/**
+ * Delete a structuring session (soft delete) (SERVER-SIDE ONLY)
+ */
+export async function deleteStructuringSession(
+  sessionId: string
+): Promise<boolean> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    await prisma.aIArchitectureSession.update({
+      where: {
+        uuid: sessionId,
+        userId: user.id
+      },
+      data: {
+        deletedAt: new Date()
+      }
+    })
+
+    return true
+  } catch (error) {
+    console.error('Error deleting structuring session:', error)
+    return false
+  }
+}
+
+/**
+ * Get user's sessions (all types) with content availability info (SERVER-SIDE ONLY)
+ */
+export async function getUserStructuringSessions(): Promise<SessionSummary[]> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return []
+    }
+
+    const sessions = await prisma.aIArchitectureSession.findMany({
+      where: {
+        userId: user.id,
+        deletedAt: null
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      },
+      select: {
+        id: true,
+        uuid: true,
+        title: true,
+        client: true,
+        sessionType: true,
+        createdAt: true,
+        updatedAt: true,
+        diagramTextsJson: true,    // For Structure tag
+        visualAssetsJson: true,    // For Visuals tag  
+        sessionObjects: true,      // For Solution tag
+        sowObjects: true,          // For Work tag
+        loeObjects: true           // For Effort tag
+      }
+    })
+
+    return sessions.map(session => {
+      const contentFlags = {
+        structure: isValidContent(session.diagramTextsJson),
+        visuals: isValidContent(session.visualAssetsJson),
+        solution: isValidContent(session.sessionObjects),
+        work: isValidContent(session.sowObjects),
+        effort: isValidContent(session.loeObjects)
+      }
+      
+      console.log(`🗄️ DB: Session "${session.title || 'Untitled'}" (${session.sessionType}) content availability:`, contentFlags)
+      
+      return {
+        id: session.id.toString(),
+        uuid: session.uuid,
+        title: session.title,
+        client: session.client,
+        sessionType: session.sessionType,
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+        // Add content availability flags
+        availableContent: contentFlags
+      }
+    })
+  } catch (error) {
+    console.error('Error getting user sessions:', error)
+    return []
+  }
+}
+
+/**
+ * Helper function to check if content is valid (not null and not empty object)
+ */
+function isValidContent(content: any): boolean {
+  if (content === null || content === undefined) {
+    return false
+  }
+  
+  // Check if it's an empty object
+  if (typeof content === 'object' && Object.keys(content).length === 0) {
+    return false
+  }
+  
+  // For arrays, check if they have content
+  if (Array.isArray(content) && content.length === 0) {
+    return false
+  }
+  
+  // For strings, check if they're not empty
+  if (typeof content === 'string' && content.trim().length === 0) {
+    return false
+  }
+  
+  return true
+}
+
+// Clean up database connections
+export async function disconnectSessionDatabase() {
+  await prisma.$disconnect()
+}

@@ -193,7 +193,8 @@ export function generateToken(user: User): string {
   const payload = {
     userId: user.id,
     email: user.email,
-    status: user.status
+    status: user.status,
+    hasOrganization: !!(user.organizationMemberships && user.organizationMemberships.length > 0)
   }
 
   const secret = process.env.JWT_SECRET
@@ -228,20 +229,30 @@ export async function getCurrentUser(): Promise<User | null> {
     const cookieStore = cookies()
     const token = cookieStore.get('auth-token')?.value
 
+    console.log('🔍 Debug - Auth token exists:', !!token)
+
     if (!token) {
+      console.log('❌ Debug - No auth token found')
       return null
     }
 
     const payload = verifyToken(token)
+    console.log('🔍 Debug - Token payload:', payload ? 'valid' : 'invalid')
+    
     if (!payload || !payload.userId) {
+      console.log('❌ Debug - Invalid token payload')
       return null
     }
 
     // Get fresh user data from database
     const user = await getUserById(payload.userId)
+    console.log('🔍 Debug - User from DB:', user ? `${user.email} (${user.id})` : 'null')
+    console.log('🔍 Debug - User status:', user?.status)
+    console.log('🔍 Debug - Organization memberships count:', user?.organizationMemberships?.length || 0)
     
     // Ensure user is still active
     if (!user || user.status !== 'active') {
+      console.log('❌ Debug - User not active or not found')
       return null
     }
 

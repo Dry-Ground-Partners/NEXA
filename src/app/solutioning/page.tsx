@@ -27,7 +27,8 @@ import {
   Upload,
   X,
   RotateCw,
-  Cog
+  Cog,
+  Aperture
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
 
@@ -119,8 +120,32 @@ export default function SolutioningPage() {
     structuring: false,
     enhancing: false,
     generating: false,
-    saving: false
+    saving: false,
+    uploading: false
   })
+
+  // Image states for color-coding
+  const getImageState = (solution: any) => {
+    if (!solution.additional.imageData) return 'empty'
+    if (loadingStates.uploading) return 'uploading' 
+    if (loadingStates.vision) return 'analyzing'
+    if ((solution.additional as any).analysisError) return 'error'
+    if (solution.variables.aiAnalysis) return 'success'
+    if (solution.additional.imageData && !solution.variables.aiAnalysis) return 'loaded'
+    return 'empty'
+  }
+
+  const getImageStateColors = (state: string) => {
+    switch (state) {
+      case 'empty': return 'bg-nexa-input border-nexa-border'
+      case 'uploading': return 'bg-blue-900/30 border-blue-500 animate-pulse'
+      case 'loaded': return 'bg-nexa-input border-nexa-border' // Normal styling when loaded but not analyzed
+      case 'analyzing': return 'bg-purple-900/30 border-purple-500 animate-pulse shimmer'
+      case 'success': return 'bg-green-900/30 border-green-500'
+      case 'error': return 'bg-red-900/30 border-red-500'
+      default: return 'bg-nexa-input border-nexa-border'
+    }
+  }
 
   // Edit states for structured solution
   const [editStates, setEditStates] = useState({
@@ -232,41 +257,42 @@ export default function SolutioningPage() {
     setActiveSubTab('additional')
   }
 
-  // Mock AI functions
-  const runVisionAnalysis = async () => {
-    if (!currentSolution.additional.imageData) {
-      alert('Please upload an image first.')
-      return
+  // Notification function
+  const showAnimatedNotification = (message: string, type: 'success' | 'error') => {
+    if (type === 'success') {
+      alert(`✅ ${message}`)
+    } else {
+      alert(`❌ ${message}`)
     }
+  }
 
+  // Auto-trigger vision analysis after image upload
+  const triggerVisionAnalysis = async (imageData: string) => {
     setLoadingStates(prev => ({ ...prev, vision: true }))
     
-    setTimeout(() => {
-      const mockAnalysis = `AI Vision Analysis Results:
+    try {
+      console.log('🔍 Auto-starting vision analysis...')
+      
+      const response = await fetch('/api/solutioning/analyze-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: imageData,
+          additionalContext: currentSolution.variables.solutionExplanation || 'No additional context provided'
+        })
+      })
 
-This diagram shows a comprehensive system architecture with the following components:
+      const result = await response.json()
 
-**Main Components Identified:**
-• User Interface Layer: Frontend application with responsive design
-• API Gateway: Central routing and authentication hub  
-• Processing Engine: Core business logic and data processing
-• Database Layer: Persistent data storage with backup systems
-• External Integrations: Third-party service connections
+      if (!result.success) {
+        throw new Error(result.error || 'Vision analysis failed')
+      }
 
-**Data Flow Analysis:**
-• User requests flow through the UI to the API Gateway
-• Authentication and authorization handled at gateway level
-• Processing engine receives validated requests and applies business rules
-• Database operations are atomic with proper transaction management
-• External services integrate through standardized API contracts
-
-**Technical Architecture Observations:**
-• Microservices architecture with clear separation of concerns
-• Event-driven communication patterns between services
-• Redundancy and failover mechanisms built into critical paths
-• Scalable design supporting horizontal scaling
-• Security implemented at multiple layers`
-
+      console.log('✅ Auto vision analysis completed successfully')
+      
+      // Update the session data with the analysis
       setSessionData(prev => ({
         ...prev,
         solutions: {
@@ -275,13 +301,40 @@ This diagram shows a comprehensive system architecture with the following compon
             ...prev.solutions[prev.currentSolution],
             variables: {
               ...prev.solutions[prev.currentSolution].variables,
-              aiAnalysis: mockAnalysis
+              aiAnalysis: result.analysis
             }
           }
         }
       }))
+      
+    } catch (error) {
+      console.error('❌ Auto vision analysis failed:', error)
+      // Set error state for visual feedback
+      setSessionData(prev => ({
+        ...prev,
+        solutions: {
+          ...prev.solutions,
+          [prev.currentSolution]: {
+            ...prev.solutions[prev.currentSolution],
+            additional: {
+              ...prev.solutions[prev.currentSolution].additional,
+              analysisError: true
+            }
+          }
+        }
+      }))
+    } finally {
       setLoadingStates(prev => ({ ...prev, vision: false }))
-    }, 3000)
+    }
+  }
+
+  // Manual re-analysis (for retry button)
+  const runVisionAnalysis = async () => {
+    if (!currentSolution.additional.imageData) {
+      alert('Please upload an image first.')
+      return
+    }
+    await triggerVisionAnalysis(currentSolution.additional.imageData)
   }
 
   const structureSolution = async () => {
@@ -335,10 +388,24 @@ This diagram shows a comprehensive system architecture with the following compon
 
     setLoadingStates(prev => ({ ...prev, enhancing: true }))
     
-    setTimeout(() => {
-      const enhanced = currentSolution.variables.solutionExplanation + 
-        '\n\nEnhanced Analysis: This solution leverages modern architectural patterns to ensure scalability, reliability, and maintainability. The implementation follows industry best practices for security, performance optimization, and user experience design. Key benefits include improved system resilience, reduced operational overhead, and enhanced developer productivity through clear separation of concerns and well-defined interfaces.'
+    try {
+      const response = await fetch('/api/solutioning/enhance-text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: currentSolution.variables.solutionExplanation
+        })
+      })
 
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Text enhancement failed')
+      }
+      
+      // Update the session data with the enhanced text
       setSessionData(prev => ({
         ...prev,
         solutions: {
@@ -347,13 +414,20 @@ This diagram shows a comprehensive system architecture with the following compon
             ...prev.solutions[prev.currentSolution],
             variables: {
               ...prev.solutions[prev.currentSolution].variables,
-              solutionExplanation: enhanced
+              solutionExplanation: result.enhancedText
             }
           }
         }
       }))
+      
+      showAnimatedNotification('Text enhanced successfully!', 'success')
+      
+    } catch (error) {
+      console.error('❌ Text enhancement failed:', error)
+      showAnimatedNotification('Text enhancement failed. Please try again.', 'error')
+    } finally {
       setLoadingStates(prev => ({ ...prev, enhancing: false }))
-    }, 2000)
+    }
   }
 
   const generateStack = async () => {
@@ -445,13 +519,53 @@ Development Tools:
     }
   }
 
-  // File handling
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // File handling with ImgBB upload
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
+    if (!file) return
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload a valid image file (JPEG, PNG, GIF, or WebP)')
+      return
+    }
+
+    // Validate file size (max 32MB)
+    const maxSize = 32 * 1024 * 1024
+    if (file.size > maxSize) {
+      alert('File too large. Maximum size is 32MB.')
+      return
+    }
+
+    setLoadingStates(prev => ({ ...prev, uploading: true }))
+
+    try {
+      console.log('📤 Uploading image to ImgBB...')
+      
+      // Upload to ImgBB
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const response = await fetch('/api/solutioning/upload-image', {
+        method: 'POST',
+        body: formData
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Image upload failed')
+      }
+
+      console.log('✅ Image uploaded successfully:', result.imageUrl)
+
+      // Also create base64 for immediate preview and vision analysis
       const reader = new FileReader()
-      reader.onload = (e) => {
-        const imageData = e.target?.result as string
+      reader.onload = async (e) => {
+        const base64Data = e.target?.result as string
+        
+        // Update session data with both ImgBB URL and base64 data
         setSessionData(prev => ({
           ...prev,
           solutions: {
@@ -460,13 +574,26 @@ Development Tools:
               ...prev.solutions[prev.currentSolution],
               additional: {
                 ...prev.solutions[prev.currentSolution].additional,
-                imageData
+                imageData: base64Data, // For vision analysis
+                imageUrl: result.imageUrl, // ImgBB URL for display/sharing
+                imageMetadata: result.imageData
               }
             }
           }
         }))
+
+        // Auto-trigger vision analysis after upload
+        setTimeout(() => {
+          triggerVisionAnalysis(base64Data)
+        }, 500) // Small delay to ensure state updates
       }
       reader.readAsDataURL(file)
+      
+    } catch (error) {
+      console.error('❌ Image upload failed:', error)
+      showAnimatedNotification('Image upload failed. Please try again.', 'error')
+    } finally {
+      setLoadingStates(prev => ({ ...prev, uploading: false }))
     }
   }
 
@@ -663,25 +790,35 @@ Development Tools:
                 <div className="space-y-4">
                   <Label variant="nexa">Solution Image</Label>
                   <div className="flex gap-3 items-center">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="bg-nexa-input border-nexa-border text-white flex-1"
-                    />
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={loadingStates.uploading || loadingStates.vision}
+                        className="hidden"
+                        id="solution-image-upload"
+                      />
+                      <Button
+                        onClick={() => document.getElementById('solution-image-upload')?.click()}
+                        disabled={loadingStates.uploading || loadingStates.vision}
+                        variant="outline"
+                        className={`w-full justify-start border transition-all duration-300 ${getImageStateColors(getImageState(currentSolution))} hover:bg-white/10`}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        {currentSolution.additional.imageData ? 'Change Image' : 'Choose File'}
+                      </Button>
+                    </div>
                     
                     <Button
-                      onClick={runVisionAnalysis}
-                      disabled={!currentSolution.additional.imageData || loadingStates.vision}
+                      onClick={() => setModals(prev => ({ ...prev, imagePreview: true }))}
+                      disabled={!currentSolution.additional.imageData}
                       variant="outline"
                       size="sm"
                       className="h-10 w-10 p-0 border-nexa-border text-white hover:bg-white/10"
+                      title="View Image"
                     >
-                      {loadingStates.vision ? (
-                        <RotateCw className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      <Eye className="h-4 w-4" />
                     </Button>
                     
                     <Button
@@ -690,9 +827,22 @@ Development Tools:
                       variant="outline"
                       size="sm"
                       className="h-10 w-10 p-0 border-nexa-border text-white hover:bg-white/10"
+                      title="View AI Analysis"
                     >
                       <Cpu className="h-4 w-4" />
                     </Button>
+                    
+                    {(currentSolution.additional as any).analysisError && (
+                      <Button
+                        onClick={runVisionAnalysis}
+                        variant="outline"
+                        size="sm"
+                        className="h-10 border-red-500 text-red-400 hover:bg-red-900/20"
+                        title="Retry Analysis"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    )}
                     
                     {currentSolution.variables.aiAnalysis && (
                       <Button
@@ -708,6 +858,7 @@ Development Tools:
                   </div>
                 </div>
 
+                <br/>
                 {/* Solution Explanation Section */}
                 <div className="space-y-4">
                   <Label variant="nexa">Solution Explanation</Label>
@@ -778,18 +929,18 @@ Development Tools:
                               Next
                               <ArrowRight className="h-4 w-4 ml-2" />
                             </Button>
-                            <Button
+                            <button
                               onClick={structureSolution}
                               disabled={loadingStates.structuring}
-                              className="bg-blue-600 text-white hover:bg-blue-700"
+                              className="border border-nexa-border text-white bg-transparent h-10 px-4 py-2 text-sm font-medium rounded-lg border-draw-button structure-solution-button flex items-center"
                             >
                               {loadingStates.structuring ? (
                                 <RotateCw className="h-4 w-4 mr-2 animate-spin" />
                               ) : (
-                                <Zap className="h-4 w-4 mr-2" />
+                                <Layers className="h-4 w-4 mr-2" />
                               )}
                               Structure Solution
-                            </Button>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -890,7 +1041,7 @@ Development Tools:
                   {/* Solution Title */}
                   <div>
                     <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('title')}>
-                      Solution Title (click to edit)
+                      Solution Title
                     </Label>
                     {editStates.title ? (
                       <Input
@@ -913,7 +1064,7 @@ Development Tools:
                   {/* Solution Steps */}
                   <div>
                     <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('steps')}>
-                      Solution Steps (click to edit)
+                      Solution Steps
                     </Label>
                     {editStates.steps ? (
                       <Textarea
@@ -937,23 +1088,16 @@ Development Tools:
                   {/* AI Enhancement Button */}
                   <Button
                     onClick={() => alert('AI Enhancement would improve all content')}
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 p-4 text-lg font-medium"
+                    className="w-full border border-nexa-border text-gray-800 bg-gray-100 hover:bg-gray-200 p-6 text-lg font-medium rounded-xl border-draw-button generate-solution-button"
                   >
-                    <div className="flex items-center justify-center gap-3">
-                      <Zap className="h-6 w-6" />
-                      <span>Enhance with AI</span>
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
-                      </div>
-                    </div>
+                    <Aperture className="h-6 w-6 mr-3" />
+                    <span>Enhance</span>
                   </Button>
 
                   {/* Technical Approach */}
                   <div>
                     <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('approach')}>
-                      Technical Approach (click to edit)
+                      Technical Approach
                     </Label>
                     {editStates.approach ? (
                       <Textarea
@@ -979,7 +1123,7 @@ Development Tools:
                     <Label variant="nexa">
                       Difficulty: {currentSolution.structure.difficulty}%
                     </Label>
-                    <div className="relative">
+                    <div className="difficulty-slider-container">
                       <input
                         type="range"
                         min="0"
@@ -998,27 +1142,26 @@ Development Tools:
                             }
                           }
                         }))}
-                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                        className="difficulty-slider"
                       />
+                      <div className="difficulty-track"></div>
                       <div 
-                        className="absolute top-0 h-2 bg-green-500 rounded-lg pointer-events-none"
+                        className="difficulty-fill"
                         style={{ width: `${currentSolution.structure.difficulty}%` }}
-                      />
-                      {currentSolution.structure.difficulty >= 70 && (
-                        <div 
-                          className="absolute top-0 h-2 bg-red-500 rounded-lg pointer-events-none"
-                          style={{ 
-                            left: '70%', 
-                            width: `${Math.min(currentSolution.structure.difficulty - 70, 30)}%` 
-                          }}
-                        />
-                      )}
+                      ></div>
+                      <div 
+                        className="difficulty-red-overlay"
+                        style={{ 
+                          width: `${currentSolution.structure.difficulty}%`,
+                          opacity: currentSolution.structure.difficulty / 100
+                        }}
+                      ></div>
                     </div>
                   </div>
 
                   {/* Layout Selection */}
                   <div>
-                    <Label variant="nexa">PDF Layout Selection</Label>
+                    <Label variant="nexa">Layout</Label>
                     <div className="flex gap-3 mt-3">
                       {[1, 2, 3, 4, 5].map(layoutNum => (
                         <Button
@@ -1102,7 +1245,7 @@ Development Tools:
       
       {/* Image Preview Modal */}
       {modals.imagePreview && currentSolution.additional.imageData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-black border border-nexa-border rounded-lg w-full max-w-4xl mx-4 max-h-[90vh] overflow-auto">
             <div className="flex items-center justify-between p-6 border-b border-nexa-border">
               <h3 className="text-white text-lg font-semibold">Solution Image Preview</h3>
@@ -1128,7 +1271,7 @@ Development Tools:
 
       {/* AI Analysis Modal */}
       {modals.aiAnalysis && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-black border border-nexa-border rounded-lg w-full max-w-3xl mx-4 max-h-[90vh] overflow-auto">
             <div className="flex items-center justify-between p-6 border-b border-nexa-border">
               <h3 className="text-white text-lg font-semibold">AI Analysis</h3>
@@ -1167,7 +1310,7 @@ Development Tools:
                     }))
                     setModals(prev => ({ ...prev, aiAnalysis: false }))
                   }}
-                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  className="bg-white text-black hover:bg-gray-100"
                 >
                   Use in Explanation
                 </Button>
@@ -1179,7 +1322,7 @@ Development Tools:
 
       {/* Solution Explanation Modal */}
       {modals.explanation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-black border border-nexa-border rounded-lg w-full max-w-3xl mx-4">
             <div className="flex items-center justify-between p-6 border-b border-nexa-border">
               <h3 className="text-white text-lg font-semibold">Solution Explanation</h3>
@@ -1228,7 +1371,7 @@ Development Tools:
 
       {/* Image Actions Modal */}
       {modals.imageActions && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-black border border-nexa-border rounded-lg w-full max-w-md mx-4">
             <div className="flex items-center justify-between p-6 border-b border-nexa-border">
               <h3 className="text-white text-lg font-semibold">Image Actions</h3>
@@ -1267,10 +1410,20 @@ Development Tools:
                 />
                 <Button
                   onClick={() => document.getElementById('new-image-upload')?.click()}
-                  className="w-full bg-green-600 text-white hover:bg-green-700"
+                  disabled={loadingStates.uploading}
+                  className="w-full bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                 >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload New Image
+                  {loadingStates.uploading ? (
+                    <>
+                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload New Image
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -1280,7 +1433,7 @@ Development Tools:
 
       {/* Stack Modal */}
       {modals.stackModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-black border border-nexa-border rounded-lg w-full max-w-3xl mx-4 max-h-[90vh] overflow-auto">
             <div className="flex items-center justify-between p-6 border-b border-nexa-border">
               <div className="flex items-center gap-2">

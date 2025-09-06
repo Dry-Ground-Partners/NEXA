@@ -39,8 +39,10 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (data.success) {
-        // Redirect to dashboard
-        window.location.replace('/dashboard')
+        // Redirect based on server response (dashboard or onboarding)
+        const redirectTo = data.redirectTo || '/dashboard'
+        console.log('🔄 Login successful, redirecting to:', redirectTo)
+        window.location.replace(redirectTo)
       } else {
         setError(data.message || 'Login failed')
       }
@@ -67,8 +69,9 @@ export default function LoginPage() {
           <img
             src="/images/nexaicon.png?v=1"
             onError={(e) => {
-              console.log('Image failed to load:', e.target.src)
-              e.target.src = '/images/nexanonameicon.png?v=1'
+              const target = e.target as HTMLImageElement
+              console.log('Image failed to load:', target.src)
+              target.src = '/images/nexanonameicon.png?v=1'
             }}
             alt="NEXA"
             className="h-[252px] w-auto mx-auto object-contain"

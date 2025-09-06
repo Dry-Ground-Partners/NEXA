@@ -1,0 +1,184 @@
+import * as hub from 'langchain/hub/node'
+import { OpenAI } from 'openai'
+
+// Interfaces for vision analysis
+export interface VisionAnalysisRequest {
+  imageUrl?: string
+  imageData?: string // base64 data URL
+  additionalContext?: string
+}
+
+export interface VisionAnalysisResponse {
+  success: boolean
+  analysis?: string
+  error?: string
+}
+
+// Interfaces for text enhancement
+export interface TextEnhancementRequest {
+  text: string
+}
+
+export interface TextEnhancementResponse {
+  success: boolean
+  enhancedText?: string
+  error?: string
+}
+
+/**
+ * Analyze an image using LangSmith nexa-solutioning-vision prompt with OpenAI Vision API
+ */
+export async function analyzeImageWithVision(request: VisionAnalysisRequest): Promise<VisionAnalysisResponse> {
+  try {
+    console.log('🔍 Starting vision analysis with LangSmith prompt...')
+    
+    // Pull the prompt from LangSmith
+    console.log('📥 Pulling nexa-solutioning-vision prompt from LangSmith...')
+    const promptTemplate = await hub.pull('nexa-solutioning-vision', {
+      includeModel: true
+    })
+    console.log('✅ Successfully pulled vision prompt from LangSmith')
+    console.log('🔍 Prompt template:', promptTemplate)
+
+    // Initialize OpenAI client directly
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    })
+
+    // Determine image URL
+    let imageUrl: string
+    if (request.imageUrl) {
+      console.log('📸 Using provided image URL for analysis')
+      imageUrl = request.imageUrl
+    } else if (request.imageData) {
+      console.log('📸 Using provided image data for analysis')
+      imageUrl = request.imageData
+    } else {
+      throw new Error('No image URL or data provided')
+    }
+
+    // Extract the prompt text from the LangSmith template
+    let promptText: string
+    if (typeof promptTemplate === 'string') {
+      promptText = promptTemplate
+    } else if (promptTemplate && typeof promptTemplate === 'object') {
+      // Handle different prompt template formats
+      if ('template' in promptTemplate) {
+        promptText = promptTemplate.template as string
+      } else if ('messages' in promptTemplate && Array.isArray(promptTemplate.messages)) {
+        // Extract from messages array
+        const humanMessage = promptTemplate.messages.find((msg: any) => 
+          msg.role === 'human' || msg.role === 'user' || msg._getType?.() === 'human'
+        )
+        promptText = humanMessage?.content || humanMessage?.template || 'Analyze this diagram and provide detailed insights.'
+      } else if ('prompt' in promptTemplate) {
+        promptText = promptTemplate.prompt as string
+      } else {
+        console.log('🔍 Prompt template keys:', Object.keys(promptTemplate))
+        promptText = 'Analyze this solution diagram and provide detailed insights about its architecture, components, and technical approach.'
+      }
+    } else {
+      promptText = 'Analyze this solution diagram and provide detailed insights about its architecture, components, and technical approach.'
+    }
+
+    // Replace variables in prompt if needed
+    const finalPrompt = promptText
+      .replace('{diagram}', 'the provided diagram')
+      .replace('{additional_context}', request.additionalContext || 'No additional context provided')
+
+    console.log('🎯 Final prompt to be used:', finalPrompt.substring(0, 200) + '...')
+    console.log('📸 Image URL length:', imageUrl.length, 'characters')
+
+    // Make OpenAI Vision API call
+    console.log('🤖 Executing OpenAI Vision analysis...')
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: finalPrompt
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageUrl,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 1500,
+      temperature: 0.7
+    })
+
+    const analysis = response.choices[0]?.message?.content
+
+    if (!analysis || analysis.trim().length === 0) {
+      throw new Error('Empty analysis result from OpenAI Vision')
+    }
+
+    console.log('✅ Vision analysis completed successfully')
+    console.log('📊 Analysis length:', analysis.length, 'characters')
+
+    return {
+      success: true,
+      analysis: analysis.trim()
+    }
+
+  } catch (error) {
+    console.error('❌ Vision analysis failed:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
+  }
+}
+
+/**
+ * Enhance text using LangSmith nexa-solutioning-enhance prompt
+ */
+export async function enhanceTextWithLangSmith(request: TextEnhancementRequest): Promise<TextEnhancementResponse> {
+  try {
+    // Pull the prompt from LangSmith hub
+    const promptTemplate = await hub.pull('nexa-solutioning-enhance', {
+      includeModel: true
+    })
+
+    // Invoke the prompt with the explanation
+    const result = await promptTemplate.invoke({
+      explanation: request.text
+    })
+
+    // Extract the text content from the result
+    let enhancedText: string
+    if (typeof result === 'string') {
+      enhancedText = result
+    } else if (result && typeof result === 'object' && 'content' in result) {
+      enhancedText = (result as any).content
+    } else if (result && typeof result === 'object' && 'text' in result) {
+      enhancedText = (result as any).text
+    } else {
+      throw new Error('Unexpected response format from LangSmith')
+    }
+
+    if (!enhancedText) {
+      throw new Error('Empty response from LangSmith')
+    }
+
+    return {
+      success: true,
+      enhancedText: enhancedText.trim()
+    }
+
+  } catch (error) {
+    console.error('❌ Error in text enhancement:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
+  }
+}
