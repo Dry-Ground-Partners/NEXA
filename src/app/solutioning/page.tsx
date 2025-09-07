@@ -121,7 +121,8 @@ export default function SolutioningPage() {
     enhancing: false,
     generating: false,
     saving: false,
-    uploading: false
+    uploading: false,
+    analysisInProgress: false
   })
 
   // Image states for color-coding
@@ -175,6 +176,19 @@ export default function SolutioningPage() {
 
     fetchUser()
   }, [])
+
+  // Add paste event listener for image upload
+  useEffect(() => {
+    const handleGlobalPaste = (event: ClipboardEvent) => {
+      handlePaste(event)
+    }
+
+    document.addEventListener('paste', handleGlobalPaste)
+    
+    return () => {
+      document.removeEventListener('paste', handleGlobalPaste)
+    }
+  }, [modals.imageActions])
 
   // Get current solution
   const currentSolution = sessionData.solutions[sessionData.currentSolution]
@@ -268,7 +282,7 @@ export default function SolutioningPage() {
 
   // Auto-trigger vision analysis after image upload
   const triggerVisionAnalysis = async (imageData: string) => {
-    setLoadingStates(prev => ({ ...prev, vision: true }))
+    setLoadingStates(prev => ({ ...prev, analysisInProgress: true }))
     
     try {
       console.log('🔍 Auto-starting vision analysis...')
@@ -324,7 +338,7 @@ export default function SolutioningPage() {
         }
       }))
     } finally {
-      setLoadingStates(prev => ({ ...prev, vision: false }))
+      setLoadingStates(prev => ({ ...prev, analysisInProgress: false }))
     }
   }
 
@@ -442,35 +456,40 @@ export default function SolutioningPage() {
   }
 
   const generateStack = async () => {
+    const analysis = currentSolution.variables.aiAnalysis
+    const steps = currentSolution.structure.steps
+    
+    if (!analysis && !steps) {
+      alert('Please provide AI analysis or structure the solution first.')
+      return
+    }
+
     setLoadingStates(prev => ({ ...prev, generating: true }))
     
-    setTimeout(() => {
-      const mockStack = `Technical Stack Analysis:
+    try {
+      // Concatenate AI analysis and solution steps as context
+      const context = [
+        analysis && `AI ANALYSIS: ${analysis}`,
+        steps && `SOLUTION STEPS: ${steps}`
+      ].filter(Boolean).join('\n\n')
 
-Frontend Layer:
-• React 18 with TypeScript for type-safe development
-• Next.js for server-side rendering and routing
-• TailwindCSS for responsive styling
-• State management with Zustand or Redux Toolkit
+      const response = await fetch('/api/solutioning/analyze-pernode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          context: context
+        })
+      })
 
-Backend Layer:
-• Node.js with Express.js framework
-• TypeScript for enhanced development experience
-• PostgreSQL for primary data storage
-• Redis for caching and session management
+      const result = await response.json()
 
-Infrastructure:
-• Docker for containerization
-• Kubernetes for orchestration
-• AWS/Azure for cloud hosting
-• Nginx for load balancing and reverse proxy
+      if (!result.success) {
+        throw new Error(result.error || 'Per-node stack analysis failed')
+      }
 
-Development Tools:
-• Git for version control
-• Jest/Vitest for testing
-• ESLint/Prettier for code quality
-• CI/CD with GitHub Actions or Jenkins`
-
+      // Update the session data with the stack analysis
       setSessionData(prev => ({
         ...prev,
         solutions: {
@@ -479,13 +498,20 @@ Development Tools:
             ...prev.solutions[prev.currentSolution],
             structure: {
               ...prev.solutions[prev.currentSolution].structure,
-              stack: mockStack
+              stack: result.analysis
             }
           }
         }
       }))
+
+      showAnimatedNotification('Per-node stack analysis generated successfully!', 'success')
+      
+    } catch (error) {
+      console.error('❌ Per-node stack analysis failed:', error)
+      showAnimatedNotification('Per-node stack analysis failed. Please try again.', 'error')
+    } finally {
       setLoadingStates(prev => ({ ...prev, generating: false }))
-    }, 2000)
+    }
   }
 
   const handleSaveSolution = async () => {
@@ -535,6 +561,10 @@ Development Tools:
     const file = event.target.files?.[0]
     if (!file) return
 
+    await processImageFile(file)
+  }
+
+  const processImageFile = async (file: File) => {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
     if (!allowedTypes.includes(file.type)) {
@@ -605,6 +635,27 @@ Development Tools:
       showAnimatedNotification('Image upload failed. Please try again.', 'error')
     } finally {
       setLoadingStates(prev => ({ ...prev, uploading: false }))
+    }
+  }
+
+  const handlePaste = async (event: ClipboardEvent) => {
+    if (!modals.imageActions) return
+
+    const items = event.clipboardData?.items
+    if (!items) return
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item.type.indexOf('image') !== -1) {
+        event.preventDefault()
+        const file = item.getAsFile()
+        if (file) {
+          console.log('📋 Pasting image from clipboard:', file.type, file.size)
+          await processImageFile(file)
+          setModals(prev => ({ ...prev, imageActions: false }))
+        }
+        break
+      }
     }
   }
 
@@ -1383,9 +1434,12 @@ Development Tools:
       {/* Image Actions Modal */}
       {modals.imageActions && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-black border border-nexa-border rounded-lg w-full max-w-md mx-4">
+          <div className="bg-black border border-nexa-border rounded-lg w-full max-w-lg mx-4">
             <div className="flex items-center justify-between p-6 border-b border-nexa-border">
-              <h3 className="text-white text-lg font-semibold">Image Actions</h3>
+              <div className="flex items-center gap-2">
+                <Camera className="h-5 w-5 text-white" />
+                <h3 className="text-white text-lg font-semibold">Edit Image - Diagram</h3>
+              </div>
               <Button
                 onClick={() => setModals(prev => ({ ...prev, imageActions: false }))}
                 variant="outline"
@@ -1395,48 +1449,90 @@ Development Tools:
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-6 space-y-4">
-              <Button
-                onClick={() => {
-                  runVisionAnalysis()
-                  setModals(prev => ({ ...prev, imageActions: false }))
+            <div className="p-6">
+              {/* Upload Area */}
+              <div 
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  loadingStates.uploading 
+                    ? 'border-nexa-border bg-white/5' 
+                    : 'border-nexa-border hover:border-white/30 hover:bg-white/5'
+                }`}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
                 }}
-                className="w-full bg-blue-600 text-white hover:bg-blue-700"
-                disabled={!currentSolution.additional.imageData}
+                onDragEnter={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
+                onDrop={async (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  const files = e.dataTransfer?.files
+                  if (files && files.length > 0) {
+                    const file = files[0]
+                    if (file.type.startsWith('image/')) {
+                      await processImageFile(file)
+                      setModals(prev => ({ ...prev, imageActions: false }))
+                    }
+                  }
+                }}
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Reanalyze Image
-              </Button>
-              
-              <div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    handleImageUpload(e)
-                    setModals(prev => ({ ...prev, imageActions: false }))
-                  }}
-                  className="hidden"
-                  id="new-image-upload"
-                />
-                <Button
-                  onClick={() => document.getElementById('new-image-upload')?.click()}
-                  disabled={loadingStates.uploading}
-                  className="w-full bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                  {loadingStates.uploading ? (
-                    <>
-                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
+                {loadingStates.uploading ? (
+                  <>
+                    <RotateCw className="h-12 w-12 text-nexa-muted mx-auto mb-4 animate-spin" />
+                    <div className="text-white font-medium mb-2">Uploading Image...</div>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-12 w-12 text-nexa-muted mx-auto mb-4" />
+                    <div className="text-white font-medium mb-2">Upload Solution Diagram</div>
+                    <div className="text-nexa-muted text-sm mb-4">
+                      Drag & drop, upload from device, or Ctrl+V to paste from clipboard
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        handleImageUpload(e)
+                        setModals(prev => ({ ...prev, imageActions: false }))
+                      }}
+                      className="hidden"
+                      id="new-image-upload"
+                    />
+                    <Button
+                      variant="outline"
+                      className="border-nexa-border text-white hover:bg-white/10 mb-4"
+                      onClick={() => document.getElementById('new-image-upload')?.click()}
+                      disabled={loadingStates.uploading}
+                    >
                       <Upload className="h-4 w-4 mr-2" />
-                      Upload New Image
-                    </>
-                  )}
-                </Button>
+                      Upload from Device
+                    </Button>
+                  </>
+                )}
               </div>
+              
+              {/* Action Buttons */}
+              {currentSolution.additional.imageData && (
+                <div className="mt-4 space-y-2">
+                  <Button
+                    onClick={() => {
+                      runVisionAnalysis()
+                      setModals(prev => ({ ...prev, imageActions: false }))
+                    }}
+                    className="w-full border border-nexa-border text-white bg-transparent hover:bg-white/10"
+                    disabled={loadingStates.analysisInProgress}
+                  >
+                    {loadingStates.analysisInProgress ? (
+                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Trigger Analysis Again
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1471,12 +1567,9 @@ Development Tools:
                 <div className="text-center py-8">
                   <div className="text-nexa-muted mb-4">No stack analysis available</div>
                   <Button
-                    onClick={() => {
-                      generateStack()
-                      setModals(prev => ({ ...prev, stackModal: false }))
-                    }}
+                    onClick={generateStack}
                     disabled={loadingStates.generating}
-                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    className="border border-nexa-border text-white bg-transparent hover:bg-white/10"
                   >
                     {loadingStates.generating ? (
                       <RotateCw className="h-4 w-4 mr-2 animate-spin" />

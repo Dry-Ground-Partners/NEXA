@@ -42,6 +42,17 @@ export interface SolutionStructureResponse {
   error?: string
 }
 
+// Interfaces for per-node stack analysis
+export interface PerNodeStackRequest {
+  context: string
+}
+
+export interface PerNodeStackResponse {
+  success: boolean
+  analysis?: string
+  error?: string
+}
+
 /**
  * Analyze an image using LangSmith nexa-solutioning-vision prompt with OpenAI Vision API
  */
@@ -256,6 +267,60 @@ export async function structureSolutionWithLangSmith(request: SolutionStructureR
 
   } catch (error) {
     console.error('❌ Error in solution structuring:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
+  }
+}
+
+/**
+ * Analyze per-node stack using LangSmith nexa-solutioning-pernode prompt
+ */
+export async function analyzePerNodeStackWithLangSmith(request: PerNodeStackRequest): Promise<PerNodeStackResponse> {
+  try {
+    // Pull the prompt from LangSmith hub
+    const promptTemplate = await hub.pull('nexa-solutioning-pernode', {
+      includeModel: true
+    })
+
+    // Invoke the prompt with the context (AI analysis + solution steps)
+    const result = await promptTemplate.invoke({
+      context: request.context
+    })
+
+    // Extract the text content from the result
+    let analysis: string
+    if (typeof result === 'string') {
+      analysis = result
+    } else if (result && typeof result === 'object' && 'content' in result) {
+      const content = (result as any).content
+      // Handle AIMessage with content array structure
+      if (Array.isArray(content) && content.length > 0 && content[0].text) {
+        analysis = content[0].text
+      } else if (typeof content === 'string') {
+        analysis = content
+      } else {
+        analysis = String(content)
+      }
+    } else if (result && typeof result === 'object' && 'text' in result) {
+      analysis = (result as any).text
+    } else {
+      throw new Error('Unexpected response format from LangSmith')
+    }
+
+    // Ensure analysis is a string before calling trim
+    if (typeof analysis !== 'string') {
+      analysis = String(analysis)
+    }
+
+    return {
+      success: true,
+      analysis: analysis.trim()
+    }
+
+  } catch (error) {
+    console.error('❌ Error in per-node stack analysis:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred'
