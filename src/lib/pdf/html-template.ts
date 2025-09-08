@@ -10,9 +10,124 @@ export interface TemplateData {
     steps: string
     approach: string
     difficulty: number
+    layout: number
     imageData: string | null
   }>
   totalSolutions?: number
+}
+
+function generateSolutionPageHTML(solution: any, index: number, data: TemplateData, formattedDate: string): string {
+  const layout = solution.layout || 1;
+  const imageContent = solution.imageData ? 
+    `<img src="${solution.imageData}" class="layout-1-image" alt="Solution Image">` : 
+    '<div style="text-align: center; color: #777;">No image available</div>';
+  
+  let layoutHTML = '';
+  
+  if (layout === 2) {
+    layoutHTML = `
+    <!-- Layout 2: White borders with divisor line -->
+    <div class="layout-1-container">
+        <div class="solution-title">${solution.title || 'Untitled Solution'}</div>
+        
+        <div class="layout-2-boxes-container-image">
+            ${imageContent}
+        </div>
+        
+        <div class="layout-1-boxes-container">
+            <div class="layout-2-box">${solution.steps || 'No steps defined'}</div>
+            <div class="layout-1-spacer"></div>
+            <div class="layout-2-box">${solution.approach || 'No approach defined'}</div>
+        </div>
+    </div>`;
+  } else if (layout === 3) {
+    layoutHTML = `
+    <!-- Layout 3: Boxes first, then image -->
+    <div class="layout-1-container">
+        <div class="solution-title">${solution.title || 'Untitled Solution'}</div>
+        
+        <div class="layout-3-boxes-container">
+            <div class="layout-1-box">${solution.steps || 'No steps defined'}</div>
+            <div class="layout-1-spacer"></div>
+            <div class="layout-1-box">${solution.approach || 'No approach defined'}</div>
+        </div>
+        
+        <div class="layout-1-boxes-container-image">
+            ${imageContent}
+        </div>
+    </div>`;
+  } else if (layout === 4) {
+    layoutHTML = `
+    <!-- Layout 4: Image first, then full-width stacked boxes -->
+    <div class="layout-4-container">
+        <div class="solution-title">${solution.title || 'Untitled Solution'}</div>
+        
+        <div class="layout-2-boxes-container-image">
+            ${imageContent}
+        </div>
+        
+        <div class="layout-4-full-width-box">${solution.steps || 'No steps defined'}</div>
+        
+        <div class="layout-4-full-width-box">${solution.approach || 'No approach defined'}</div>
+    </div>`;
+  } else if (layout === 5) {
+    layoutHTML = `
+    <!-- Layout 5: Layout 1 structure with white borders and sharp boxes -->
+    <div class="layout-1-container">
+        <div class="solution-title">${solution.title || 'Untitled Solution'}</div>
+        
+        <div class="layout-2-boxes-container-image">
+            ${imageContent}
+        </div>
+        <br>
+        <div class="layout-1-boxes-container">
+            <div class="layout-5-box">${solution.steps || 'No steps defined'}</div>
+            <div class="layout-1-spacer"></div>
+            <div class="layout-5-box">${solution.approach || 'No approach defined'}</div>
+        </div>
+    </div>`;
+  } else {
+    layoutHTML = `
+    <!-- Layout 1: Default black borders -->
+    <div class="layout-1-container">
+        <div class="solution-title">${solution.title || 'Untitled Solution'}</div>
+        
+        <div class="layout-1-boxes-container-image">
+            ${imageContent}
+        </div>
+        <br>
+        <div class="layout-1-boxes-container">
+            <div class="layout-1-box">${solution.steps || 'No steps defined'}</div>
+            <div class="layout-1-spacer"></div>
+            <div class="layout-1-box">${solution.approach || 'No approach defined'}</div>
+        </div>
+    </div>`;
+  }
+  
+  return `
+<div class="layout-page">
+    <!-- DG Header -->
+    <div class="page-header">
+        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjYwIiB2aWV3Qm94PSIwIDAgMTAwIDYwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZmZmZmZmIi8+Cjx0ZXh0IHg9IjUwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzAwMDAwMCI+REcgTE9HTzwvdGV4dD4KPHN2Zz4K" alt="DG Logo" class="page-header-image">
+    </div>
+    
+    <div class="solution-divider">
+        <div class="solution-divider-line"></div>
+        <div class="solution-divider-text">
+            Solution ${index + 1} of ${data.totalSolutions || (data.solutions?.length || 0)} developed by the engineer ${data.engineer} with the estimated difficulty of ${solution.difficulty}%.
+        </div>
+    </div>
+    
+    ${layoutHTML}
+    
+    <!-- Solution page footer - EXACT COPY FROM OLD SYSTEM -->
+    <div class="solution-footer">
+        <div class="solution-footer-line"></div>
+        <div class="solution-footer-text">
+            Dry Ground AI — ${data.title} — Protocol SH123 Glyph — LS${layout}DL${solution.difficulty} at ${formattedDate}
+        </div>
+    </div>
+</div>`;
 }
 
 export function generateCoverHTML(data: TemplateData): string {
@@ -359,6 +474,85 @@ export function generateCoverHTML(data: TemplateData): string {
         width: 1%;
     }
     
+    /* Layout 2 Styles - White borders variant */
+    .layout-2-boxes-container-image {
+        border: 1px solid #fff;
+        border-radius: 30px;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 20px;
+        height: 300px;
+        box-sizing: border-box;
+    }
+    
+    .layout-2-box {
+        width: 48%;
+        border: 1px solid #fff;
+        border-radius: 30px;
+        padding: 20px;
+        box-sizing: border-box;
+        overflow: auto;
+        white-space: pre-line;
+        font-size: 12px;
+        line-height: 1.5;
+        text-align: justify;
+    }
+    
+    .layout-divisor-line {
+        width: 100%;
+        height: 3px;
+        background-color: #000;
+        margin: 20px 0;
+    }
+    
+    /* Layout 3 Styles - Boxes first, then image */
+    .layout-3-boxes-container {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+        align-items: flex-start;
+    }
+    
+    /* Layout 4 Styles - Full width stacked boxes */
+    .layout-4-container {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(962px - 60px);
+        max-width: 100%;
+        margin: 0 auto;
+    }
+    
+    .layout-4-full-width-box {
+        width: 714px;
+        border: 1px solid #000;
+        border-radius: 30px;
+        padding: 20px;
+        box-sizing: border-box;
+        margin: 10px auto;
+        text-align: justify;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre-line;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    /* Layout 5 Styles - White borders with sharp (non-rounded) boxes */
+    .layout-5-box {
+        width: 48%;
+        border: 1px solid #000;
+        border-radius: 0;
+        padding: 20px;
+        box-sizing: border-box;
+        overflow: auto;
+        white-space: pre-line;
+        font-size: 12px;
+        line-height: 1.5;
+        text-align: justify;
+    }
+    
     .solution-footer {
         position: absolute;
         width: 100%;
@@ -445,49 +639,7 @@ export function generateCoverHTML(data: TemplateData): string {
 </div>
 
 <!-- Solution Pages -->
-${data.solutions ? data.solutions.map((solution, index) => `
-<div class="layout-page">
-    <!-- DG Header -->
-    <div class="page-header">
-        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjYwIiB2aWV3Qm94PSIwIDAgMTAwIDYwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZmZmZmZmIi8+Cjx0ZXh0IHg9IjUwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzAwMDAwMCI+REcgTE9HTzwvdGV4dD4KPHN2Zz4K" alt="DG Logo" class="page-header-image">
-    </div>
-    
-    <div class="solution-divider">
-        <div class="solution-divider-line"></div>
-        <div class="solution-divider-text">
-            Solution ${index + 1} of ${data.totalSolutions || (data.solutions?.length || 0)} developed by the engineer ${data.engineer} with the estimated difficulty of ${solution.difficulty}%.
-        </div>
-    </div>
-    
-    <!-- Layout 1: EXACT COPY FROM OLD SYSTEM -->
-    <div class="layout-1-container">
-        <div class="solution-title">
-            ${solution.title || 'Untitled Solution'}
-        </div>
-        
-        <div class="layout-1-boxes-container-image">
-            ${solution.imageData ? 
-                `<img src="${solution.imageData}" class="layout-1-image" alt="Solution Image">` : 
-                '<div style="text-align: center; color: #777;">No image available</div>'
-            }
-        </div>
-        <br>
-        <div class="layout-1-boxes-container">
-            <div class="layout-1-box">${solution.steps || 'No steps defined'}</div>
-            <div class="layout-1-spacer"></div>
-            <div class="layout-1-box">${solution.approach || 'No approach defined'}</div>
-        </div>
-    </div>
-    
-    <!-- Solution page footer - EXACT COPY FROM OLD SYSTEM -->
-    <div class="solution-footer">
-        <div class="solution-footer-line"></div>
-        <div class="solution-footer-text">
-            Dry Ground AI — ${data.title} — Protocol SH123 Glyph — LS1DL${solution.difficulty} at ${formattedDate}
-        </div>
-    </div>
-</div>
-`).join('') : ''}
+${data.solutions ? data.solutions.map((solution, index) => generateSolutionPageHTML(solution, index, data, formattedDate)).join('') : ''}
 
 </body>
 </html>

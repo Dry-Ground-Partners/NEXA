@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       steps: solution.structure?.steps || '',
       approach: solution.structure?.approach || '',
       difficulty: solution.structure?.difficulty || 0,
+      layout: solution.structure?.layout || 1,
       imageData: solution.additional?.imageData || null
     }))
 
