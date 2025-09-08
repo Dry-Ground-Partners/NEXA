@@ -28,7 +28,10 @@ import {
   X,
   RotateCw,
   Cog,
-  Aperture
+  Aperture,
+  Palette,
+  Target,
+  Wand2
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
 
@@ -111,7 +114,9 @@ export default function SolutioningPage() {
     aiAnalysis: false,
     explanation: false,
     imageActions: false,
-    stackModal: false
+    stackModal: false,
+    layoutModal: false,
+    difficultyModal: false
   })
 
   // Loading states
@@ -1183,6 +1188,36 @@ export default function SolutioningPage() {
                   </Button>
                   
                   <Button
+                    onClick={() => setModals(prev => ({ ...prev, layoutModal: true }))}
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0 bg-purple-600 border-purple-500 text-white hover:bg-purple-700"
+                    title="Select Layout"
+                  >
+                    <Palette className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
+                    onClick={() => setModals(prev => ({ ...prev, difficultyModal: true }))}
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0 bg-orange-600 border-orange-500 text-white hover:bg-orange-700"
+                    title="Set Difficulty"
+                  >
+                    <Target className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
+                    onClick={() => alert('Auto-Formatting feature coming soon!')}
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0 bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700"
+                    title="Auto-Formatting"
+                  >
+                    <Wand2 className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
                     onClick={previewPDF}
                     variant="outline"
                     size="sm"
@@ -1238,28 +1273,55 @@ export default function SolutioningPage() {
                     )}
                   </div>
 
-                  {/* Solution Steps */}
-                  <div>
-                    <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('steps')}>
-                      Solution Steps
-                    </Label>
-                    {editStates.steps ? (
-                      <Textarea
-                        variant="nexa"
-                        rows={6}
-                        value={currentSolution.structure.steps}
-                        onChange={(e) => handleStructureEdit('steps', e.target.value)}
-                        onBlur={() => toggleEdit('steps')}
-                        autoFocus
-                      />
-                    ) : (
-                      <div 
-                        onClick={() => toggleEdit('steps')}
-                        className="min-h-[150px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white whitespace-pre-wrap"
-                      >
-                        {currentSolution.structure.steps || 'No content yet...'}
-                      </div>
-                    )}
+                  {/* Solution Steps and Technical Approach - Side by Side */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Solution Steps */}
+                    <div>
+                      <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('steps')}>
+                        Solution Steps
+                      </Label>
+                      {editStates.steps ? (
+                        <Textarea
+                          variant="nexa"
+                          rows={6}
+                          value={currentSolution.structure.steps}
+                          onChange={(e) => handleStructureEdit('steps', e.target.value)}
+                          onBlur={() => toggleEdit('steps')}
+                          autoFocus
+                        />
+                      ) : (
+                        <div 
+                          onClick={() => toggleEdit('steps')}
+                          className="min-h-[150px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white whitespace-pre-wrap"
+                        >
+                          {currentSolution.structure.steps || 'No content yet...'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Technical Approach */}
+                    <div>
+                      <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('approach')}>
+                        Technical Approach
+                      </Label>
+                      {editStates.approach ? (
+                        <Textarea
+                          variant="nexa"
+                          rows={6}
+                          value={currentSolution.structure.approach}
+                          onChange={(e) => handleStructureEdit('approach', e.target.value)}
+                          onBlur={() => toggleEdit('approach')}
+                          autoFocus
+                        />
+                      ) : (
+                        <div 
+                          onClick={() => toggleEdit('approach')}
+                          className="min-h-[150px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white whitespace-pre-wrap"
+                        >
+                          {currentSolution.structure.approach || 'No content yet...'}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* AI Enhancement Button */}
@@ -1271,103 +1333,7 @@ export default function SolutioningPage() {
                     <span>Enhance</span>
                   </Button>
 
-                  {/* Technical Approach */}
-                  <div>
-                    <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('approach')}>
-                      Technical Approach
-                    </Label>
-                    {editStates.approach ? (
-                      <Textarea
-                        variant="nexa"
-                        rows={4}
-                        value={currentSolution.structure.approach}
-                        onChange={(e) => handleStructureEdit('approach', e.target.value)}
-                        onBlur={() => toggleEdit('approach')}
-                        autoFocus
-                      />
-                    ) : (
-                      <div 
-                        onClick={() => toggleEdit('approach')}
-                        className="min-h-[100px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white"
-                      >
-                        {currentSolution.structure.approach || 'No content yet...'}
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Difficulty Slider */}
-                  <div>
-                    <Label variant="nexa">
-                      Difficulty: {currentSolution.structure.difficulty}%
-                    </Label>
-                    <div className="difficulty-slider-container">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={currentSolution.structure.difficulty}
-                        onChange={(e) => setSessionData(prev => ({
-                          ...prev,
-                          solutions: {
-                            ...prev.solutions,
-                            [prev.currentSolution]: {
-                              ...prev.solutions[prev.currentSolution],
-                              structure: {
-                                ...prev.solutions[prev.currentSolution].structure,
-                                difficulty: parseInt(e.target.value)
-                              }
-                            }
-                          }
-                        }))}
-                        className="difficulty-slider"
-                      />
-                      <div className="difficulty-track"></div>
-                      <div 
-                        className="difficulty-fill"
-                        style={{ width: `${currentSolution.structure.difficulty}%` }}
-                      ></div>
-                      <div 
-                        className="difficulty-red-overlay"
-                        style={{ 
-                          width: `${currentSolution.structure.difficulty}%`,
-                          opacity: currentSolution.structure.difficulty / 100
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Layout Selection */}
-                  <div>
-                    <Label variant="nexa">Layout</Label>
-                    <div className="flex gap-3 mt-3">
-                      {[1, 2, 3, 4, 5].map(layoutNum => (
-                        <Button
-                          key={layoutNum}
-                          onClick={() => setSessionData(prev => ({
-                            ...prev,
-                            solutions: {
-                              ...prev.solutions,
-                              [prev.currentSolution]: {
-                                ...prev.solutions[prev.currentSolution],
-                                structure: {
-                                  ...prev.solutions[prev.currentSolution].structure,
-                                  layout: layoutNum
-                                }
-                              }
-                            }
-                          }))}
-                          variant="outline"
-                          className={`h-10 w-10 p-0 ${
-                            currentSolution.structure.layout === layoutNum
-                              ? 'border-white bg-gray-800'
-                              : 'border-nexa-border hover:bg-white/10'
-                          } text-white`}
-                        >
-                          <div className="text-xs">{layoutNum}</div>
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
                         </div>
 
                         {/* Navigation buttons for Structured Solution */}
@@ -1648,6 +1614,166 @@ export default function SolutioningPage() {
                   </Button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Difficulty Modal */}
+      {modals.difficultyModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-black border border-nexa-border rounded-lg w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-nexa-border">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-white" />
+                <h3 className="text-white text-lg font-semibold">Set Difficulty</h3>
+              </div>
+              <Button
+                onClick={() => setModals(prev => ({ ...prev, difficultyModal: false }))}
+                variant="outline"
+                size="sm"
+                className="border-nexa-border text-white hover:bg-white/10"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6">
+              <div className="space-y-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white mb-2">
+                    {currentSolution.structure.difficulty}%
+                  </div>
+                  <div className="text-sm text-nexa-muted">
+                    Estimated difficulty level for this solution
+                  </div>
+                </div>
+                
+                <div className="difficulty-slider-container">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={currentSolution.structure.difficulty}
+                    onChange={(e) => setSessionData(prev => ({
+                      ...prev,
+                      solutions: {
+                        ...prev.solutions,
+                        [prev.currentSolution]: {
+                          ...prev.solutions[prev.currentSolution],
+                          structure: {
+                            ...prev.solutions[prev.currentSolution].structure,
+                            difficulty: parseInt(e.target.value)
+                          }
+                        }
+                      }
+                    }))}
+                    className="difficulty-slider w-full"
+                  />
+                  <div className="difficulty-track"></div>
+                  <div 
+                    className="difficulty-fill"
+                    style={{ width: `${currentSolution.structure.difficulty}%` }}
+                  ></div>
+                  <div 
+                    className="difficulty-red-overlay"
+                    style={{ 
+                      width: `${currentSolution.structure.difficulty}%`,
+                      opacity: currentSolution.structure.difficulty / 100
+                    }}
+                  ></div>
+                </div>
+                
+                <div className="grid grid-cols-5 gap-2 text-xs text-nexa-muted">
+                  <div className="text-center">0%<br/>Trivial</div>
+                  <div className="text-center">25%<br/>Easy</div>
+                  <div className="text-center">50%<br/>Medium</div>
+                  <div className="text-center">75%<br/>Hard</div>
+                  <div className="text-center">100%<br/>Expert</div>
+                </div>
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-nexa-border flex justify-end">
+                <Button
+                  onClick={() => setModals(prev => ({ ...prev, difficultyModal: false }))}
+                  variant="outline"
+                  className="border-nexa-border text-white hover:bg-white/10"
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Layout Modal */}
+      {modals.layoutModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-black border border-nexa-border rounded-lg w-full max-w-2xl mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-nexa-border">
+              <div className="flex items-center gap-2">
+                <Palette className="h-5 w-5 text-white" />
+                <h3 className="text-white text-lg font-semibold">Choose Layout</h3>
+              </div>
+              <Button
+                onClick={() => setModals(prev => ({ ...prev, layoutModal: false }))}
+                variant="outline"
+                size="sm"
+                className="border-nexa-border text-white hover:bg-white/10"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-5 gap-4">
+                {[
+                  { num: 1, name: 'Classic', desc: 'Black borders, standard layout' },
+                  { num: 2, name: 'White', desc: 'White borders, same structure' },
+                  { num: 3, name: 'Text First', desc: 'Text boxes above, image below' },
+                  { num: 4, name: 'Stacked', desc: 'Image top, full-width text boxes' },
+                  { num: 5, name: 'Sharp', desc: 'Square corners, black borders' }
+                ].map(layout => (
+                  <div key={layout.num} className="text-center">
+                    <Button
+                      onClick={() => {
+                        setSessionData(prev => ({
+                          ...prev,
+                          solutions: {
+                            ...prev.solutions,
+                            [prev.currentSolution]: {
+                              ...prev.solutions[prev.currentSolution],
+                              structure: {
+                                ...prev.solutions[prev.currentSolution].structure,
+                                layout: layout.num
+                              }
+                            }
+                          }
+                        }))
+                        setModals(prev => ({ ...prev, layoutModal: false }))
+                      }}
+                      variant="outline"
+                      className={`h-16 w-full mb-2 ${
+                        currentSolution.structure.layout === layout.num
+                          ? 'border-white bg-gray-800'
+                          : 'border-nexa-border hover:bg-white/10'
+                      } text-white flex flex-col items-center justify-center`}
+                    >
+                      <div className="text-lg font-bold">{layout.num}</div>
+                      <div className="text-xs">{layout.name}</div>
+                    </Button>
+                    <div className="text-xs text-nexa-muted">{layout.desc}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 pt-4 border-t border-nexa-border">
+                <div className="text-sm text-nexa-muted text-center">
+                  Current: Layout {currentSolution.structure.layout} - {
+                    [
+                      '', 'Classic', 'White', 'Text First', 'Stacked', 'Sharp'
+                    ][currentSolution.structure.layout]
+                  }
+                </div>
+              </div>
             </div>
           </div>
         </div>
