@@ -41,6 +41,7 @@
     "langsmith": "^0.3.66",
     "lucide-react": "^0.294.0",
     "next": "^14.0.0",
+    "puppeteer": "^24.19.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.48.0",

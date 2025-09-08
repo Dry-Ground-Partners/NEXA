@@ -556,6 +556,111 @@ export default function SolutioningPage() {
     }
   }
 
+  // PDF functions
+  const previewPDF = async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, generating: true }))
+      
+      console.log('🔍 PDF Preview: Starting preview...')
+      
+      const response = await fetch('/api/solutioning/preview-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionData })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        
+        if (result.success) {
+          // Import client-side converter dynamically
+          const { generatePDFFromHTMLClient } = await import('@/lib/pdf/client-converter')
+          
+          console.log('🔄 Generating PDF for preview...')
+          
+          // Generate PDF on client-side
+          const pdfBlob = await generatePDFFromHTMLClient(result.templateData)
+          
+          // Create URL and open PDF in new tab for preview
+          const pdfUrl = URL.createObjectURL(pdfBlob)
+          window.open(pdfUrl, '_blank')
+          
+          console.log('✅ PDF Preview: PDF opened in new tab successfully')
+          showAnimatedNotification('PDF preview opened in new tab!', 'success')
+        } else {
+          throw new Error(result.error || 'Unknown error')
+        }
+      } else {
+        const errorData = await response.json()
+        console.error('❌ PDF Preview: Error response:', errorData)
+        showAnimatedNotification('Failed to generate PDF preview. Please try again.', 'error')
+      }
+    } catch (error) {
+      console.error('❌ PDF Preview: Error:', error)
+      showAnimatedNotification('Failed to generate PDF preview. Please check the console for details.', 'error')
+    } finally {
+      setLoadingStates(prev => ({ ...prev, generating: false }))
+    }
+  }
+
+  const generatePDF = async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, generating: true }))
+      
+      console.log('🔍 PDF Generate: Starting download...')
+      
+      const response = await fetch('/api/solutioning/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionData })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        
+        if (result.success) {
+          // Import client-side converter dynamically
+          const { generatePDFFromHTMLClient } = await import('@/lib/pdf/client-converter')
+          
+          console.log('🔄 Generating PDF on client-side...')
+          
+          // Generate PDF on client-side
+          const pdfBlob = await generatePDFFromHTMLClient(result.templateData)
+          
+          // Create download link
+          const url = URL.createObjectURL(pdfBlob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = result.filename || 'NEXA_Report.pdf'
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          
+          // Clean up
+          URL.revokeObjectURL(url)
+          
+          console.log('✅ PDF Generate: Downloaded successfully')
+          showAnimatedNotification('PDF generated and downloaded successfully!', 'success')
+        } else {
+          throw new Error(result.error || 'Unknown error')
+        }
+      } else {
+        const errorData = await response.json()
+        console.error('❌ PDF Generate: Error response:', errorData)
+        showAnimatedNotification('Failed to generate PDF. Please try again.', 'error')
+      }
+    } catch (error) {
+      console.error('❌ PDF Generate: Error:', error)
+      showAnimatedNotification('Failed to generate PDF. Please check the console for details.', 'error')
+    } finally {
+      setLoadingStates(prev => ({ ...prev, generating: false }))
+    }
+  }
+
   // File handling with ImgBB upload
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -1078,23 +1183,33 @@ export default function SolutioningPage() {
                   </Button>
                   
                   <Button
-                    onClick={() => alert('PDF Preview would open here')}
+                    onClick={previewPDF}
                     variant="outline"
                     size="sm"
                     className="h-8 w-8 p-0 bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
                     title="Preview PDF"
+                    disabled={loadingStates.generating}
                   >
-                    <FileText className="h-4 w-4" />
+                    {loadingStates.generating ? (
+                      <RotateCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4" />
+                    )}
                   </Button>
                   
                   <Button
-                    onClick={() => alert('PDF generation would start here')}
+                    onClick={generatePDF}
                     variant="outline"
                     size="sm"
                     className="h-8 w-8 p-0 bg-green-600 border-green-500 text-white hover:bg-green-700"
                     title="Generate PDF"
+                    disabled={loadingStates.generating}
                   >
-                    <Download className="h-4 w-4" />
+                    {loadingStates.generating ? (
+                      <RotateCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
 
