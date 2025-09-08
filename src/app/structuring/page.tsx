@@ -722,15 +722,15 @@ export default function StructuringPage() {
                 }`}
               >
                 <>
-                  {saving ? (
+                {saving ? (
                     <RotateCw className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
+                ) : (
                     <Save className="h-4 w-4 mr-2" />
                   )}
                   <span className={saving ? "shimmer-text" : ""}>
                     {hasUnsavedChanges ? 'Save*' : 'Save'}
                   </span>
-                </>
+                  </>
               </button>
               <button
                 onClick={handleDelete}
