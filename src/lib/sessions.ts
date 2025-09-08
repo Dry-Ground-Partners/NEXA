@@ -79,6 +79,54 @@ export interface VisualsSessionData {
   version: number
 }
 
+// Solutioning session data structure
+export interface SolutioningSessionData {
+  // Basic info
+  basic: {
+    date: string
+    engineer: string
+    title: string
+    recipient: string
+  }
+  
+  // Current solution tracking
+  currentSolution: number
+  solutionCount: number
+  
+  // Solutions data
+  solutions: {
+    [key: number]: {
+      id: number
+      additional: {
+        imageData: string | null
+        imageUrl: string | null
+      }
+      variables: {
+        aiAnalysis: string
+        solutionExplanation: string
+      }
+      structure: {
+        title: string
+        steps: string
+        approach: string
+        difficulty: number
+        layout: number
+        stack: string
+      }
+    }
+  }
+  
+  // UI state
+  uiState: {
+    activeMainTab: string
+    activeSubTab: string
+  }
+  
+  // Metadata
+  lastSaved: string
+  version: number
+}
+
 // Generic session response
 export interface SessionResponse {
   id: string
@@ -166,6 +214,49 @@ export function createDefaultVisualsData(): VisualsSessionData {
     uiState: {
       activeDiagramTab: 1,
       activeMainTab: 'diagrams'
+    },
+    lastSaved: '',
+    version: 0
+  }
+}
+
+/**
+ * Create default solutioning session data
+ */
+export function createDefaultSolutioningData(): SolutioningSessionData {
+  return {
+    basic: {
+      date: new Date().toISOString().split('T')[0],
+      engineer: '',
+      title: '',
+      recipient: ''
+    },
+    currentSolution: 1,
+    solutionCount: 1,
+    solutions: {
+      1: {
+        id: 1,
+        additional: {
+          imageData: null,
+          imageUrl: null
+        },
+        variables: {
+          aiAnalysis: '',
+          solutionExplanation: ''
+        },
+        structure: {
+          title: '',
+          steps: '',
+          approach: '',
+          difficulty: 50,
+          layout: 1,
+          stack: ''
+        }
+      }
+    },
+    uiState: {
+      activeMainTab: 'basic',
+      activeSubTab: 'additional'
     },
     lastSaved: '',
     version: 0

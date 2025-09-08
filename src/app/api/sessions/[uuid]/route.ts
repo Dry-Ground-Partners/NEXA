@@ -3,9 +3,10 @@ import {
   getStructuringSession, 
   updateStructuringSession,
   updateVisualsSession,
+  updateSolutioningSession,
   deleteStructuringSession 
 } from '@/lib/sessions-server'
-import type { StructuringSessionData, VisualsSessionData } from '@/lib/sessions'
+import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData } from '@/lib/sessions'
 
 // GET /api/sessions/[uuid] - Get session by UUID
 export async function GET(
@@ -56,8 +57,8 @@ export async function PUT(
     console.log(`📡 API: Update session request for UUID: ${params.uuid}`)
     
     const body = await request.json() as {
-      data: StructuringSessionData | VisualsSessionData
-      sessionType: 'structuring' | 'visuals'
+      data: StructuringSessionData | VisualsSessionData | SolutioningSessionData
+      sessionType?: 'structuring' | 'visuals' | 'solutioning'
     }
     
     if (!body.data) {
@@ -71,11 +72,16 @@ export async function PUT(
       )
     }
     
-    const sessionType = body.sessionType || 'structuring' // Default to structuring for backward compatibility
+    // Determine session type from existing session if not provided
+    let sessionType = body.sessionType
+    if (!sessionType) {
+      const existingSession = await getStructuringSession(params.uuid)
+      sessionType = existingSession?.sessionType as any || 'structuring'
+    }
     
     console.log(`📝 API: Updating ${sessionType} session`)
     console.log(`   - Title: "${body.data.basic.title}"`)
-    console.log(`   - Client: "${body.data.basic.client}"`)
+    console.log(`   - Client: "${(body.data as any).basic.client || (body.data as any).basic.recipient}"`)
     console.log(`   - Version: ${body.data.version || 0} -> ${(body.data.version || 0) + 1}`)
     
     let success
@@ -88,6 +94,11 @@ export async function PUT(
       const visualsData = body.data as VisualsSessionData
       console.log(`   - Diagram sets: ${visualsData.diagramSets.length}`)
       success = await updateVisualsSession(params.uuid, visualsData)
+    } else if (sessionType === 'solutioning') {
+      const solutioningData = body.data as SolutioningSessionData
+      console.log(`   - Solutions: ${Object.keys(solutioningData.solutions).length}`)
+      console.log(`   - Current solution: ${solutioningData.currentSolution}`)
+      success = await updateSolutioningSession(params.uuid, solutioningData)
     }
     
     if (!success) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -34,6 +34,8 @@ import {
   Wand2
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
+import type { SolutioningSessionData, SessionResponse } from '@/lib/sessions'
+import { createDefaultSolutioningData } from '@/lib/sessions'
 
 interface Solution {
   id: number
@@ -55,58 +57,22 @@ interface Solution {
   }
 }
 
-interface SessionData {
-  basic: {
-    date: string
-    title: string
-    recipient: string
-    engineer: string
-  }
-  currentSolution: number
-  solutionCount: number
-  solutions: { [key: number]: Solution }
-}
-
 export default function SolutioningPage() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Session management
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [saving, setSaving] = useState(false)
   
   // Tab state
   const [activeMainTab, setActiveMainTab] = useState('basic')
   const [activeSubTab, setActiveSubTab] = useState('additional') // 'additional' or 'structured'
   
   // Session data
-  const [sessionData, setSessionData] = useState<SessionData>({
-    basic: {
-      date: new Date().toISOString().split('T')[0],
-      title: '',
-      recipient: '',
-      engineer: ''
-    },
-    currentSolution: 1,
-    solutionCount: 1,
-    solutions: {
-      1: {
-        id: 1,
-        additional: {
-          imageData: null,
-          imageUrl: null
-        },
-        variables: {
-          aiAnalysis: '',
-          solutionExplanation: ''
-        },
-        structure: {
-          title: '',
-          steps: '',
-          approach: '',
-          difficulty: 50,
-          layout: 1,
-          stack: ''
-        }
-      }
-    }
-  })
+  const [sessionData, setSessionData] = useState<SolutioningSessionData>(createDefaultSolutioningData())
 
   // Modal states
   const [modals, setModals] = useState({
@@ -125,7 +91,6 @@ export default function SolutioningPage() {
     structuring: false,
     enhancing: false,
     generating: false,
-    saving: false,
     uploading: false,
     analysisInProgress: false
   })
@@ -181,6 +146,161 @@ export default function SolutioningPage() {
 
     fetchUser()
   }, [])
+
+  // Collect current data for saving
+  const collectCurrentData = useCallback((): SolutioningSessionData => {
+    return {
+      basic: sessionData.basic,
+      currentSolution: sessionData.currentSolution,
+      solutionCount: sessionData.solutionCount,
+      solutions: sessionData.solutions,
+      uiState: {
+        activeMainTab,
+        activeSubTab
+      },
+      lastSaved: new Date().toISOString(),
+      version: sessionData.version || 0
+    }
+  }, [sessionData, activeMainTab, activeSubTab])
+
+  // Auto-save functionality
+  const autoSave = useCallback(async () => {
+    if (!sessionId || saving || !hasUnsavedChanges) return
+    
+    try {
+      const currentData = collectCurrentData()
+      console.log('💾 Auto-saving solutioning session...')
+      
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          data: currentData,
+          title: currentData.basic.title,
+          client: currentData.basic.recipient
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setSessionData(currentData)
+        setHasUnsavedChanges(false)
+        setLastSaved(new Date())
+        console.log('✅ Auto-save successful')
+      } else {
+        console.error('❌ Auto-save failed:', result.error)
+      }
+    } catch (error) {
+      console.error('💥 Auto-save error:', error)
+    }
+  }, [sessionId, saving, hasUnsavedChanges, collectCurrentData])
+
+  // Manual save function
+  const handleSave = async () => {
+    setSaving(true)
+    
+    try {
+      const currentData = collectCurrentData()
+      console.log('💾 Saving solutioning session...', { sessionId, title: currentData.basic.title, client: currentData.basic.recipient })
+      
+      if (sessionId) {
+        // Update existing session
+        const response = await fetch(`/api/sessions/${sessionId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            data: currentData,
+            title: currentData.basic.title,
+            client: currentData.basic.recipient
+          })
+        })
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          setSessionData(currentData)
+          setHasUnsavedChanges(false)
+          setLastSaved(new Date())
+          console.log('✅ Session updated successfully')
+        } else {
+          console.error('❌ Failed to update session:', result.error)
+          alert(`Failed to save session: ${result.error}`)
+        }
+      } else {
+        // Create new session
+        const response = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sessionType: 'solutioning',
+            data: currentData,
+            title: currentData.basic.title,
+            client: currentData.basic.recipient
+          })
+        })
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          setSessionId(result.session.uuid)
+          setSessionData(currentData)
+          setHasUnsavedChanges(false)
+          setLastSaved(new Date())
+          console.log(`✅ New solutioning session created: ${result.session.uuid}`)
+          
+          // Update URL to include session ID
+          window.history.replaceState({}, '', `/solutioning?session=${result.session.uuid}`)
+        } else {
+          console.error('❌ Failed to create session:', result.error)
+          alert(`Failed to save session: ${result.error}`)
+        }
+      }
+    } catch (error) {
+      console.error('💥 Save error:', error)
+      alert('An error occurred while saving the session')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Track changes for auto-save
+  useEffect(() => {
+    const trackingData = [
+      sessionData.basic,
+      sessionData.currentSolution,
+      sessionData.solutionCount,
+      JSON.stringify(sessionData.solutions),
+      activeMainTab,
+      activeSubTab
+    ]
+    
+    if (sessionId) {
+      setHasUnsavedChanges(true)
+    }
+  }, [
+    sessionData.basic,
+    sessionData.currentSolution,
+    sessionData.solutionCount,
+    sessionData.solutions,
+    activeMainTab,
+    activeSubTab,
+    sessionId
+  ])
+
+  // Auto-save debounced
+  useEffect(() => {
+    if (hasUnsavedChanges && sessionId) {
+      const autoSaveTimer = setTimeout(autoSave, 3000) // Auto-save after 3 seconds of inactivity
+      return () => clearTimeout(autoSaveTimer)
+    }
+  }, [hasUnsavedChanges, sessionId, autoSave])
 
   // Add paste event listener for image upload
   useEffect(() => {
@@ -547,14 +667,7 @@ export default function SolutioningPage() {
     }
   }
 
-  // Save and Delete functions for session
-  const handleSave = async () => {
-    // Mock save functionality
-    setTimeout(() => {
-      alert('Solutioning session saved successfully!')
-    }, 1000)
-  }
-
+  // Delete function for session
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this solutioning session?')) {
       window.location.href = '/dashboard'
@@ -851,10 +964,25 @@ export default function SolutioningPage() {
               <TabsList className="mb-0">
                 <button
                   onClick={handleSave}
-                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-white/10 text-white border-t border-l border-r border-white rounded-t-lg relative hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+                  disabled={saving}
+                  className={`inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all border-t border-l border-r rounded-t-lg relative focus-visible:outline-none focus-visible:ring-2 mr-1 ${
+                    saving
+                      ? 'save-button-saving bg-white/10 text-white border-white'
+                      : hasUnsavedChanges 
+                        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 hover:bg-yellow-500/30 focus-visible:ring-yellow-400/20' 
+                        : 'bg-white/10 text-white border-white hover:bg-white/20 focus-visible:ring-white/20'
+                  }`}
                 >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save
+                  <>
+                    {saving ? (
+                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    <span className={saving ? "shimmer-text" : ""}>
+                      {hasUnsavedChanges ? 'Save*' : 'Save'}
+                    </span>
+                  </>
                 </button>
                 <button
                   onClick={handleDelete}
@@ -1216,6 +1344,7 @@ export default function SolutioningPage() {
                   >
                     <Wand2 className="h-4 w-4" />
                   </Button>
+                  
                   
                   <Button
                     onClick={previewPDF}

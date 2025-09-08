@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { 
   createStructuringSession,
   createVisualsSession,
+  createSolutioningSession,
   getUserStructuringSessions 
 } from '@/lib/sessions-server'
-import type { StructuringSessionData, VisualsSessionData } from '@/lib/sessions'
+import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData } from '@/lib/sessions'
 
 // GET /api/sessions - List user's sessions
 export async function GET(request: NextRequest) {
@@ -40,17 +41,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as {
       title?: string
       client?: string
-      sessionType: 'structuring' | 'visuals'
-      data: StructuringSessionData | VisualsSessionData
+      sessionType: 'structuring' | 'visuals' | 'solutioning'
+      data: StructuringSessionData | VisualsSessionData | SolutioningSessionData
     }
     
     // Validate request
-    if (!body.sessionType || !['structuring', 'visuals'].includes(body.sessionType)) {
+    if (!body.sessionType || !['structuring', 'visuals', 'solutioning'].includes(body.sessionType)) {
       console.log('❌ API: Invalid session type')
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Session type must be "structuring" or "visuals"' 
+          error: 'Session type must be "structuring", "visuals", or "solutioning"' 
         },
         { status: 400 }
       )
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     
     console.log(`📝 API: Creating ${body.sessionType} session`)
     console.log(`   - Title: "${body.data.basic.title}"`)
-    console.log(`   - Client: "${body.data.basic.client}"`)
+    console.log(`   - Client: "${(body.data as any).basic.client || (body.data as any).basic.recipient}"`)
     
     let session
     if (body.sessionType === 'structuring') {
@@ -81,6 +82,11 @@ export async function POST(request: NextRequest) {
       const visualsData = body.data as VisualsSessionData
       console.log(`   - Diagram sets: ${visualsData.diagramSets.length}`)
       session = await createVisualsSession(visualsData)
+    } else if (body.sessionType === 'solutioning') {
+      const solutioningData = body.data as SolutioningSessionData
+      console.log(`   - Solutions: ${Object.keys(solutioningData.solutions).length}`)
+      console.log(`   - Current solution: ${solutioningData.currentSolution}`)
+      session = await createSolutioningSession(solutioningData)
     }
     
     if (!session) {

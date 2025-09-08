@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { getCurrentUser } from '@/lib/auth'
-import type { StructuringSessionData, VisualsSessionData, SessionResponse, SessionSummary } from '@/lib/sessions'
+import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData, SessionResponse, SessionSummary } from '@/lib/sessions'
 
 const prisma = new PrismaClient()
 
@@ -348,4 +348,98 @@ function isValidContent(content: any): boolean {
 // Clean up database connections
 export async function disconnectSessionDatabase() {
   await prisma.$disconnect()
+}
+
+/**
+ * Create a new solutioning session (SERVER-SIDE ONLY)
+ */
+export async function createSolutioningSession(
+  data: SolutioningSessionData
+): Promise<SessionResponse | null> {
+  try {
+    const user = await getCurrentUser()
+    console.log('🔍 Debug - User object:', JSON.stringify(user, null, 2))
+    
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+    
+    if (!user.organizationMemberships || user.organizationMemberships.length === 0) {
+      console.log('❌ Debug - No organization memberships found')
+      throw new Error('No organization memberships found')
+    }
+
+    const organizationId = user.organizationMemberships[0].organization.id
+    console.log('✅ Debug - Using organization:', organizationId)
+
+    const session = await prisma.aIArchitectureSession.create({
+      data: {
+        userId: user.id,
+        organizationId: organizationId,
+        title: data.basic.title || null,
+        client: data.basic.recipient || null,
+        sessionType: 'solutioning',
+        sessionObjects: data as any, // Save solutioning data to session_objects column
+        isTemplate: false,
+        tags: []
+      }
+    })
+
+    return {
+      id: session.id.toString(),
+      uuid: session.uuid,
+      title: session.title,
+      client: session.client,
+      sessionType: session.sessionType,
+      isTemplate: session.isTemplate,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      data: session.sessionObjects as any
+    }
+  } catch (error) {
+    console.error('💥 createSolutioningSession error:', error)
+    return null
+  }
+}
+
+/**
+ * Update an existing solutioning session (SERVER-SIDE ONLY)
+ */
+export async function updateSolutioningSession(
+  uuid: string, 
+  data: SolutioningSessionData
+): Promise<boolean> {
+  try {
+    const user = await getCurrentUser()
+    
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    // Increment version for conflict detection
+    const updatedData = {
+      ...data,
+      version: (data.version || 0) + 1,
+      lastSaved: new Date().toISOString()
+    }
+
+    await prisma.aIArchitectureSession.update({
+      where: { 
+        uuid: uuid,
+        userId: user.id // Ensure user can only update their own sessions
+      },
+      data: {
+        title: updatedData.basic.title || null,
+        client: updatedData.basic.recipient || null,
+        sessionObjects: updatedData as any,
+        updatedAt: new Date()
+      }
+    })
+
+    console.log('✅ updateSolutioningSession: Session updated successfully')
+    return true
+  } catch (error) {
+    console.error('💥 updateSolutioningSession error:', error)
+    return false
+  }
 }
