@@ -4,6 +4,15 @@ export interface TemplateData {
   client: string
   date: string
   isMultiSolution?: boolean
+  solutions?: Array<{
+    id: number
+    title: string
+    steps: string
+    approach: string
+    difficulty: number
+    imageData: string | null
+  }>
+  totalSolutions?: number
 }
 
 export function generateCoverHTML(data: TemplateData): string {
@@ -242,6 +251,147 @@ export function generateCoverHTML(data: TemplateData): string {
         word-wrap: normal;
         padding: 0 5px;
     }
+    
+    /* Solution Page Styles - EXACT COPY FROM OLD SYSTEM */
+    .layout-page {
+        position: relative;
+        width: 794px;
+        height: 1122px;
+        min-height: 1122px;
+        box-sizing: border-box;
+        background: #fff;
+        page-break-before: always;
+        page-break-after: always;
+        padding: 40px;
+    }
+    
+    .page-header {
+        text-align: left;
+        margin-bottom: 30px;
+    }
+    
+    .page-header-image {
+        height: 60px;
+        width: auto;
+    }
+    
+    .solution-divider {
+        width: 80%;
+        margin: 15px auto;
+        text-align: center;
+    }
+    
+    .solution-divider-line {
+        width: 100%;
+        border-top: 1px solid #888888;
+        margin: 0 auto;
+    }
+    
+    .solution-divider-text {
+        font-size: 8px;
+        font-style: italic;
+        color: #555555;
+        margin-top: 2px;
+        text-align: center;
+        line-height: 1.2;
+    }
+    
+    /* Layout 1 Styles - EXACT COPY FROM OLD SYSTEM */
+    .layout-1-container {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(962px - 60px);
+        max-width: 100%;
+        margin: 0 auto;
+    }
+    
+    .solution-title {
+        font-family: Verdana, sans-serif;
+        font-size: 40px;
+        font-weight: normal;
+        text-align: center;
+        margin: 20px 0 10px 0;
+        color: #000;
+    }
+    
+    .layout-1-boxes-container-image {
+        border: 1px solid #000;
+        border-radius: 42px;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 20px;
+        height: 300px;
+        box-sizing: border-box;
+    }
+    
+    .layout-1-image {
+        width: 90%;
+        height: auto;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+    }
+    
+    .layout-1-boxes-container {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+        align-items: flex-start;
+    }
+    
+    .layout-1-box {
+        width: 48%;
+        border: 1px solid #000;
+        border-radius: 30px;
+        padding: 20px;
+        box-sizing: border-box;
+        white-space: pre-line;
+        font-size: 12px;
+        line-height: 1.5;
+        text-align: justify;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .layout-1-spacer {
+        width: 1%;
+    }
+    
+    .solution-footer {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        bottom: 20px;
+        left: 0;
+        padding-bottom: 20px;
+        box-sizing: border-box;
+    }
+    
+    .solution-footer-line {
+        width: 98%;
+        margin: 0 auto 20px;
+        border-top: 1px solid #888888;
+    }
+    
+    .solution-footer-text {
+        width: 98%;
+        min-width: 750px;
+        margin: 0 auto;
+        text-align: center;
+        font-size: 8px;
+        color: #1a1a1a;
+        font-family: Arial, Helvetica, sans-serif;
+        letter-spacing: 0.01em;
+        line-height: 1.3;
+        font-style: italic;
+        box-sizing: border-box;
+        max-width: 780px;
+        white-space: normal;
+        word-wrap: normal;
+        padding: 0 5px;
+    }
 </style>
 </head>
 <body>
@@ -293,6 +443,52 @@ export function generateCoverHTML(data: TemplateData): string {
         </div>
     </div>
 </div>
+
+<!-- Solution Pages -->
+${data.solutions ? data.solutions.map((solution, index) => `
+<div class="layout-page">
+    <!-- DG Header -->
+    <div class="page-header">
+        <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjYwIiB2aWV3Qm94PSIwIDAgMTAwIDYwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZmZmZmZmIi8+Cjx0ZXh0IHg9IjUwIiB5PSIzNSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzAwMDAwMCI+REcgTE9HTzwvdGV4dD4KPHN2Zz4K" alt="DG Logo" class="page-header-image">
+    </div>
+    
+    <div class="solution-divider">
+        <div class="solution-divider-line"></div>
+        <div class="solution-divider-text">
+            Solution ${index + 1} of ${data.totalSolutions || (data.solutions?.length || 0)} developed by the engineer ${data.engineer} with the estimated difficulty of ${solution.difficulty}%.
+        </div>
+    </div>
+    
+    <!-- Layout 1: EXACT COPY FROM OLD SYSTEM -->
+    <div class="layout-1-container">
+        <div class="solution-title">
+            ${solution.title || 'Untitled Solution'}
+        </div>
+        
+        <div class="layout-1-boxes-container-image">
+            ${solution.imageData ? 
+                `<img src="${solution.imageData}" class="layout-1-image" alt="Solution Image">` : 
+                '<div style="text-align: center; color: #777;">No image available</div>'
+            }
+        </div>
+        <br>
+        <div class="layout-1-boxes-container">
+            <div class="layout-1-box">${solution.steps || 'No steps defined'}</div>
+            <div class="layout-1-spacer"></div>
+            <div class="layout-1-box">${solution.approach || 'No approach defined'}</div>
+        </div>
+    </div>
+    
+    <!-- Solution page footer - EXACT COPY FROM OLD SYSTEM -->
+    <div class="solution-footer">
+        <div class="solution-footer-line"></div>
+        <div class="solution-footer-text">
+            Dry Ground AI — ${data.title} — Protocol SH123 Glyph — LS1DL${solution.difficulty} at ${formattedDate}
+        </div>
+    </div>
+</div>
+`).join('') : ''}
+
 </body>
 </html>
 `

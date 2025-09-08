@@ -19,15 +19,36 @@ export async function POST(request: NextRequest) {
     }
     
     // Extract basic info from session data
+    const solutions = Object.values(sessionData.solutions || {}).map((solution: any) => ({
+      id: solution.id,
+      title: solution.structure?.title || 'Untitled Solution',
+      steps: solution.structure?.steps || '',
+      approach: solution.structure?.approach || '',
+      difficulty: solution.structure?.difficulty || 0,
+      imageData: solution.additional?.imageData || null
+    }))
+
     const templateData: TemplateData = {
       title: sessionData.basic.title || 'Untitled Project',
       engineer: sessionData.basic.engineer || 'Unknown Engineer', 
-      client: sessionData.basic.recipient || 'Unknown Client',  // Fixed: recipient -> client
+      client: sessionData.basic.recipient || 'Unknown Client',
       date: sessionData.basic.date || new Date().toISOString().split('T')[0],
-      isMultiSolution: sessionData.solutionCount > 1
+      isMultiSolution: sessionData.solutionCount > 1,
+      solutions: solutions,
+      totalSolutions: sessionData.solutionCount || solutions.length
     }
     
-    console.log('📊 PDF Preview: Extracted data:', templateData)
+    console.log('📊 PDF Preview: Session data:', JSON.stringify(sessionData, null, 2))
+    console.log('📊 PDF Preview: Extracted solutions:', solutions)
+    console.log('📊 PDF Preview: Template data:', templateData)
+    
+    // Generate HTML for debugging
+    const { generateCoverHTML } = await import('@/lib/pdf/html-template')
+    const htmlOutput = generateCoverHTML(templateData)
+    
+    console.log('📄 Generated HTML length:', htmlOutput.length)
+    console.log('📄 Solution pages in HTML:', htmlOutput.includes('layout-page') ? 'YES' : 'NO')
+    console.log('📄 Solution count in HTML:', (htmlOutput.match(/layout-page/g) || []).length)
     
     // Return JSON with template data for client-side processing
     return NextResponse.json({
