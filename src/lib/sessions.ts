@@ -220,6 +220,69 @@ export function createDefaultVisualsData(): VisualsSessionData {
   }
 }
 
+// SOW session data structure
+export interface SOWSessionData {
+  // Basic info
+  basic: {
+    date: string
+    engineer: string
+    title: string
+    client: string
+  }
+  
+  // Project & Background
+  project: {
+    background: string
+    objectives: {
+      id: number
+      text: string
+    }[]
+  }
+  
+  // Scope
+  scope: {
+    deliverables: {
+      id: number
+      deliverable: string
+      keyFeatures: string
+      primaryArtifacts: string
+    }[]
+    outOfScope: string
+  }
+  
+  // Requirements (Clauses)
+  clauses: {
+    functionalRequirements: {
+      id: number
+      text: string
+    }[]
+    nonFunctionalRequirements: {
+      id: number
+      text: string
+    }[]
+  }
+  
+  // Timeline
+  timeline: {
+    phases: {
+      id: number
+      phase: string
+      keyActivities: string
+      weeksStart: number
+      weeksEnd: number
+    }[]
+  }
+  
+  // UI state
+  uiState: {
+    activeMainTab: string
+  }
+  
+  // Metadata
+  lastSaved: string
+  version: number
+}
+
 /**
  * Create default solutioning session data
  */
@@ -257,6 +320,40 @@ export function createDefaultSolutioningData(): SolutioningSessionData {
     uiState: {
       activeMainTab: 'basic',
       activeSubTab: 'additional'
+    },
+    lastSaved: '',
+    version: 0
+  }
+}
+
+/**
+ * Create default SOW session data
+ */
+export function createDefaultSOWData(): SOWSessionData {
+  return {
+    basic: {
+      date: new Date().toISOString().split('T')[0],
+      engineer: '',
+      title: '',
+      client: ''
+    },
+    project: {
+      background: '',
+      objectives: [{ id: 1, text: '' }]
+    },
+    scope: {
+      deliverables: [{ id: 1, deliverable: '', keyFeatures: '', primaryArtifacts: '' }],
+      outOfScope: ''
+    },
+    clauses: {
+      functionalRequirements: [{ id: 1, text: '' }],
+      nonFunctionalRequirements: [{ id: 1, text: '' }]
+    },
+    timeline: {
+      phases: [{ id: 1, phase: '', keyActivities: '', weeksStart: 1, weeksEnd: 4 }]
+    },
+    uiState: {
+      activeMainTab: 'basic'
     },
     lastSaved: '',
     version: 0

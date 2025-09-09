@@ -4,9 +4,10 @@ import {
   updateStructuringSession,
   updateVisualsSession,
   updateSolutioningSession,
+  updateSOWSession,
   deleteStructuringSession 
 } from '@/lib/sessions-server'
-import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData } from '@/lib/sessions'
+import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData, SOWSessionData } from '@/lib/sessions'
 
 // GET /api/sessions/[uuid] - Get session by UUID
 export async function GET(
@@ -57,8 +58,8 @@ export async function PUT(
     console.log(`📡 API: Update session request for UUID: ${params.uuid}`)
     
     const body = await request.json() as {
-      data: StructuringSessionData | VisualsSessionData | SolutioningSessionData
-      sessionType?: 'structuring' | 'visuals' | 'solutioning'
+      data: StructuringSessionData | VisualsSessionData | SolutioningSessionData | SOWSessionData
+      sessionType?: 'structuring' | 'visuals' | 'solutioning' | 'sow'
     }
     
     if (!body.data) {
@@ -99,6 +100,12 @@ export async function PUT(
       console.log(`   - Solutions: ${Object.keys(solutioningData.solutions).length}`)
       console.log(`   - Current solution: ${solutioningData.currentSolution}`)
       success = await updateSolutioningSession(params.uuid, solutioningData)
+    } else if (sessionType === 'sow') {
+      const sowData = body.data as SOWSessionData
+      console.log(`   - Objectives: ${sowData.project.objectives.length}`)
+      console.log(`   - Deliverables: ${sowData.scope.deliverables.length}`)
+      console.log(`   - Phases: ${sowData.timeline.phases.length}`)
+      success = await updateSOWSession(params.uuid, sowData)
     }
     
     if (!success) {

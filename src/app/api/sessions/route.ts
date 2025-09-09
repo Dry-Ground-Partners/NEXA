@@ -3,9 +3,10 @@ import {
   createStructuringSession,
   createVisualsSession,
   createSolutioningSession,
+  createSOWSession,
   getUserStructuringSessions 
 } from '@/lib/sessions-server'
-import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData } from '@/lib/sessions'
+import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData, SOWSessionData } from '@/lib/sessions'
 
 // GET /api/sessions - List user's sessions
 export async function GET(request: NextRequest) {
@@ -41,17 +42,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as {
       title?: string
       client?: string
-      sessionType: 'structuring' | 'visuals' | 'solutioning'
-      data: StructuringSessionData | VisualsSessionData | SolutioningSessionData
+      sessionType: 'structuring' | 'visuals' | 'solutioning' | 'sow'
+      data: StructuringSessionData | VisualsSessionData | SolutioningSessionData | SOWSessionData
     }
     
     // Validate request
-    if (!body.sessionType || !['structuring', 'visuals', 'solutioning'].includes(body.sessionType)) {
+    if (!body.sessionType || !['structuring', 'visuals', 'solutioning', 'sow'].includes(body.sessionType)) {
       console.log('❌ API: Invalid session type')
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Session type must be "structuring", "visuals", or "solutioning"' 
+          error: 'Session type must be "structuring", "visuals", "solutioning", or "sow"' 
         },
         { status: 400 }
       )
@@ -87,6 +88,12 @@ export async function POST(request: NextRequest) {
       console.log(`   - Solutions: ${Object.keys(solutioningData.solutions).length}`)
       console.log(`   - Current solution: ${solutioningData.currentSolution}`)
       session = await createSolutioningSession(solutioningData)
+    } else if (body.sessionType === 'sow') {
+      const sowData = body.data as SOWSessionData
+      console.log(`   - Objectives: ${sowData.project.objectives.length}`)
+      console.log(`   - Deliverables: ${sowData.scope.deliverables.length}`)
+      console.log(`   - Phases: ${sowData.timeline.phases.length}`)
+      session = await createSOWSession(sowData)
     }
     
     if (!session) {

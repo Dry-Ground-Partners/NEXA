@@ -1,111 +1,208 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { 
-  ArrowRight,
-  ArrowLeft,
+  FileText,
   Plus,
   Trash2,
-  FileText,
-  Download,
   Save,
-  Database,
+  RotateCw,
   ChevronUp,
-  ChevronDown,
-  RotateCw
+  ChevronDown
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
-
-interface Objective {
-  id: number
-  text: string
-}
-
-interface Deliverable {
-  id: number
-  deliverable: string
-  keyFeatures: string
-  primaryArtifacts: string
-}
-
-interface FunctionalRequirement {
-  id: number
-  text: string
-}
-
-interface NonFunctionalRequirement {
-  id: number
-  text: string
-}
-
-interface ProjectPhase {
-  id: number
-  phase: string
-  keyActivities: string
-  weeksStart: number
-  weeksEnd: number
-}
-
-interface SOWData {
-  step1: {
-    projectName: string
-    client: string
-    preparedBy: string
-    date: string
-    background: string
-    objectives: Objective[]
-  }
-  step2: {
-    deliverables: Deliverable[]
-    outOfScope: string
-    functionalRequirements: FunctionalRequirement[]
-  }
-  step3: {
-    nonFunctionalRequirements: NonFunctionalRequirement[]
-    phases: ProjectPhase[]
-  }
-}
+import type { SOWSessionData } from '@/lib/sessions'
+import { createDefaultSOWData } from '@/lib/sessions'
 
 export default function SOWPage() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
-  const [currentStep, setCurrentStep] = useState(1)
   
-  // SOW Data State
-  const [sowData, setSOWData] = useState<SOWData>({
-    step1: {
-      projectName: '',
-      client: '',
-      preparedBy: 'Dry Ground Partners',
-      date: new Date().toISOString().split('T')[0],
-      background: '',
-      objectives: [{ id: 1, text: '' }]
-    },
-    step2: {
-      deliverables: [{ id: 1, deliverable: '', keyFeatures: '', primaryArtifacts: '' }],
-      outOfScope: '',
-      functionalRequirements: [{ id: 1, text: '' }]
-    },
-    step3: {
-      nonFunctionalRequirements: [{ id: 1, text: '' }],
-      phases: [{ id: 1, phase: '', keyActivities: '', weeksStart: 1, weeksEnd: 4 }]
+  // Session management
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionData, setSessionData] = useState<SOWSessionData>(createDefaultSOWData())
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [saving, setSaving] = useState(false)
+  
+  // UI state
+  const [activeMainTab, setActiveMainTab] = useState('basic')
+
+  // Collect current form data into session format
+  const collectCurrentData = useCallback((): SOWSessionData => {
+    return {
+      ...sessionData,
+      lastSaved: new Date().toISOString(),
+      version: (sessionData.version || 0) + 1
     }
-  })
+  }, [sessionData])
 
-  // Loading states
-  const [loadingStates, setLoadingStates] = useState({
-    generating: false,
-    saving: false,
-    deleting: false
-  })
+  // Auto-save functionality
+  const autoSave = useCallback(async () => {
+    if (!sessionId || saving || !hasUnsavedChanges) return
+    
+    try {
+      const currentData = collectCurrentData()
+      console.log('💾 Auto-saving SOW session...')
+      
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: currentData,
+          sessionType: 'sow'
+        }),
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setLastSaved(new Date(currentData.lastSaved))
+        setHasUnsavedChanges(false)
+        console.log('✅ Auto-save successful')
+      } else {
+        console.log('❌ Auto-save failed:', result.error)
+      }
+    } catch (error) {
+      console.error('💥 Auto-save error:', error)
+    }
+  }, [sessionId, saving, hasUnsavedChanges, collectCurrentData])
 
+  // Manual save function
+  const handleSave = async () => {
+    if (saving) return
+    
+    setSaving(true)
+    
+    try {
+      const currentData = collectCurrentData()
+      console.log('💾 Manual save SOW session...')
+      
+      if (!sessionId) {
+        // Create new session
+        const response = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sessionType: 'sow',
+            data: currentData
+          }),
+        })
+        
+        const result = await response.json()
+        
+        if (result.success && result.session) {
+          setSessionId(result.session.uuid)
+          setLastSaved(new Date(currentData.lastSaved))
+          setHasUnsavedChanges(false)
+          // Update URL without refresh
+          window.history.replaceState({}, '', `/sow?session=${result.session.uuid}`)
+          console.log(`✅ New SOW session created: ${result.session.uuid}`)
+        } else {
+          console.log('❌ Failed to create session:', result.error)
+        }
+      } else {
+        // Update existing session
+        const response = await fetch(`/api/sessions/${sessionId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            data: currentData,
+            sessionType: 'sow'
+          }),
+        })
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          setLastSaved(new Date(currentData.lastSaved))
+          setHasUnsavedChanges(false)
+          console.log('✅ SOW session updated successfully')
+        } else {
+          console.log('❌ Failed to update session:', result.error)
+        }
+      }
+    } catch (error) {
+      console.error('💥 Save error:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Delete session function
+  const handleDelete = async () => {
+    if (!sessionId) return
+    
+    if (!confirm('Are you sure you want to delete this SOW session? This action cannot be undone.')) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'DELETE'
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        console.log('✅ SOW session deleted successfully')
+        // Redirect to dashboard
+        window.location.href = '/dashboard'
+      } else {
+        console.log('❌ Failed to delete session:', result.error)
+      }
+    } catch (error) {
+      console.error('💥 Delete error:', error)
+    }
+  }
+
+  // Load session from URL on mount
   useEffect(() => {
+    const loadSession = async () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const sessionParam = urlParams.get('session')
+      
+      if (sessionParam) {
+        console.log(`🔄 Loading SOW session from URL: ${sessionParam}`)
+        
+        try {
+          const response = await fetch(`/api/sessions/${sessionParam}`)
+          const result = await response.json()
+          
+          if (result.success && result.session.data) {
+            const data = result.session.data as SOWSessionData
+            
+            // Restore session data
+            setSessionId(sessionParam)
+            setSessionData(data)
+            setActiveMainTab(data.uiState.activeMainTab)
+            setLastSaved(new Date(data.lastSaved))
+            console.log(`✅ SOW session loaded: "${data.basic.title}"`)
+          } else {
+            console.log('❌ Failed to load SOW session:', result.error)
+            // Remove invalid session from URL
+            window.history.replaceState({}, '', '/sow')
+          }
+        } catch (error) {
+          console.error('💥 Error loading SOW session:', error)
+          window.history.replaceState({}, '', '/sow')
+        }
+      }
+    }
+    
     const fetchUser = async () => {
       try {
         const response = await fetch('/api/auth/me')
@@ -113,6 +210,8 @@ export default function SOWPage() {
         
         if (data.success) {
           setUser(data.user)
+          // Load session after user is authenticated
+          await loadSession()
         } else {
           window.location.href = '/auth/login'
         }
@@ -127,80 +226,71 @@ export default function SOWPage() {
     fetchUser()
   }, [])
 
-  // Navigation functions
-  const nextStep = () => {
-    if (currentStep === 1) {
-      // Validate Step 1
-      if (!sowData.step1.projectName || !sowData.step1.client || !sowData.step1.background) {
-        alert('Please fill in all required fields (Project Name, Client, and Background).')
-        return
-      }
-      if (sowData.step1.objectives.some(obj => !obj.text.trim())) {
-        alert('Please fill in all objectives.')
-        return
-      }
-    }
-    if (currentStep === 2) {
-      // Validate Step 2
-      if (sowData.step2.deliverables.some(del => !del.deliverable.trim() || !del.keyFeatures.trim() || !del.primaryArtifacts.trim())) {
-        alert('Please fill in all deliverable fields.')
-        return
-      }
-      if (sowData.step2.functionalRequirements.some(req => !req.text.trim())) {
-        alert('Please fill in all functional requirements.')
-        return
-      }
-    }
-    setCurrentStep(Math.min(3, currentStep + 1))
-  }
+  // Auto-save every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(autoSave, 10000) // 10 seconds
+    return () => clearInterval(interval)
+  }, [autoSave])
 
-  const prevStep = () => {
-    setCurrentStep(Math.max(1, currentStep - 1))
-  }
+  // Mark as unsaved when data changes
+  useEffect(() => {
+    setHasUnsavedChanges(true)
+  }, [sessionData])
 
-  // Step 1 Functions - Objectives
-  const addObjective = () => {
-    const newId = Math.max(...sowData.step1.objectives.map(obj => obj.id)) + 1
-    setSOWData(prev => ({
+  // Update UI state in session data when activeMainTab changes
+  useEffect(() => {
+    setSessionData(prev => ({
       ...prev,
-      step1: {
-        ...prev.step1,
-        objectives: [...prev.step1.objectives, { id: newId, text: '' }]
+      uiState: {
+        ...prev.uiState,
+        activeMainTab
+      }
+    }))
+  }, [activeMainTab])
+
+  // Helper functions for managing objectives
+  const addObjective = () => {
+    const newId = Math.max(...sessionData.project.objectives.map(obj => obj.id)) + 1
+    setSessionData(prev => ({
+      ...prev,
+      project: {
+        ...prev.project,
+        objectives: [...prev.project.objectives, { id: newId, text: '' }]
       }
     }))
   }
 
   const removeObjective = (id: number) => {
-    if (sowData.step1.objectives.length === 1) return
-    setSOWData(prev => ({
+    if (sessionData.project.objectives.length === 1) return
+    setSessionData(prev => ({
       ...prev,
-      step1: {
-        ...prev.step1,
-        objectives: prev.step1.objectives.filter(obj => obj.id !== id)
+      project: {
+        ...prev.project,
+        objectives: prev.project.objectives.filter(obj => obj.id !== id)
       }
     }))
   }
 
   const updateObjective = (id: number, text: string) => {
-    setSOWData(prev => ({
+    setSessionData(prev => ({
       ...prev,
-      step1: {
-        ...prev.step1,
-        objectives: prev.step1.objectives.map(obj => 
+      project: {
+        ...prev.project,
+        objectives: prev.project.objectives.map(obj => 
           obj.id === id ? { ...obj, text } : obj
         )
       }
     }))
   }
 
-  // Step 2 Functions - Deliverables
+  // Helper functions for managing deliverables
   const addDeliverable = () => {
-    const newId = Math.max(...sowData.step2.deliverables.map(del => del.id)) + 1
-    setSOWData(prev => ({
+    const newId = Math.max(...sessionData.scope.deliverables.map(del => del.id)) + 1
+    setSessionData(prev => ({
       ...prev,
-      step2: {
-        ...prev.step2,
-        deliverables: [...prev.step2.deliverables, { 
+      scope: {
+        ...prev.scope,
+        deliverables: [...prev.scope.deliverables, { 
           id: newId, 
           deliverable: '', 
           keyFeatures: '', 
@@ -211,137 +301,135 @@ export default function SOWPage() {
   }
 
   const removeDeliverable = (id: number) => {
-    if (sowData.step2.deliverables.length === 1) return
-    setSOWData(prev => ({
+    if (sessionData.scope.deliverables.length === 1) return
+    setSessionData(prev => ({
       ...prev,
-      step2: {
-        ...prev.step2,
-        deliverables: prev.step2.deliverables.filter(del => del.id !== id)
+      scope: {
+        ...prev.scope,
+        deliverables: prev.scope.deliverables.filter(del => del.id !== id)
       }
     }))
   }
 
-  const updateDeliverable = (id: number, field: keyof Deliverable, value: string) => {
-    setSOWData(prev => ({
+  const updateDeliverable = (id: number, field: 'deliverable' | 'keyFeatures' | 'primaryArtifacts', value: string) => {
+    setSessionData(prev => ({
       ...prev,
-      step2: {
-        ...prev.step2,
-        deliverables: prev.step2.deliverables.map(del => 
+      scope: {
+        ...prev.scope,
+        deliverables: prev.scope.deliverables.map(del => 
           del.id === id ? { ...del, [field]: value } : del
         )
       }
     }))
   }
 
-  // Step 2 Functions - Functional Requirements
+  // Helper functions for managing functional requirements
   const addFunctionalRequirement = () => {
-    const newId = Math.max(...sowData.step2.functionalRequirements.map(req => req.id)) + 1
-    setSOWData(prev => ({
+    const newId = Math.max(...sessionData.clauses.functionalRequirements.map(req => req.id)) + 1
+    setSessionData(prev => ({
       ...prev,
-      step2: {
-        ...prev.step2,
-        functionalRequirements: [...prev.step2.functionalRequirements, { id: newId, text: '' }]
+      clauses: {
+        ...prev.clauses,
+        functionalRequirements: [...prev.clauses.functionalRequirements, { id: newId, text: '' }]
       }
     }))
   }
 
   const removeFunctionalRequirement = (id: number) => {
-    if (sowData.step2.functionalRequirements.length === 1) return
-    setSOWData(prev => ({
+    if (sessionData.clauses.functionalRequirements.length === 1) return
+    setSessionData(prev => ({
       ...prev,
-      step2: {
-        ...prev.step2,
-        functionalRequirements: prev.step2.functionalRequirements.filter(req => req.id !== id)
+      clauses: {
+        ...prev.clauses,
+        functionalRequirements: prev.clauses.functionalRequirements.filter(req => req.id !== id)
       }
     }))
   }
 
   const updateFunctionalRequirement = (id: number, text: string) => {
-    setSOWData(prev => ({
+    setSessionData(prev => ({
       ...prev,
-      step2: {
-        ...prev.step2,
-        functionalRequirements: prev.step2.functionalRequirements.map(req => 
+      clauses: {
+        ...prev.clauses,
+        functionalRequirements: prev.clauses.functionalRequirements.map(req => 
           req.id === id ? { ...req, text } : req
         )
       }
     }))
   }
 
-  // Step 3 Functions - Non-Functional Requirements
+  // Helper functions for managing non-functional requirements
   const addNonFunctionalRequirement = () => {
-    const newId = Math.max(...sowData.step3.nonFunctionalRequirements.map(req => req.id)) + 1
-    setSOWData(prev => ({
+    const newId = Math.max(...sessionData.clauses.nonFunctionalRequirements.map(req => req.id)) + 1
+    setSessionData(prev => ({
       ...prev,
-      step3: {
-        ...prev.step3,
-        nonFunctionalRequirements: [...prev.step3.nonFunctionalRequirements, { id: newId, text: '' }]
+      clauses: {
+        ...prev.clauses,
+        nonFunctionalRequirements: [...prev.clauses.nonFunctionalRequirements, { id: newId, text: '' }]
       }
     }))
   }
 
   const removeNonFunctionalRequirement = (id: number) => {
-    if (sowData.step3.nonFunctionalRequirements.length === 1) return
-    setSOWData(prev => ({
+    if (sessionData.clauses.nonFunctionalRequirements.length === 1) return
+    setSessionData(prev => ({
       ...prev,
-      step3: {
-        ...prev.step3,
-        nonFunctionalRequirements: prev.step3.nonFunctionalRequirements.filter(req => req.id !== id)
+      clauses: {
+        ...prev.clauses,
+        nonFunctionalRequirements: prev.clauses.nonFunctionalRequirements.filter(req => req.id !== id)
       }
     }))
   }
 
   const updateNonFunctionalRequirement = (id: number, text: string) => {
-    setSOWData(prev => ({
+    setSessionData(prev => ({
       ...prev,
-      step3: {
-        ...prev.step3,
-        nonFunctionalRequirements: prev.step3.nonFunctionalRequirements.map(req => 
+      clauses: {
+        ...prev.clauses,
+        nonFunctionalRequirements: prev.clauses.nonFunctionalRequirements.map(req => 
           req.id === id ? { ...req, text } : req
         )
       }
     }))
   }
 
-  // Step 3 Functions - Project Phases
+  // Helper functions for managing phases
   const addPhase = () => {
-    const lastPhase = sowData.step3.phases[sowData.step3.phases.length - 1]
-    const newId = Math.max(...sowData.step3.phases.map(phase => phase.id)) + 1
+    const newId = Math.max(...sessionData.timeline.phases.map(phase => phase.id)) + 1
+    const lastPhase = sessionData.timeline.phases[sessionData.timeline.phases.length - 1]
     const newStart = lastPhase ? lastPhase.weeksEnd + 1 : 1
-    const newEnd = newStart + 3
-    
-    setSOWData(prev => ({
+    setSessionData(prev => ({
       ...prev,
-      step3: {
-        ...prev.step3,
-        phases: [...prev.step3.phases, { 
+      timeline: {
+        ...prev.timeline,
+        phases: [...prev.timeline.phases, { 
           id: newId, 
           phase: '', 
           keyActivities: '', 
           weeksStart: newStart, 
-          weeksEnd: newEnd 
+          weeksEnd: newStart + 3 
         }]
       }
     }))
   }
 
   const removePhase = (id: number) => {
-    if (sowData.step3.phases.length === 1) return
-    setSOWData(prev => ({
+    if (sessionData.timeline.phases.length === 1) return
+    setSessionData(prev => ({
       ...prev,
-      step3: {
-        ...prev.step3,
-        phases: prev.step3.phases.filter(phase => phase.id !== id)
+      timeline: {
+        ...prev.timeline,
+        phases: prev.timeline.phases.filter(phase => phase.id !== id)
       }
     }))
   }
 
-  const updatePhase = (id: number, field: keyof ProjectPhase, value: string | number) => {
-    setSOWData(prev => ({
+  const updatePhase = (id: number, field: 'phase' | 'keyActivities', value: string) => {
+    setSessionData(prev => ({
       ...prev,
-      step3: {
-        ...prev.step3,
-        phases: prev.step3.phases.map(phase => 
+      timeline: {
+        ...prev.timeline,
+        phases: prev.timeline.phases.map(phase => 
           phase.id === id ? { ...phase, [field]: value } : phase
         )
       }
@@ -349,51 +437,18 @@ export default function SOWPage() {
   }
 
   const adjustWeeks = (id: number, direction: 'up' | 'down') => {
-    setSOWData(prev => ({
+    setSessionData(prev => ({
       ...prev,
-      step3: {
-        ...prev.step3,
-        phases: prev.step3.phases.map(phase => {
-          if (phase.id === id) {
-            const newEnd = direction === 'up' 
-              ? Math.max(phase.weeksStart, phase.weeksEnd + 1)
-              : Math.max(phase.weeksStart, phase.weeksEnd - 1)
-            return { ...phase, weeksEnd: newEnd }
-          }
-          return phase
-        })
+      timeline: {
+        ...prev.timeline,
+        phases: prev.timeline.phases.map(phase => 
+          phase.id === id ? { 
+            ...phase, 
+            weeksEnd: direction === 'up' ? phase.weeksEnd + 1 : Math.max(phase.weeksStart, phase.weeksEnd - 1)
+          } : phase
+        )
       }
     }))
-  }
-
-  // Action Functions
-  const handlePreviewPDF = () => {
-    alert('PDF Preview would open in a new tab here')
-  }
-
-  const handleGeneratePDF = () => {
-    setLoadingStates(prev => ({ ...prev, generating: true }))
-    setTimeout(() => {
-      alert('SOW PDF would be generated and downloaded here')
-      setLoadingStates(prev => ({ ...prev, generating: false }))
-    }, 2000)
-  }
-
-  const handleSave = () => {
-    setLoadingStates(prev => ({ ...prev, saving: true }))
-    setTimeout(() => {
-      alert('SOW session saved successfully!')
-      setLoadingStates(prev => ({ ...prev, saving: false }))
-    }, 1000)
-  }
-
-  const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this SOW session?')) {
-      setLoadingStates(prev => ({ ...prev, deleting: true }))
-      setTimeout(() => {
-        window.location.href = '/dashboard'
-      }, 1000)
-    }
   }
 
   if (loading) {
@@ -412,121 +467,167 @@ export default function SOWPage() {
         email: user.email
       } : undefined}
     >
-      <div className="container mx-auto p-6">
-        <div className="max-w-5xl mx-auto">
+      <div className="nexa-background min-h-screen p-6">
+        <div className="max-w-6xl mx-auto">
           
-          {/* Page Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-white text-3xl font-bold mb-4">Statement of Work Generator</h1>
-            <div className="flex justify-center gap-4 mb-6">
-              {[1, 2, 3].map(step => (
-                <div
-                  key={step}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full border-2 font-semibold ${
-                    currentStep === step
-                      ? 'bg-white text-black border-white'
-                      : currentStep > step
-                      ? 'bg-green-600 text-white border-green-600'
-                      : 'bg-transparent text-white border-nexa-border'
-                  }`}
-                >
-                  {step}
-                </div>
-              ))}
+          {/* Tab Navigation Row */}
+          <div className="flex items-end justify-between mb-0">
+            {/* Left: Label + Tab Strip */}
+            <div className="flex items-end gap-8">
+              {/* SOW Label */}
+              <div className="flex items-center gap-2 text-white pb-3 ml-16">
+                <FileText className="w-4 h-4" />
+                <span>Statement of Work</span>
+              </div>
+              
+              {/* Main Tabs */}
+              <Tabs value={activeMainTab} onValueChange={setActiveMainTab}>
+                <TabsList>
+                  <TabsTrigger value="basic">
+                    Basic
+                  </TabsTrigger>
+                  <TabsTrigger value="project">
+                    Project
+                  </TabsTrigger>
+                  <TabsTrigger value="scope">
+                    Scope
+                  </TabsTrigger>
+                  <TabsTrigger value="clauses">
+                    Clauses
+                  </TabsTrigger>
+                  <TabsTrigger value="timeline">
+                    Timeline
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            
+            {/* Action tabs aligned right */}
+            <div className="flex">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all border-t border-l border-r rounded-t-lg relative focus-visible:outline-none focus-visible:ring-2 mr-1 ${
+                  saving
+                    ? 'save-button-saving bg-white/10 text-white border-white'
+                    : hasUnsavedChanges 
+                      ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 hover:bg-yellow-500/30 focus-visible:ring-yellow-400/20' 
+                      : 'bg-white/10 text-white border-white hover:bg-white/20 focus-visible:ring-white/20'
+                }`}
+              >
+                {saving ? (
+                  <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                <span className={saving ? "shimmer-text" : ""}>
+                  {hasUnsavedChanges ? 'Save*' : 'Save'}
+                </span>
+              </button>
+              <button
+                onClick={handleDelete}
+                className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-red-500/10 text-red-500 border-t border-l border-r border-red-600 rounded-t-lg relative hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </button>
             </div>
           </div>
 
-          <Card variant="nexa" className="p-8">
-            
-            {/* Step 1: Project Details & Objectives */}
-            {currentStep === 1 && (
-              <div className="space-y-6">
-                <h2 className="text-white text-xl font-semibold mb-6">Project Details & Objectives</h2>
-                
-                {/* Basic Project Information */}
+          {/* Content Card */}
+          <Card variant="nexa" className="rounded-tr-none border-t border-nexa-border p-8 mt-0">
+            <Tabs value={activeMainTab} onValueChange={setActiveMainTab}>
+              
+              {/* Basic Tab Content */}
+              <TabsContent value="basic">
+                <h2 className="text-white text-xl font-semibold mb-6">Basic Information</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="nexa-form-group">
-                    <Label variant="nexa" htmlFor="projectName">
-                      Project Name *
-                    </Label>
-                    <Input
-                      variant="nexa"
-                      id="projectName"
-                      placeholder="Project Name - Enter project name..."
-                      value={sowData.step1.projectName}
-                      onChange={(e) => setSOWData(prev => ({
-                        ...prev,
-                        step1: { ...prev.step1, projectName: e.target.value }
-                      }))}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="nexa-form-group">
-                    <Label variant="nexa" htmlFor="client">
-                      Client *
-                    </Label>
-                    <Input
-                      variant="nexa"
-                      id="client"
-                      placeholder="Client - Enter client name..."
-                      value={sowData.step1.client}
-                      onChange={(e) => setSOWData(prev => ({
-                        ...prev,
-                        step1: { ...prev.step1, client: e.target.value }
-                      }))}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="nexa-form-group">
-                    <Label variant="nexa" htmlFor="preparedBy">
-                      Prepared By
-                    </Label>
-                    <Input
-                      variant="nexa"
-                      id="preparedBy"
-                      placeholder="Prepared By - Enter your name..."
-                      value={sowData.step1.preparedBy}
-                      onChange={(e) => setSOWData(prev => ({
-                        ...prev,
-                        step1: { ...prev.step1, preparedBy: e.target.value }
-                      }))}
-                    />
-                  </div>
-                  
-                  <div className="nexa-form-group">
                     <Label variant="nexa" htmlFor="date">
-                      Date *
+                      Date
                     </Label>
                     <Input
                       variant="nexa"
                       type="date"
                       id="date"
-                      value={sowData.step1.date}
-                      onChange={(e) => setSOWData(prev => ({
+                      value={sessionData.basic.date}
+                      onChange={(e) => setSessionData(prev => ({
                         ...prev,
-                        step1: { ...prev.step1, date: e.target.value }
+                        basic: { ...prev.basic, date: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  
+                  <div className="nexa-form-group">
+                    <Label variant="nexa" htmlFor="engineer">
+                      Engineer Name
+                    </Label>
+                    <Input
+                      variant="nexa"
+                      id="engineer"
+                      placeholder="e.g., John Rockstar Engineer"
+                      value={sessionData.basic.engineer}
+                      onChange={(e) => setSessionData(prev => ({
+                        ...prev,
+                        basic: { ...prev.basic, engineer: e.target.value }
+                      }))}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="nexa-form-group">
+                    <Label variant="nexa" htmlFor="title">
+                      Project Title
+                    </Label>
+                    <Input
+                      variant="nexa"
+                      id="title"
+                      placeholder="Enter project title..."
+                      value={sessionData.basic.title}
+                      onChange={(e) => setSessionData(prev => ({
+                        ...prev,
+                        basic: { ...prev.basic, title: e.target.value }
+                      }))}
+                    />
+                  </div>
+                  
+                  <div className="nexa-form-group">
+                    <Label variant="nexa" htmlFor="client">
+                      Client
+                    </Label>
+                    <Input
+                      variant="nexa"
+                      id="client"
+                      placeholder="Enter client name..."
+                      value={sessionData.basic.client}
+                      onChange={(e) => setSessionData(prev => ({
+                        ...prev,
+                        basic: { ...prev.basic, client: e.target.value }
                       }))}
                       required
                     />
                   </div>
                 </div>
+              </TabsContent>
 
+              {/* Project Tab Content */}
+              <TabsContent value="project">
+                <h2 className="text-white text-xl font-semibold mb-6">Project & Background</h2>
+                
                 {/* Project Purpose & Background */}
-                <div className="nexa-form-group">
+                <div className="nexa-form-group mb-6">
                   <Label variant="nexa" htmlFor="background">
-                    Project Purpose & Background *
+                    Project Purpose & Background
                   </Label>
                   <Textarea
                     variant="nexa"
                     id="background"
                     rows={4}
                     placeholder="Describe the project purpose and background..."
-                    value={sowData.step1.background}
-                    onChange={(e) => setSOWData(prev => ({
+                    value={sessionData.project.background}
+                    onChange={(e) => setSessionData(prev => ({
                       ...prev,
-                      step1: { ...prev.step1, background: e.target.value }
+                      project: { ...prev.project, background: e.target.value }
                     }))}
                     required
                   />
@@ -548,7 +649,7 @@ export default function SOWPage() {
                   </div>
                   
                   <div className="space-y-3">
-                    {sowData.step1.objectives.map((objective) => (
+                    {sessionData.project.objectives.map((objective) => (
                       <div key={objective.id} className="flex gap-2">
                         <Textarea
                           variant="nexa"
@@ -561,7 +662,7 @@ export default function SOWPage() {
                         />
                         <Button
                           onClick={() => removeObjective(objective.id)}
-                          disabled={sowData.step1.objectives.length === 1}
+                          disabled={sessionData.project.objectives.length === 1}
                           variant="outline"
                           size="sm"
                           className="h-auto border-red-600 text-red-500 hover:bg-red-500/10"
@@ -572,26 +673,14 @@ export default function SOWPage() {
                     ))}
                   </div>
                 </div>
+              </TabsContent>
 
-                <div className="flex justify-end">
-                  <Button
-                    onClick={nextStep}
-                    className="bg-gray-800 text-white hover:bg-gray-700"
-                  >
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: In-Scope Deliverables & Functional Requirements */}
-            {currentStep === 2 && (
-              <div className="space-y-6">
-                <h2 className="text-white text-xl font-semibold mb-6">In-Scope Deliverables & Functional Requirements</h2>
+              {/* Scope Tab Content */}
+              <TabsContent value="scope">
+                <h2 className="text-white text-xl font-semibold mb-6">Scope</h2>
                 
                 {/* Deliverables Table */}
-                <div>
+                <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
                     <Label variant="nexa">In-Scope Deliverables</Label>
                     <Button
@@ -624,7 +713,7 @@ export default function SOWPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sowData.step2.deliverables.map((deliverable, index) => (
+                        {sessionData.scope.deliverables.map((deliverable, index) => (
                           <tr key={deliverable.id} className="border-b border-nexa-border">
                             <td className="p-3">
                               <Textarea
@@ -685,16 +774,21 @@ export default function SOWPage() {
                     id="outOfScope"
                     rows={3}
                     placeholder="Define what is explicitly out of scope for this project..."
-                    value={sowData.step2.outOfScope}
-                    onChange={(e) => setSOWData(prev => ({
+                    value={sessionData.scope.outOfScope}
+                    onChange={(e) => setSessionData(prev => ({
                       ...prev,
-                      step2: { ...prev.step2, outOfScope: e.target.value }
+                      scope: { ...prev.scope, outOfScope: e.target.value }
                     }))}
                   />
                 </div>
+              </TabsContent>
 
+              {/* Clauses Tab Content */}
+              <TabsContent value="clauses">
+                <h2 className="text-white text-xl font-semibold mb-6">Requirements</h2>
+                
                 {/* Functional Requirements */}
-                <div>
+                <div className="mb-8">
                   <div className="flex items-center justify-between mb-4">
                     <Label variant="nexa">Functional Requirements</Label>
                     <Button
@@ -709,7 +803,7 @@ export default function SOWPage() {
                   </div>
                   
                   <div className="space-y-3">
-                    {sowData.step2.functionalRequirements.map((requirement) => (
+                    {sessionData.clauses.functionalRequirements.map((requirement) => (
                       <div key={requirement.id} className="flex gap-2">
                         <Textarea
                           variant="nexa"
@@ -722,7 +816,7 @@ export default function SOWPage() {
                         />
                         <Button
                           onClick={() => removeFunctionalRequirement(requirement.id)}
-                          disabled={sowData.step2.functionalRequirements.length === 1}
+                          disabled={sessionData.clauses.functionalRequirements.length === 1}
                           variant="outline"
                           size="sm"
                           className="h-auto border-red-600 text-red-500 hover:bg-red-500/10"
@@ -732,103 +826,6 @@ export default function SOWPage() {
                       </div>
                     ))}
                   </div>
-                </div>
-
-                <div className="flex justify-between">
-                  <Button
-                    onClick={prevStep}
-                    variant="outline"
-                    className="border-nexa-border text-white hover:bg-white/10"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Previous
-                  </Button>
-                  
-                  <Button
-                    onClick={nextStep}
-                    className="bg-gray-800 text-white hover:bg-gray-700"
-                  >
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Non-Functional Requirements & Timeline */}
-            {currentStep === 3 && (
-              <div className="space-y-6">
-                <h2 className="text-white text-xl font-semibold mb-6">Non-Functional Requirements & Timeline</h2>
-                
-                {/* Action Buttons Toolbar */}
-                <div className="flex flex-wrap gap-2 mb-6 p-4 bg-gray-900 rounded-lg border border-nexa-border">
-                  <Button
-                    onClick={handlePreviewPDF}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
-                    title="Preview PDF"
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    onClick={handleGeneratePDF}
-                    disabled={loadingStates.generating}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-green-600 border-green-500 text-white hover:bg-green-700"
-                    title="Generate PDF"
-                  >
-                    {loadingStates.generating ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Download className="h-4 w-4" />
-                    )}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleSave}
-                    disabled={loadingStates.saving}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-24 bg-gray-800 border-nexa-border text-white hover:bg-gray-700"
-                    title="Save SoW"
-                  >
-                    {loadingStates.saving ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-1" />
-                        Save
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Button
-                    onClick={() => alert('Save to Database functionality')}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-yellow-600 border-yellow-500 text-white hover:bg-yellow-700 hidden"
-                    title="Save to Database"
-                  >
-                    <Database className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    onClick={handleDelete}
-                    disabled={loadingStates.deleting}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-red-600 border-red-500 text-white hover:bg-red-700"
-                    title="Delete SoW"
-                  >
-                    {loadingStates.deleting ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
                 </div>
 
                 {/* Non-Functional Requirements */}
@@ -847,7 +844,7 @@ export default function SOWPage() {
                   </div>
                   
                   <div className="space-y-3">
-                    {sowData.step3.nonFunctionalRequirements.map((requirement) => (
+                    {sessionData.clauses.nonFunctionalRequirements.map((requirement) => (
                       <div key={requirement.id} className="flex gap-2">
                         <Textarea
                           variant="nexa"
@@ -860,7 +857,7 @@ export default function SOWPage() {
                         />
                         <Button
                           onClick={() => removeNonFunctionalRequirement(requirement.id)}
-                          disabled={sowData.step3.nonFunctionalRequirements.length === 1}
+                          disabled={sessionData.clauses.nonFunctionalRequirements.length === 1}
                           variant="outline"
                           size="sm"
                           className="h-auto border-red-600 text-red-500 hover:bg-red-500/10"
@@ -871,7 +868,12 @@ export default function SOWPage() {
                     ))}
                   </div>
                 </div>
+              </TabsContent>
 
+              {/* Timeline Tab Content */}
+              <TabsContent value="timeline">
+                <h2 className="text-white text-xl font-semibold mb-6">Project Timeline</h2>
+                
                 {/* Project Phases & Timeline */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -906,7 +908,7 @@ export default function SOWPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sowData.step3.phases.map((phase, index) => (
+                        {sessionData.timeline.phases.map((phase, index) => (
                           <tr key={phase.id} className="border-b border-nexa-border">
                             <td className="p-3">
                               <Textarea
@@ -973,24 +975,12 @@ export default function SOWPage() {
                     </table>
                   </div>
                 </div>
+              </TabsContent>
 
-                <div className="flex justify-start">
-                  <Button
-                    onClick={prevStep}
-                    variant="outline"
-                    className="border-nexa-border text-white hover:bg-white/10"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Previous
-                  </Button>
-                </div>
-              </div>
-            )}
-
+            </Tabs>
           </Card>
         </div>
       </div>
     </DashboardLayout>
   )
 }
-
