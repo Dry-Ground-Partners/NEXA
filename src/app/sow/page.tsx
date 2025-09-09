@@ -15,7 +15,8 @@ import {
   Save,
   RotateCw,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Download
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
 import type { SOWSessionData } from '@/lib/sessions'
@@ -34,6 +35,12 @@ export default function SOWPage() {
   
   // UI state
   const [activeMainTab, setActiveMainTab] = useState('basic')
+  
+  // PDF loading states
+  const [loadingStates, setLoadingStates] = useState({
+    generating: false,
+    previewing: false
+  })
 
   // Collect current form data into session format
   const collectCurrentData = useCallback((): SOWSessionData => {
@@ -449,6 +456,96 @@ export default function SOWPage() {
         )
       }
     }))
+  }
+
+  // Preview SOW PDF function
+  const handlePreviewSOWPDF = async () => {
+    if (!sessionData) return
+    
+    setLoadingStates(prev => ({ ...prev, previewing: true }))
+    
+    try {
+      console.log('🔍 Previewing SOW PDF...')
+      
+      const response = await fetch('/api/sow/preview-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionData: collectCurrentData(),
+          sessionId
+        }),
+      })
+      
+      if (response.ok) {
+        // Get PDF blob from response
+        const pdfBlob = await response.blob()
+        
+        // Create URL and open PDF in new tab for preview
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+        window.open(pdfUrl, '_blank')
+        
+        console.log('✅ SOW PDF preview opened')
+      } else {
+        const errorText = await response.text()
+        console.log('❌ Preview failed:', errorText)
+        alert('Failed to generate PDF preview. Please try again.')
+      }
+    } catch (error) {
+      console.error('💥 Preview error:', error)
+      alert('Error generating PDF preview. Please try again.')
+    } finally {
+      setLoadingStates(prev => ({ ...prev, previewing: false }))
+    }
+  }
+
+  // Download SOW PDF function
+  const handleDownloadSOWPDF = async () => {
+    if (!sessionData) return
+    
+    setLoadingStates(prev => ({ ...prev, generating: true }))
+    
+    try {
+      console.log('💾 Downloading SOW PDF...')
+      
+      const response = await fetch('/api/sow/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionData: collectCurrentData(),
+          sessionId
+        }),
+      })
+      
+      if (response.ok) {
+        const pdfBlob = await response.blob()
+        const url = URL.createObjectURL(pdfBlob)
+        
+        // Create download link
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `SOW_${sessionData.basic.title || 'Document'}_${new Date().toISOString().split('T')[0]}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Clean up object URL
+        URL.revokeObjectURL(url)
+        console.log('✅ SOW PDF download completed')
+      } else {
+        const errorText = await response.text()
+        console.log('❌ Download failed:', errorText)
+        alert('Failed to generate PDF download. Please try again.')
+      }
+    } catch (error) {
+      console.error('💥 Download error:', error)
+      alert('Error generating PDF download. Please try again.')
+    } finally {
+      setLoadingStates(prev => ({ ...prev, generating: false }))
+    }
   }
 
   if (loading) {
@@ -873,6 +970,41 @@ export default function SOWPage() {
               {/* Timeline Tab Content */}
               <TabsContent value="timeline">
                 <h2 className="text-white text-xl font-semibold mb-6">Project Timeline</h2>
+                
+                {/* Quick Actions Toolbar */}
+                <div className="flex flex-wrap gap-2 mb-6 p-4 bg-gray-900 rounded-lg border border-nexa-border">
+                  <Button
+                    onClick={handlePreviewSOWPDF}
+                    disabled={loadingStates.previewing}
+                    variant="outline"
+                    size="sm"
+                    className="bg-blue-900/40 border-blue-600 text-blue-200 hover:bg-blue-800/60"
+                    title="Preview SOW PDF"
+                  >
+                    {loadingStates.previewing ? (
+                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4 mr-2" />
+                    )}
+                    Preview PDF
+                  </Button>
+                  
+                  <Button
+                    onClick={handleDownloadSOWPDF}
+                    disabled={loadingStates.generating}
+                    variant="outline"
+                    size="sm"
+                    className="bg-green-900/40 border-green-600 text-green-200 hover:bg-green-800/60"
+                    title="Download SOW PDF"
+                  >
+                    {loadingStates.generating ? (
+                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Download PDF
+                  </Button>
+                </div>
                 
                 {/* Project Phases & Timeline */}
                 <div>
