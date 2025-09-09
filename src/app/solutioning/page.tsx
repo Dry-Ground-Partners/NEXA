@@ -92,14 +92,15 @@ export default function SolutioningPage() {
     enhancing: false,
     generating: false,
     uploading: false,
-    analysisInProgress: false
+    analysisInProgress: false,
+    autoFormatting: false
   })
 
   // Image states for color-coding
   const getImageState = (solution: any) => {
     if (!solution.additional.imageData) return 'empty'
     if (loadingStates.uploading) return 'uploading' 
-    if (loadingStates.vision) return 'analyzing'
+    if (loadingStates.analysisInProgress) return 'analyzing'
     if ((solution.additional as any).analysisError) return 'error'
     if (solution.variables.aiAnalysis) return 'success'
     if (solution.additional.imageData && !solution.variables.aiAnalysis) return 'loaded'
@@ -111,7 +112,7 @@ export default function SolutioningPage() {
       case 'empty': return 'bg-nexa-input border-nexa-border'
       case 'uploading': return 'bg-blue-900/30 border-blue-500 animate-pulse'
       case 'loaded': return 'bg-nexa-input border-nexa-border' // Normal styling when loaded but not analyzed
-      case 'analyzing': return 'bg-purple-900/30 border-purple-500 animate-pulse shimmer'
+      case 'analyzing': return 'bg-blue-900/30 border-blue-500 shimmer'
       case 'success': return 'bg-green-900/30 border-green-500'
       case 'error': return 'bg-red-900/30 border-red-500'
       default: return 'bg-nexa-input border-nexa-border'
@@ -409,8 +410,23 @@ export default function SolutioningPage() {
   const triggerVisionAnalysis = async (imageData: string) => {
     setLoadingStates(prev => ({ ...prev, analysisInProgress: true }))
     
+    // Clear any previous analysis error
+    setSessionData(prev => ({
+      ...prev,
+      solutions: {
+        ...prev.solutions,
+        [prev.currentSolution]: {
+          ...prev.solutions[prev.currentSolution],
+          additional: {
+            ...prev.solutions[prev.currentSolution].additional,
+            analysisError: false
+          }
+        }
+      }
+    }))
+    
     try {
-      console.log('🔍 Auto-starting vision analysis...')
+      console.log('🔍 Starting vision analysis...')
       
       const response = await fetch('/api/solutioning/analyze-image', {
         method: 'POST',
@@ -467,13 +483,77 @@ export default function SolutioningPage() {
     }
   }
 
-  // Manual re-analysis (for retry button)
+  // Manual re-analysis (for retry button) - Always trigger analysis
   const runVisionAnalysis = async () => {
     if (!currentSolution.additional.imageData) {
       alert('Please upload an image first.')
       return
     }
+    console.log('🔄 Manual re-analysis triggered')
     await triggerVisionAnalysis(currentSolution.additional.imageData)
+  }
+
+  // Auto-formatting function
+  const autoFormatContent = async () => {
+    const title = currentSolution.structure.title
+    const steps = currentSolution.structure.steps
+    const approach = currentSolution.structure.approach
+    
+    if (!title && !steps && !approach) {
+      alert('Please add some content to title, steps, or approach before formatting.')
+      return
+    }
+
+    setLoadingStates(prev => ({ ...prev, autoFormatting: true }))
+    
+    try {
+      console.log('🎨 Starting auto-formatting...')
+      
+      const response = await fetch('/api/solutioning/auto-format', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          steps,
+          approach
+        })
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Auto-formatting failed')
+      }
+
+      console.log('✅ Auto-formatting completed successfully')
+      
+      // Update the session data with the formatted content
+      setSessionData(prev => ({
+        ...prev,
+        solutions: {
+          ...prev.solutions,
+          [prev.currentSolution]: {
+            ...prev.solutions[prev.currentSolution],
+            structure: {
+              ...prev.solutions[prev.currentSolution].structure,
+              title: result.formatted.title || title,
+              steps: result.formatted.steps || steps,
+              approach: result.formatted.approach || approach
+            }
+          }
+        }
+      }))
+
+      showAnimatedNotification('Content formatted successfully with HTML enhancements!', 'success')
+      
+    } catch (error) {
+      console.error('❌ Auto-formatting failed:', error)
+      showAnimatedNotification('Auto-formatting failed. Please try again.', 'error')
+    } finally {
+      setLoadingStates(prev => ({ ...prev, autoFormatting: false }))
+    }
   }
 
   const structureSolution = async () => {
@@ -521,6 +601,11 @@ export default function SolutioningPage() {
       }))
 
       showAnimatedNotification('Solution structured successfully!', 'success')
+      
+      // Auto-click Next button after successful structuring
+      setTimeout(() => {
+        setActiveSubTab('structured')
+      }, 1000)
       
     } catch (error) {
       console.error('❌ Solution structuring failed:', error)
@@ -667,10 +752,59 @@ export default function SolutioningPage() {
     }
   }
 
-  // Delete function for session
+  // Delete function with blur effect - deletes current tab or session
   const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this solutioning session?')) {
-      window.location.href = '/dashboard'
+    // If on Basic tab, ignore silently
+    if (activeMainTab === 'basic') {
+      return
+    }
+    
+    // If on a solution tab, delete that specific solution
+    if (activeMainTab.startsWith('solution-')) {
+      const solutionId = parseInt(activeMainTab.replace('solution-', ''))
+      
+      if (sessionData.solutionCount === 1) {
+        // If last solution, delete entire session
+        if (confirm('Are you sure you want to delete this solutioning session? This is the last solution.')) {
+          window.location.href = '/dashboard'
+        }
+        return
+      }
+      
+      // Add blur effect to button immediately
+      const deleteButton = document.querySelector('button[data-delete-btn]') as HTMLElement
+      if (deleteButton) {
+        deleteButton.style.filter = 'blur(3px)'
+        deleteButton.style.opacity = '0.7'
+      }
+      
+      // Remove the solution immediately (no waiting for animation)
+      const newSolutions = { ...sessionData.solutions }
+      delete newSolutions[solutionId]
+      
+      // Update solution count
+      const newSolutionCount = sessionData.solutionCount - 1
+      
+      // Switch to Basic tab or first available solution
+      const remainingSolutions = Object.keys(newSolutions).map(Number)
+      const nextTab = remainingSolutions.length > 0 ? `solution-${remainingSolutions[0]}` : 'basic'
+      const nextSolution = remainingSolutions.length > 0 ? remainingSolutions[0] : 1
+      
+      setSessionData(prev => ({
+        ...prev,
+        currentSolution: nextSolution,
+        solutionCount: newSolutionCount,
+        solutions: newSolutions
+      }))
+      setActiveMainTab(nextTab)
+      
+      // Remove blur effect after a short delay
+      setTimeout(() => {
+        if (deleteButton) {
+          deleteButton.style.filter = ''
+          deleteButton.style.opacity = ''
+        }
+      }, 300)
     }
   }
 
@@ -686,7 +820,7 @@ export default function SolutioningPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sessionData })
+        body: JSON.stringify({ sessionData, sessionId })
       })
 
       if (response.ok) {
@@ -734,7 +868,7 @@ export default function SolutioningPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sessionData })
+        body: JSON.stringify({ sessionData, sessionId })
       })
 
       if (response.ok) {
@@ -846,7 +980,7 @@ export default function SolutioningPage() {
           }
         }))
 
-        // Auto-trigger vision analysis after upload
+        // Auto-trigger vision analysis after upload (always trigger)
         setTimeout(() => {
           triggerVisionAnalysis(base64Data)
         }, 500) // Small delay to ensure state updates
@@ -935,29 +1069,38 @@ export default function SolutioningPage() {
                   <span className="text-center">Solutioning</span>
                 </div>
 
-                {/* Tab strip */}
-                <TabsList className="mb-0">
-                  <TabsTrigger value="basic" className="flex items-center gap-2">
-                    <Info className="w-4 h-4" />
-                    Basic
-                  </TabsTrigger>
-                  {Object.keys(sessionData.solutions).map(solutionId => (
-                    <TabsTrigger 
-                      key={solutionId}
-                      value={`solution-${solutionId}`} 
-                      className="flex items-center gap-2"
-                      onClick={() => switchSolution(parseInt(solutionId))}
-                    >
-                      {solutionId}
+                {/* Tab strip with Basic separate from scrollable container */}
+                <div className="flex items-center">
+                  <TabsList className="mb-0 mr-2">
+                    <TabsTrigger value="basic" className="flex items-center gap-2">
+                      <Info className="w-4 h-4" />
+                      Basic
                     </TabsTrigger>
-                  ))}
+                  </TabsList>
+                  <div className="scrollable-tabs-container relative">
+                    <TabsList className="scrollable-tabs mb-0 flex overflow-x-auto scrollbar-hide">
+                      {Object.keys(sessionData.solutions).map(solutionId => (
+                        <TabsTrigger 
+                          key={solutionId}
+                          value={`solution-${solutionId}`} 
+                          className="flex items-center gap-2 flex-shrink-0"
+                          onClick={() => switchSolution(parseInt(solutionId))}
+                        >
+                          {solutionId}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                    {/* Fade effect overlays */}
+                    <div className="tab-fade-left"></div>
+                    <div className="tab-fade-right"></div>
+                  </div>
                   <button
                     onClick={addSolution}
-                    className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg relative hover:text-white hover:bg-nexa-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ml-1"
+                    className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-nexa-card border-t border-l border-r border-nexa-border text-nexa-muted rounded-t-lg relative hover:text-white hover:bg-nexa-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ml-1 flex-shrink-0"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
-                </TabsList>
+                </div>
               </div>
 
               {/* Action tabs aligned right */}
@@ -986,6 +1129,7 @@ export default function SolutioningPage() {
                 </button>
                 <button
                   onClick={handleDelete}
+                  data-delete-btn
                   className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-red-500/10 text-red-500 border-t border-l border-r border-red-600 rounded-t-lg relative hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -1234,11 +1378,7 @@ export default function SolutioningPage() {
                               disabled={loadingStates.structuring}
                               className="border border-nexa-border text-white bg-transparent h-10 px-4 py-2 text-sm font-medium rounded-lg border-draw-button structure-solution-button flex items-center"
                             >
-                              {loadingStates.structuring ? (
-                                <RotateCw className="h-4 w-4 mr-2 animate-spin" />
-                              ) : (
-                                <Layers className="h-4 w-4 mr-2" />
-                              )}
+                              <Layers className="h-4 w-4 mr-2" />
                               Structure Solution
                             </button>
                           </div>
@@ -1319,7 +1459,7 @@ export default function SolutioningPage() {
                     onClick={() => setModals(prev => ({ ...prev, layoutModal: true }))}
                     variant="outline"
                     size="sm"
-                    className="h-8 w-8 p-0 bg-purple-600 border-purple-500 text-white hover:bg-purple-700"
+                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
                     title="Select Layout"
                   >
                     <Palette className="h-4 w-4" />
@@ -1329,20 +1469,25 @@ export default function SolutioningPage() {
                     onClick={() => setModals(prev => ({ ...prev, difficultyModal: true }))}
                     variant="outline"
                     size="sm"
-                    className="h-8 w-8 p-0 bg-orange-600 border-orange-500 text-white hover:bg-orange-700"
+                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
                     title="Set Difficulty"
                   >
                     <Target className="h-4 w-4" />
                   </Button>
                   
                   <Button
-                    onClick={() => alert('Auto-Formatting feature coming soon!')}
+                    onClick={autoFormatContent}
+                    disabled={loadingStates.autoFormatting}
                     variant="outline"
                     size="sm"
-                    className="h-8 w-8 p-0 bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-700"
+                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
                     title="Auto-Formatting"
                   >
-                    <Wand2 className="h-4 w-4" />
+                    {loadingStates.autoFormatting ? (
+                      <RotateCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Wand2 className="h-4 w-4" />
+                    )}
                   </Button>
                   
                   
@@ -1350,7 +1495,7 @@ export default function SolutioningPage() {
                     onClick={previewPDF}
                     variant="outline"
                     size="sm"
-                    className="h-8 w-8 p-0 bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
+                    className="h-8 w-8 p-0 bg-blue-900/40 border-blue-600 text-blue-200 hover:bg-blue-800/60"
                     title="Preview PDF"
                     disabled={loadingStates.generating}
                   >
@@ -1365,7 +1510,7 @@ export default function SolutioningPage() {
                     onClick={generatePDF}
                     variant="outline"
                     size="sm"
-                    className="h-8 w-8 p-0 bg-green-600 border-green-500 text-white hover:bg-green-700"
+                    className="h-8 w-8 p-0 bg-green-900/40 border-green-600 text-green-200 hover:bg-green-800/60"
                     title="Generate PDF"
                     disabled={loadingStates.generating}
                   >
@@ -1396,9 +1541,10 @@ export default function SolutioningPage() {
                       <div 
                         onClick={() => toggleEdit('title')}
                         className="min-h-[40px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white"
-                      >
-                        {currentSolution.structure.title || 'No content yet...'}
-                      </div>
+                        dangerouslySetInnerHTML={{
+                          __html: currentSolution.structure.title || 'No content yet...'
+                        }}
+                      />
                     )}
                   </div>
 
@@ -1422,9 +1568,10 @@ export default function SolutioningPage() {
                         <div 
                           onClick={() => toggleEdit('steps')}
                           className="min-h-[150px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white whitespace-pre-wrap"
-                        >
-                          {currentSolution.structure.steps || 'No content yet...'}
-                        </div>
+                          dangerouslySetInnerHTML={{
+                            __html: currentSolution.structure.steps || 'No content yet...'
+                          }}
+                        />
                       )}
                     </div>
 
@@ -1446,9 +1593,10 @@ export default function SolutioningPage() {
                         <div 
                           onClick={() => toggleEdit('approach')}
                           className="min-h-[150px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white whitespace-pre-wrap"
-                        >
-                          {currentSolution.structure.approach || 'No content yet...'}
-                        </div>
+                          dangerouslySetInnerHTML={{
+                            __html: currentSolution.structure.approach || 'No content yet...'
+                          }}
+                        />
                       )}
                     </div>
                   </div>
@@ -1830,6 +1978,26 @@ export default function SolutioningPage() {
                   Done
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Glass Blur Overlay for Structuring */}
+      {loadingStates.structuring && (
+        <div className="glass-blur-overlay">
+          <div className="flex flex-col items-center">
+            <img
+              src="/images/nexanonameicon.png?v=1"
+              alt="NEXA"
+              className="nexa-structuring-icon"
+            />
+            <div className="mt-6 blur-scroll-loading structure-loading">
+              {"Structuring Solution...".split("").map((letter, index) => (
+                <span key={index} className="blur-scroll-letter">
+                  {letter === " " ? "\u00A0" : letter}
+                </span>
+              ))}
             </div>
           </div>
         </div>

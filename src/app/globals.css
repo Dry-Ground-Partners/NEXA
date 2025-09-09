@@ -561,24 +561,57 @@
     content: "";
     position: absolute;
     top: 0;
-    left: -100%;
+    left: 0;
     width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      45deg,
+      rgba(59, 130, 246, 0.1),
+      rgba(147, 197, 253, 0.3),
+      rgba(59, 130, 246, 0.1)
+    );
+    animation: shimmerPulse 3s ease-in-out infinite;
+    opacity: 0.4;
+  }
+
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
     height: 100%;
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(255, 255, 255, 0.1),
+      rgba(147, 197, 253, 0.6),
       transparent
     );
-    animation: shimmerMove 2s infinite;
+    animation: shimmerSweep 2s ease-in-out infinite;
   }
 
-  @keyframes shimmerMove {
+  @keyframes shimmerPulse {
+    0%, 100% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.02);
+    }
+  }
+
+  @keyframes shimmerSweep {
     0% {
       left: -100%;
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
     }
     100% {
       left: 100%;
+      opacity: 0;
     }
   }
 
@@ -743,18 +776,118 @@
   .generate-loading .blur-scroll-letter:nth-child(19) { animation-delay: calc(3.5s / 20 * (20 - 19) * -1); }
   .generate-loading .blur-scroll-letter:nth-child(20) { animation-delay: calc(3.5s / 20 * (20 - 20) * -1); }
 
-  /* Structure loading text - for "Structuring..." (13 chars) */
-  .structure-loading .blur-scroll-letter:nth-child(1) { animation-delay: calc(3.5s / 13 * (13 - 1) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(2) { animation-delay: calc(3.5s / 13 * (13 - 2) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(3) { animation-delay: calc(3.5s / 13 * (13 - 3) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(4) { animation-delay: calc(3.5s / 13 * (13 - 4) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(5) { animation-delay: calc(3.5s / 13 * (13 - 5) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(6) { animation-delay: calc(3.5s / 13 * (13 - 6) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(7) { animation-delay: calc(3.5s / 13 * (13 - 7) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(8) { animation-delay: calc(3.5s / 13 * (13 - 8) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(9) { animation-delay: calc(3.5s / 13 * (13 - 9) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(10) { animation-delay: calc(3.5s / 13 * (13 - 10) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(11) { animation-delay: calc(3.5s / 13 * (13 - 11) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(12) { animation-delay: calc(3.5s / 13 * (13 - 12) * -1); }
-  .structure-loading .blur-scroll-letter:nth-child(13) { animation-delay: calc(3.5s / 13 * (13 - 13) * -1); }
+  /* Structure loading text - for "Structuring Solution..." (21 chars) */
+  .structure-loading .blur-scroll-letter:nth-child(1) { animation-delay: calc(3.5s / 21 * (21 - 1) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(2) { animation-delay: calc(3.5s / 21 * (21 - 2) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(3) { animation-delay: calc(3.5s / 21 * (21 - 3) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(4) { animation-delay: calc(3.5s / 21 * (21 - 4) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(5) { animation-delay: calc(3.5s / 21 * (21 - 5) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(6) { animation-delay: calc(3.5s / 21 * (21 - 6) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(7) { animation-delay: calc(3.5s / 21 * (21 - 7) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(8) { animation-delay: calc(3.5s / 21 * (21 - 8) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(9) { animation-delay: calc(3.5s / 21 * (21 - 9) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(10) { animation-delay: calc(3.5s / 21 * (21 - 10) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(11) { animation-delay: calc(3.5s / 21 * (21 - 11) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(12) { animation-delay: calc(3.5s / 21 * (21 - 12) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(13) { animation-delay: calc(3.5s / 21 * (21 - 13) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(14) { animation-delay: calc(3.5s / 21 * (21 - 14) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(15) { animation-delay: calc(3.5s / 21 * (21 - 15) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(16) { animation-delay: calc(3.5s / 21 * (21 - 16) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(17) { animation-delay: calc(3.5s / 21 * (21 - 17) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(18) { animation-delay: calc(3.5s / 21 * (21 - 18) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(19) { animation-delay: calc(3.5s / 21 * (21 - 19) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(20) { animation-delay: calc(3.5s / 21 * (21 - 20) * -1); }
+  .structure-loading .blur-scroll-letter:nth-child(21) { animation-delay: calc(3.5s / 21 * (21 - 21) * -1); }
+
+  /* Scrollable Tabs with Fade Effects */
+  .scrollable-tabs-container {
+    max-width: 450px; /* Reduced width since Basic tab is outside */
+    position: relative;
+  }
+
+  .scrollable-tabs {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    display: flex !important; /* Override any existing display */
+    justify-content: flex-start !important; /* Override centering */
+  }
+
+  .scrollable-tabs::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  .tab-fade-left {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.8), transparent);
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .tab-fade-right {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(to left, rgba(0, 0, 0, 0.8), transparent);
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  /* Show fade effects when scrollable */
+  .scrollable-tabs-container:hover .tab-fade-left,
+  .scrollable-tabs-container:hover .tab-fade-right {
+      opacity: 1;
+  }
+
+  /* Hide scrollbar class */
+  .scrollbar-hide {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  /* Glass Blur Overlay for Structuring */
+  .glass-blur-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Animated NEXA Icon with Blur Effect */
+  .nexa-structuring-icon {
+    width: 80px;
+    height: 80px;
+    filter: brightness(1.2);
+    animation: nexaBlurEffect 2s ease-in-out infinite;
+  }
+
+  @keyframes nexaBlurEffect {
+    0%, 100% {
+      filter: blur(0px) brightness(1);
+    }
+    50% {
+      filter: blur(3px) brightness(1.5);
+    }
+  }
 }

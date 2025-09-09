@@ -14,6 +14,7 @@ export interface TemplateData {
     imageData: string | null
   }>
   totalSolutions?: number
+  sessionProtocol?: string
 }
 
 function generateSolutionPageHTML(solution: any, index: number, data: TemplateData, formattedDate: string): string {
@@ -124,7 +125,7 @@ function generateSolutionPageHTML(solution: any, index: number, data: TemplateDa
     <div class="solution-footer">
         <div class="solution-footer-line"></div>
         <div class="solution-footer-text">
-            Dry Ground AI — ${data.title} — Protocol SH123 Glyph — LS${layout}DL${solution.difficulty} at ${formattedDate}
+            Dry Ground AI — ${data.title} — Protocol ${data.sessionProtocol || 'SH123'} Glyph — LS${layout}DL${solution.difficulty} at ${formattedDate}
         </div>
     </div>
 </div>`;

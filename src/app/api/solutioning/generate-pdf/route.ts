@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('📨 PDF Generation: Received body:', body)
     
-    const { sessionData } = body
+    const { sessionData, sessionId } = body
     
     if (!sessionData || !sessionData.basic) {
       console.log('❌ PDF Generation: Missing session data')
@@ -29,6 +29,9 @@ export async function POST(request: NextRequest) {
       imageData: solution.additional?.imageData || null
     }))
 
+    // Extract short protocol from sessionId (first part before hyphen)
+    const shortProtocol = sessionId ? sessionId.split('-')[0].toUpperCase() : 'SH123'
+    
     const templateData: TemplateData = {
       title: sessionData.basic.title || 'Untitled Project',
       engineer: sessionData.basic.engineer || 'Unknown Engineer',
@@ -36,7 +39,8 @@ export async function POST(request: NextRequest) {
       date: sessionData.basic.date || new Date().toISOString().split('T')[0],
       isMultiSolution: sessionData.solutionCount > 1,
       solutions: solutions,
-      totalSolutions: sessionData.solutionCount || solutions.length
+      totalSolutions: sessionData.solutionCount || solutions.length,
+      sessionProtocol: shortProtocol
     }
     
     console.log('📊 PDF Generation: Session data:', JSON.stringify(sessionData, null, 2))
