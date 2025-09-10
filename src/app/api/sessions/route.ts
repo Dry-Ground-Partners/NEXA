@@ -4,9 +4,10 @@ import {
   createVisualsSession,
   createSolutioningSession,
   createSOWSession,
+  createLOESession,
   getUserStructuringSessions 
 } from '@/lib/sessions-server'
-import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData, SOWSessionData } from '@/lib/sessions'
+import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData, SOWSessionData, LOESessionData } from '@/lib/sessions'
 
 // GET /api/sessions - List user's sessions
 export async function GET(request: NextRequest) {
@@ -42,17 +43,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as {
       title?: string
       client?: string
-      sessionType: 'structuring' | 'visuals' | 'solutioning' | 'sow'
-      data: StructuringSessionData | VisualsSessionData | SolutioningSessionData | SOWSessionData
+      sessionType: 'structuring' | 'visuals' | 'solutioning' | 'sow' | 'loe'
+      data: StructuringSessionData | VisualsSessionData | SolutioningSessionData | SOWSessionData | LOESessionData
     }
     
     // Validate request
-    if (!body.sessionType || !['structuring', 'visuals', 'solutioning', 'sow'].includes(body.sessionType)) {
+    if (!body.sessionType || !['structuring', 'visuals', 'solutioning', 'sow', 'loe'].includes(body.sessionType)) {
       console.log('❌ API: Invalid session type')
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Session type must be "structuring", "visuals", "solutioning", or "sow"' 
+          error: 'Session type must be "structuring", "visuals", "solutioning", "sow", or "loe"' 
         },
         { status: 400 }
       )
@@ -70,8 +71,20 @@ export async function POST(request: NextRequest) {
     }
     
     console.log(`📝 API: Creating ${body.sessionType} session`)
-    console.log(`   - Title: "${body.data.basic.title}"`)
-    console.log(`   - Client: "${(body.data as any).basic.client || (body.data as any).basic.recipient}"`)
+    
+    // Get title and client based on session type
+    let title = '', client = ''
+    if (body.sessionType === 'loe') {
+      const loeData = body.data as LOESessionData
+      title = loeData.info?.project || ''
+      client = loeData.info?.client || ''
+    } else {
+      title = (body.data as any).basic?.title || ''
+      client = (body.data as any).basic?.client || (body.data as any).basic?.recipient || ''
+    }
+    
+    console.log(`   - Title: "${title}"`)
+    console.log(`   - Client: "${client}"`)
     
     let session
     if (body.sessionType === 'structuring') {
@@ -94,6 +107,12 @@ export async function POST(request: NextRequest) {
       console.log(`   - Deliverables: ${sowData.scope.deliverables.length}`)
       console.log(`   - Phases: ${sowData.timeline.phases.length}`)
       session = await createSOWSession(sowData)
+    } else if (body.sessionType === 'loe') {
+      const loeData = body.data as LOESessionData
+      console.log(`   - Workstreams: ${loeData.workstreams.workstreams.length}`)
+      console.log(`   - Resources: ${loeData.resources.resources.length}`)
+      console.log(`   - Assumptions: ${loeData.assumptions.assumptions.length}`)
+      session = await createLOESession(loeData)
     }
     
     if (!session) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -118,8 +118,45 @@ export default function LOEPage() {
     deleting: false
   })
   const [saving, setSaving] = useState(false)
+  
+  // Save state management (following SOW pattern)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
 
+  // Load session from URL on mount
   useEffect(() => {
+    const loadSession = async () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const sessionParam = urlParams.get('session')
+      
+      if (sessionParam) {
+        console.log(`🔄 Loading LOE session from URL: ${sessionParam}`)
+        
+        try {
+          const response = await fetch(`/api/sessions/${sessionParam}`)
+          const result = await response.json()
+          
+          if (result.success && result.session?.data) {
+            console.log('✅ LOE Session data loaded from URL')
+            setSessionId(sessionParam)
+            const loadedData = result.session.data
+            setLOEData(loadedData)
+            setHasUnsavedChanges(false)
+            setLastSaved(new Date(loadedData.lastSaved))
+            console.log(`✅ LOE Session loaded: "${loadedData.info?.project || 'Untitled'}"`)
+          } else {
+            console.log('❌ Failed to load LOE session:', result.error)
+            // Remove invalid session from URL
+            window.history.replaceState({}, '', '/loe')
+          }
+        } catch (error) {
+          console.error('💥 Error loading LOE session:', error)
+          window.history.replaceState({}, '', '/loe')
+        }
+      }
+    }
+
     const fetchUser = async () => {
       try {
         const response = await fetch('/api/auth/me')
@@ -127,7 +164,10 @@ export default function LOEPage() {
         
         if (data.success) {
           setUser(data.user)
+          // Load session after user is authenticated
+          await loadSession()
         } else {
+          // Redirect to login if not authenticated
           window.location.href = '/auth/login'
         }
       } catch (error) {
@@ -140,6 +180,54 @@ export default function LOEPage() {
 
     fetchUser()
   }, [])
+
+  // Collect current data function (following SOW pattern)
+  const collectCurrentData = useCallback(() => {
+    return {
+      info: loeData.info,
+      workstreams: loeData.workstreams,
+      resources: loeData.resources,
+      assumptions: loeData.assumptions,
+      variations: loeData.variations,
+      lastSaved: new Date().toISOString(),
+      version: (loeData.version || 0) + 1
+    }
+  }, [loeData])
+
+  // Track changes to set hasUnsavedChanges (following SOW pattern)
+  useEffect(() => {
+    setHasUnsavedChanges(true)
+  }, [loeData])
+
+  // Auto-save functionality (following SOW pattern)
+  useEffect(() => {
+    if (!sessionId || saving || !hasUnsavedChanges) return
+    
+    const autoSaveTimer = setTimeout(async () => {
+      try {
+        const currentData = collectCurrentData()
+        const response = await fetch(`/api/sessions/${sessionId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: currentData,
+            sessionType: 'loe'
+          })
+        })
+        
+        const result = await response.json()
+        if (result.success) {
+          setHasUnsavedChanges(false)
+          setLastSaved(new Date())
+          console.log('✅ LOE auto-save completed')
+        }
+      } catch (error) {
+        console.error('❌ LOE auto-save failed:', error)
+      }
+    }, 3000) // 3-second debounce
+    
+    return () => clearTimeout(autoSaveTimer)
+  }, [sessionId, saving, hasUnsavedChanges, collectCurrentData])
 
   // Navigation functions - matching pattern from other pages
   const handleNext = () => {
@@ -408,33 +496,190 @@ export default function LOEPage() {
   }
 
   // Action functions
-  const handlePreviewPDF = () => {
+  const handlePreviewPDF = async () => {
+    if (!loeData) return
+    
     setLoadingStates(prev => ({ ...prev, previewing: true }))
-    setTimeout(() => {
-      alert('LOE PDF Preview would open in a new tab here')
+    
+    try {
+      console.log('🔍 LOE Preview PDF: Starting preview generation')
+      
+      const response = await fetch('/api/loe/preview-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ loeData })
+      })
+
+      if (response.ok) {
+        console.log('✅ LOE Preview PDF: Response received successfully')
+        const pdfBlob = await response.blob()
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+        
+        // Open PDF in new tab for preview
+        const newWindow = window.open(pdfUrl, '_blank')
+        if (newWindow) {
+          console.log('✅ LOE Preview PDF: PDF opened in new tab')
+        } else {
+          console.warn('⚠️ LOE Preview PDF: Popup blocked, trying download fallback')
+          alert('Please allow popups to preview the PDF, or use the download button instead.')
+        }
+      } else {
+        const errorData = await response.json()
+        console.error('❌ LOE Preview PDF: Server error:', errorData)
+        alert('Failed to generate PDF preview. Please try again.')
+      }
+    } catch (error) {
+      console.error('❌ LOE Preview PDF: Client error:', error)
+      alert('Error generating PDF preview. Please try again.')
+    } finally {
       setLoadingStates(prev => ({ ...prev, previewing: false }))
-    }, 1000)
+    }
   }
 
-  const handleGeneratePDF = () => {
+  const handleGeneratePDF = async () => {
+    if (!loeData) return
+    
     setLoadingStates(prev => ({ ...prev, generating: true }))
-    setTimeout(() => {
-      alert('LOE PDF would be generated and downloaded here')
+    
+    try {
+      console.log('🔍 LOE Generate PDF: Starting download generation')
+      
+      const response = await fetch('/api/loe/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ loeData })
+      })
+
+      if (response.ok) {
+        console.log('✅ LOE Generate PDF: Response received successfully')
+        const pdfBlob = await response.blob()
+        const url = URL.createObjectURL(pdfBlob)
+        
+        // Create download link
+        const link = document.createElement('a')
+        link.href = url
+        
+        // Generate filename
+        const projectName = loeData.info?.project?.replace(/[^a-zA-Z0-9]/g, '_') || 'LOE'
+        const currentDate = new Date().toISOString().split('T')[0]
+        link.download = `LOE_${projectName}_${currentDate}.pdf`
+        
+        // Trigger download
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Clean up
+        URL.revokeObjectURL(url)
+        console.log('✅ LOE Generate PDF: Download completed')
+      } else {
+        const errorData = await response.json()
+        console.error('❌ LOE Generate PDF: Server error:', errorData)
+        alert('Failed to generate PDF download. Please try again.')
+      }
+    } catch (error) {
+      console.error('❌ LOE Generate PDF: Client error:', error)
+      alert('Error generating PDF download. Please try again.')
+    } finally {
       setLoadingStates(prev => ({ ...prev, generating: false }))
-    }, 2000)
+    }
   }
 
-  const handleSave = () => {
+  // Save function (following SOW pattern)
+  const handleSave = async () => {
     setSaving(true)
-    setTimeout(() => {
-      alert('LOE session saved successfully!')
+    
+    try {
+      const currentData = collectCurrentData()
+      
+      if (sessionId) {
+        // Update existing session
+        const response = await fetch(`/api/sessions/${sessionId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: currentData,
+            sessionType: 'loe'
+          })
+        })
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          setLOEData(currentData as any)
+          setHasUnsavedChanges(false)
+          setLastSaved(new Date())
+          console.log('✅ LOE session updated successfully')
+        } else {
+          console.error('❌ Failed to save LOE session:', result.error)
+          alert(`Failed to save LOE session: ${result.error}`)
+        }
+      } else {
+        // Create new session
+        const response = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionType: 'loe',
+            data: currentData
+          })
+        })
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          setSessionId(result.session.uuid)
+          setLOEData(currentData as any)
+          setHasUnsavedChanges(false)
+          setLastSaved(new Date())
+          console.log('✅ New LOE session created successfully:', result.session.uuid)
+          
+          // Update URL to include session ID
+          window.history.replaceState({}, '', `/loe?session=${result.session.uuid}`)
+        } else {
+          console.error('❌ Failed to create LOE session:', result.error)
+          alert(`Failed to create LOE session: ${result.error}`)
+        }
+      }
+    } catch (error) {
+      console.error('💥 LOE Save error:', error)
+      alert('Error saving LOE session. Please try again.')
+    } finally {
       setSaving(false)
-    }, 1000)
+    }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    if (!sessionId) {
+      window.location.href = '/dashboard'
+      return
+    }
+    
     if (confirm('Are you sure you want to delete this LOE session?')) {
-        window.location.href = '/dashboard'
+      try {
+        console.log(`🗑️ Deleting LOE session: ${sessionId}`)
+        
+        const response = await fetch(`/api/sessions/${sessionId}`, {
+          method: 'DELETE'
+        })
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          console.log('✅ LOE session deleted successfully')
+          window.location.href = '/dashboard'
+        } else {
+          console.error('❌ Failed to delete LOE session:', result.error)
+          alert(`Failed to delete LOE session: ${result.error}`)
+        }
+      } catch (error) {
+        console.error('💥 Delete LOE session error:', error)
+        alert('Error deleting LOE session. Please try again.')
+      }
     }
   }
 
@@ -497,19 +742,22 @@ export default function LOEPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all bg-white/10 text-white border-t border-l border-r border-white rounded-t-lg relative hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 mr-1"
+                  className={`inline-flex items-center justify-center whitespace-nowrap px-6 py-3 text-sm font-medium transition-all border-t border-l border-r rounded-t-lg relative focus-visible:outline-none focus-visible:ring-2 mr-1 ${
+                    saving
+                      ? 'save-button-saving bg-white/10 text-white border-white'
+                      : hasUnsavedChanges
+                        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 hover:bg-yellow-500/30 focus-visible:ring-yellow-400/20'
+                        : 'bg-white/10 text-white border-white hover:bg-white/20 focus-visible:ring-white/20'
+                  }`}
                 >
                   {saving ? (
-                    <>
-                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
+                    <RotateCw className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save
-                    </>
+                    <Save className="h-4 w-4 mr-2" />
                   )}
+                  <span className={saving ? "shimmer-text" : ""}>
+                    {hasUnsavedChanges ? 'Save*' : 'Save'}
+                  </span>
                 </button>
                 <button
                   onClick={handleDelete}
@@ -915,14 +1163,14 @@ export default function LOEPage() {
                 <div className="space-y-6">
                   <h2 className="text-white text-xl font-semibold mb-6">Good (Lower Effort) Option & Best (Enhanced) Option</h2>
                   
-                  {/* Action Buttons Bar */}
-                  <div className="flex flex-wrap gap-2 p-4 bg-gray-900 rounded-lg border border-nexa-border">
+                  {/* PDF Action Buttons */}
+                  <div className="flex gap-2 mb-6">
                     <Button
                       onClick={handlePreviewPDF}
                       disabled={loadingStates.previewing}
                       variant="outline"
                       size="sm"
-                      className="h-8 w-8 p-0 bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
+                      className="h-8 w-8 p-0 bg-blue-900/40 border-blue-600 text-blue-200 hover:bg-blue-800/60"
                       title="Preview PDF"
                     >
                       {loadingStates.previewing ? (
@@ -937,7 +1185,7 @@ export default function LOEPage() {
                       disabled={loadingStates.generating}
                       variant="outline"
                       size="sm"
-                      className="h-8 w-8 p-0 bg-green-600 border-green-500 text-white hover:bg-green-700"
+                      className="h-8 w-8 p-0 bg-green-900/40 border-green-600 text-green-200 hover:bg-green-800/60"
                       title="Generate PDF"
                     >
                       {loadingStates.generating ? (
@@ -946,7 +1194,7 @@ export default function LOEPage() {
                         <Download className="h-4 w-4" />
                       )}
                     </Button>
-                </div>
+                  </div>
 
                 {/* Options Section (Good/Better/Best) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -5,9 +5,10 @@ import {
   updateVisualsSession,
   updateSolutioningSession,
   updateSOWSession,
+  updateLOESession,
   deleteStructuringSession 
 } from '@/lib/sessions-server'
-import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData, SOWSessionData } from '@/lib/sessions'
+import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData, SOWSessionData, LOESessionData } from '@/lib/sessions'
 
 // GET /api/sessions/[uuid] - Get session by UUID
 export async function GET(
@@ -58,8 +59,8 @@ export async function PUT(
     console.log(`📡 API: Update session request for UUID: ${params.uuid}`)
     
     const body = await request.json() as {
-      data: StructuringSessionData | VisualsSessionData | SolutioningSessionData | SOWSessionData
-      sessionType?: 'structuring' | 'visuals' | 'solutioning' | 'sow'
+      data: StructuringSessionData | VisualsSessionData | SolutioningSessionData | SOWSessionData | LOESessionData
+      sessionType?: 'structuring' | 'visuals' | 'solutioning' | 'sow' | 'loe'
     }
     
     if (!body.data) {
@@ -81,8 +82,20 @@ export async function PUT(
     }
     
     console.log(`📝 API: Updating ${sessionType} session`)
-    console.log(`   - Title: "${body.data.basic.title}"`)
-    console.log(`   - Client: "${(body.data as any).basic.client || (body.data as any).basic.recipient}"`)
+    
+    // Get title and client based on session type (same fix as POST route)
+    let title = '', client = ''
+    if (sessionType === 'loe') {
+      const loeData = body.data as LOESessionData
+      title = loeData.info?.project || ''
+      client = loeData.info?.client || ''
+    } else {
+      title = (body.data as any).basic?.title || ''
+      client = (body.data as any).basic?.client || (body.data as any).basic?.recipient || ''
+    }
+    
+    console.log(`   - Title: "${title}"`)
+    console.log(`   - Client: "${client}"`)
     console.log(`   - Version: ${body.data.version || 0} -> ${(body.data.version || 0) + 1}`)
     
     let success
@@ -106,6 +119,12 @@ export async function PUT(
       console.log(`   - Deliverables: ${sowData.scope.deliverables.length}`)
       console.log(`   - Phases: ${sowData.timeline.phases.length}`)
       success = await updateSOWSession(params.uuid, sowData)
+    } else if (sessionType === 'loe') {
+      const loeData = body.data as LOESessionData
+      console.log(`   - Workstreams: ${loeData.workstreams.workstreams.length}`)
+      console.log(`   - Resources: ${loeData.resources.resources.length}`)
+      console.log(`   - Assumptions: ${loeData.assumptions.assumptions.length}`)
+      success = await updateLOESession(params.uuid, loeData)
     }
     
     if (!success) {

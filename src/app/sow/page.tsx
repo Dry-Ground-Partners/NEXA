@@ -16,7 +16,9 @@ import {
   RotateCw,
   ChevronUp,
   ChevronDown,
-  Download
+  Download,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
 import type { SOWSessionData } from '@/lib/sessions'
@@ -705,6 +707,19 @@ export default function SOWPage() {
                     />
                   </div>
                 </div>
+
+                {/* Navigation buttons */}
+                <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
+                  <div />
+                  
+                  <Button
+                    onClick={() => setActiveMainTab('project')}
+                    className="bg-white text-black hover:bg-gray-100"
+                  >
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
               </TabsContent>
 
               {/* Project Tab Content */}
@@ -769,6 +784,26 @@ export default function SOWPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Navigation buttons */}
+                <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
+                  <Button
+                    onClick={() => setActiveMainTab('basic')}
+                    variant="outline"
+                    className="border-nexa-border text-white hover:bg-white/10"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Previous
+                  </Button>
+                  
+                  <Button
+                    onClick={() => setActiveMainTab('scope')}
+                    className="bg-white text-black hover:bg-gray-100"
+                  >
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
                 </div>
               </TabsContent>
 
@@ -878,6 +913,26 @@ export default function SOWPage() {
                     }))}
                   />
                 </div>
+
+                {/* Navigation buttons */}
+                <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
+                  <Button
+                    onClick={() => setActiveMainTab('project')}
+                    variant="outline"
+                    className="border-nexa-border text-white hover:bg-white/10"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Previous
+                  </Button>
+                  
+                  <Button
+                    onClick={() => setActiveMainTab('clauses')}
+                    className="bg-white text-black hover:bg-gray-100"
+                  >
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
               </TabsContent>
 
               {/* Clauses Tab Content */}
@@ -965,28 +1020,47 @@ export default function SOWPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Navigation buttons */}
+                <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
+                  <Button
+                    onClick={() => setActiveMainTab('scope')}
+                    variant="outline"
+                    className="border-nexa-border text-white hover:bg-white/10"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Previous
+                  </Button>
+                  
+                  <Button
+                    onClick={() => setActiveMainTab('timeline')}
+                    className="bg-white text-black hover:bg-gray-100"
+                  >
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
               </TabsContent>
 
               {/* Timeline Tab Content */}
               <TabsContent value="timeline">
                 <h2 className="text-white text-xl font-semibold mb-6">Project Timeline</h2>
                 
-                {/* Quick Actions Toolbar */}
-                <div className="flex flex-wrap gap-2 mb-6 p-4 bg-gray-900 rounded-lg border border-nexa-border">
+                {/* Quick Actions - PDF Buttons */}
+                <div className="flex gap-2 mb-6">
                   <Button
                     onClick={handlePreviewSOWPDF}
                     disabled={loadingStates.previewing}
                     variant="outline"
                     size="sm"
-                    className="bg-blue-900/40 border-blue-600 text-blue-200 hover:bg-blue-800/60"
-                    title="Preview SOW PDF"
+                    className="h-8 w-8 p-0 bg-blue-900/40 border-blue-600 text-blue-200 hover:bg-blue-800/60"
+                    title="Preview PDF"
                   >
                     {loadingStates.previewing ? (
-                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                      <RotateCw className="h-4 w-4 animate-spin" />
                     ) : (
-                      <FileText className="h-4 w-4 mr-2" />
+                      <FileText className="h-4 w-4" />
                     )}
-                    Preview PDF
                   </Button>
                   
                   <Button
@@ -994,15 +1068,14 @@ export default function SOWPage() {
                     disabled={loadingStates.generating}
                     variant="outline"
                     size="sm"
-                    className="bg-green-900/40 border-green-600 text-green-200 hover:bg-green-800/60"
-                    title="Download SOW PDF"
+                    className="h-8 w-8 p-0 bg-green-900/40 border-green-600 text-green-200 hover:bg-green-800/60"
+                    title="Generate PDF"
                   >
                     {loadingStates.generating ? (
-                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                      <RotateCw className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Download className="h-4 w-4 mr-2" />
+                      <Download className="h-4 w-4" />
                     )}
-                    Download PDF
                   </Button>
                 </div>
                 
@@ -1106,6 +1179,20 @@ export default function SOWPage() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+
+                {/* Navigation buttons */}
+                <div className="flex justify-between mt-8 pt-8 border-t border-nexa-border">
+                  <Button
+                    onClick={() => setActiveMainTab('clauses')}
+                    variant="outline"
+                    className="border-nexa-border text-white hover:bg-white/10"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Previous
+                  </Button>
+                  
+                  <div />
                 </div>
               </TabsContent>
 

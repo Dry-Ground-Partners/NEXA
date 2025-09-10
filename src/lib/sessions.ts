@@ -360,4 +360,112 @@ export function createDefaultSOWData(): SOWSessionData {
   }
 }
 
+// LOE session data structure
+export interface LOESessionData {
+  // Info tab
+  info: {
+    project: string
+    client: string
+    preparedBy: string
+    date: string
+  }
+  
+  // Workstreams tab
+  workstreams: {
+    overview: string
+    workstreams: {
+      id: number
+      workstream: string
+      activities: string
+      duration: number
+    }[]
+  }
+  
+  // Resources tab
+  resources: {
+    resources: {
+      id: number
+      role: string
+      personWeeks: number
+      personHours: number
+    }[]
+    buffer: {
+      weeks: number
+      hours: number
+    }
+  }
+  
+  // Assumptions tab
+  assumptions: {
+    assumptions: {
+      id: number
+      text: string
+    }[]
+  }
+  
+  // Variations tab
+  variations: {
+    goodOptions: {
+      id: number
+      feature: string
+      hours: number
+      weeks: number
+    }[]
+    bestOptions: {
+      id: number
+      feature: string
+      hours: number
+      weeks: number
+    }[]
+  }
+  
+  // Metadata
+  lastSaved: string
+  version: number
+}
+
+/**
+ * Create default LOE session data
+ */
+export function createDefaultLOEData(): LOESessionData {
+  return {
+    info: {
+      project: '',
+      client: '',
+      preparedBy: 'Dry Ground Partners',
+      date: new Date().toISOString().split('T')[0]
+    },
+    workstreams: {
+      overview: '',
+      workstreams: [
+        { id: 1, workstream: '', activities: '', duration: 2 }
+      ]
+    },
+    resources: {
+      resources: [
+        { id: 1, role: '', personWeeks: 0, personHours: 0 }
+      ],
+      buffer: {
+        weeks: 0,
+        hours: 0
+      }
+    },
+    assumptions: {
+      assumptions: [
+        { id: 1, text: '' }
+      ]
+    },
+    variations: {
+      goodOptions: [
+        { id: 1, feature: '', hours: 0, weeks: 0 }
+      ],
+      bestOptions: [
+        { id: 1, feature: '', hours: 0, weeks: 0 }
+      ]
+    },
+    lastSaved: '',
+    version: 0
+  }
+}
+
 // Client-side helper functions

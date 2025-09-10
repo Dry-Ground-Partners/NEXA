@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { getCurrentUser } from '@/lib/auth'
-import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData, SOWSessionData, SessionResponse, SessionSummary } from '@/lib/sessions'
+import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData, SOWSessionData, LOESessionData, SessionResponse, SessionSummary } from '@/lib/sessions'
 
 const prisma = new PrismaClient()
 
@@ -534,6 +534,96 @@ export async function updateSOWSession(
     return true
   } catch (error) {
     console.error('💥 updateSOWSession error:', error)
+    return false
+  }
+}
+
+/**
+ * Create a new LOE session (SERVER-SIDE ONLY)
+ */
+export async function createLOESession(
+  data: LOESessionData
+): Promise<SessionResponse | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+    
+    if (!user.organizationMemberships || user.organizationMemberships.length === 0) {
+      throw new Error('No organization memberships found')
+    }
+
+    const organizationId = user.organizationMemberships[0].organization.id
+
+    const session = await prisma.aIArchitectureSession.create({
+      data: {
+        userId: user.id,
+        organizationId: organizationId,
+        title: data.info.project || null,
+        client: data.info.client || null,
+        sessionType: 'loe',
+        loeObjects: data as any, // Save LOE data to loe_objects column
+        isTemplate: false,
+        tags: []
+      }
+    })
+
+    console.log('✅ createLOESession: Session created successfully:', session.uuid)
+    return {
+      id: session.id.toString(),
+      uuid: session.uuid,
+      title: session.title,
+      client: session.client,
+      sessionType: session.sessionType,
+      isTemplate: session.isTemplate,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      data: session.loeObjects
+    }
+  } catch (error) {
+    console.error('💥 createLOESession error:', error)
+    return null
+  }
+}
+
+/**
+ * Update an existing LOE session (SERVER-SIDE ONLY)
+ */
+export async function updateLOESession(
+  uuid: string,
+  data: LOESessionData
+): Promise<boolean> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    // Update version number
+    const updatedData = {
+      ...data,
+      version: (data.version || 0) + 1,
+      lastSaved: new Date().toISOString()
+    }
+
+    await prisma.aIArchitectureSession.update({
+      where: {
+        uuid: uuid,
+        userId: user.id
+      },
+      data: {
+        title: updatedData.info.project || null,
+        client: updatedData.info.client || null,
+        loeObjects: updatedData as any, // Save to loe_objects column
+        updatedAt: new Date()
+      }
+    })
+
+    console.log('✅ updateLOESession: Session updated successfully')
+    return true
+  } catch (error) {
+    console.error('💥 updateLOESession error:', error)
     return false
   }
 }

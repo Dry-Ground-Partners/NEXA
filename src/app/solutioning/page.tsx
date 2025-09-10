@@ -766,8 +766,8 @@ export default function SolutioningPage() {
       if (sessionData.solutionCount === 1) {
         // If last solution, delete entire session
         if (confirm('Are you sure you want to delete this solutioning session? This is the last solution.')) {
-          window.location.href = '/dashboard'
-        }
+      window.location.href = '/dashboard'
+    }
         return
       }
       
@@ -1072,23 +1072,23 @@ export default function SolutioningPage() {
                 {/* Tab strip with Basic separate from scrollable container */}
                 <div className="flex items-center">
                   <TabsList className="mb-0 mr-2">
-                    <TabsTrigger value="basic" className="flex items-center gap-2">
-                      <Info className="w-4 h-4" />
-                      Basic
-                    </TabsTrigger>
+                  <TabsTrigger value="basic" className="flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    Basic
+                  </TabsTrigger>
                   </TabsList>
                   <div className="scrollable-tabs-container relative">
                     <TabsList className="scrollable-tabs mb-0 flex overflow-x-auto scrollbar-hide">
-                      {Object.keys(sessionData.solutions).map(solutionId => (
-                        <TabsTrigger 
-                          key={solutionId}
-                          value={`solution-${solutionId}`} 
+                  {Object.keys(sessionData.solutions).map(solutionId => (
+                    <TabsTrigger 
+                      key={solutionId}
+                      value={`solution-${solutionId}`} 
                           className="flex items-center gap-2 flex-shrink-0"
-                          onClick={() => switchSolution(parseInt(solutionId))}
-                        >
-                          {solutionId}
-                        </TabsTrigger>
-                      ))}
+                      onClick={() => switchSolution(parseInt(solutionId))}
+                    >
+                      {solutionId}
+                    </TabsTrigger>
+                  ))}
                     </TabsList>
                     {/* Fade effect overlays */}
                     <div className="tab-fade-left"></div>
@@ -1120,7 +1120,7 @@ export default function SolutioningPage() {
                     {saving ? (
                       <RotateCw className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
-                      <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-4 w-4 mr-2" />
                     )}
                     <span className={saving ? "shimmer-text" : ""}>
                       {hasUnsavedChanges ? 'Save*' : 'Save'}
@@ -1236,9 +1236,9 @@ export default function SolutioningPage() {
                   <div className="flex gap-3 items-center">
                     <div className="flex-1">
                       <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
                         disabled={loadingStates.uploading || loadingStates.vision}
                         className="hidden"
                         id="solution-image-upload"
@@ -1262,7 +1262,7 @@ export default function SolutioningPage() {
                       className="h-10 w-10 p-0 border-nexa-border text-white hover:bg-white/10"
                       title="View Image"
                     >
-                      <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                     </Button>
                     
                     <Button
@@ -1378,7 +1378,7 @@ export default function SolutioningPage() {
                               disabled={loadingStates.structuring}
                               className="border border-nexa-border text-white bg-transparent h-10 px-4 py-2 text-sm font-medium rounded-lg border-draw-button structure-solution-button flex items-center"
                             >
-                              <Layers className="h-4 w-4 mr-2" />
+                                <Layers className="h-4 w-4 mr-2" />
                               Structure Solution
                             </button>
                           </div>
@@ -1502,7 +1502,7 @@ export default function SolutioningPage() {
                     {loadingStates.generating ? (
                       <RotateCw className="h-4 w-4 animate-spin" />
                     ) : (
-                      <FileText className="h-4 w-4" />
+                    <FileText className="h-4 w-4" />
                     )}
                   </Button>
                   
@@ -1517,7 +1517,7 @@ export default function SolutioningPage() {
                     {loadingStates.generating ? (
                       <RotateCw className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Download className="h-4 w-4" />
+                    <Download className="h-4 w-4" />
                     )}
                   </Button>
                 </div>
@@ -1550,48 +1550,48 @@ export default function SolutioningPage() {
 
                   {/* Solution Steps and Technical Approach - Side by Side */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Solution Steps */}
-                    <div>
-                      <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('steps')}>
+                  {/* Solution Steps */}
+                  <div>
+                    <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('steps')}>
                         Solution Steps
-                      </Label>
-                      {editStates.steps ? (
-                        <Textarea
-                          variant="nexa"
-                          rows={6}
-                          value={currentSolution.structure.steps}
-                          onChange={(e) => handleStructureEdit('steps', e.target.value)}
-                          onBlur={() => toggleEdit('steps')}
-                          autoFocus
-                        />
-                      ) : (
-                        <div 
-                          onClick={() => toggleEdit('steps')}
-                          className="min-h-[150px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white whitespace-pre-wrap"
+                    </Label>
+                    {editStates.steps ? (
+                      <Textarea
+                        variant="nexa"
+                        rows={6}
+                        value={currentSolution.structure.steps}
+                        onChange={(e) => handleStructureEdit('steps', e.target.value)}
+                        onBlur={() => toggleEdit('steps')}
+                        autoFocus
+                      />
+                    ) : (
+                      <div 
+                        onClick={() => toggleEdit('steps')}
+                        className="min-h-[150px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white whitespace-pre-wrap"
                           dangerouslySetInnerHTML={{
                             __html: currentSolution.structure.steps || 'No content yet...'
                           }}
                         />
-                      )}
-                    </div>
+                    )}
+                  </div>
 
-                    {/* Technical Approach */}
-                    <div>
-                      <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('approach')}>
+                  {/* Technical Approach */}
+                  <div>
+                    <Label variant="nexa" className="cursor-pointer" onClick={() => toggleEdit('approach')}>
                         Technical Approach
-                      </Label>
-                      {editStates.approach ? (
-                        <Textarea
-                          variant="nexa"
+                    </Label>
+                    {editStates.approach ? (
+                      <Textarea
+                        variant="nexa"
                           rows={6}
-                          value={currentSolution.structure.approach}
-                          onChange={(e) => handleStructureEdit('approach', e.target.value)}
-                          onBlur={() => toggleEdit('approach')}
-                          autoFocus
-                        />
-                      ) : (
-                        <div 
-                          onClick={() => toggleEdit('approach')}
+                        value={currentSolution.structure.approach}
+                        onChange={(e) => handleStructureEdit('approach', e.target.value)}
+                        onBlur={() => toggleEdit('approach')}
+                        autoFocus
+                      />
+                    ) : (
+                      <div 
+                        onClick={() => toggleEdit('approach')}
                           className="min-h-[150px] p-3 bg-nexa-input border border-nexa-border rounded-lg cursor-pointer text-white whitespace-pre-wrap"
                           dangerouslySetInnerHTML={{
                             __html: currentSolution.structure.approach || 'No content yet...'
@@ -1602,13 +1602,13 @@ export default function SolutioningPage() {
                   </div>
 
                   {/* AI Enhancement Button */}
-                  <Button
+                        <Button
                     onClick={() => alert('AI Enhancement would improve all content')}
                     className="w-full border border-nexa-border text-gray-800 bg-gray-100 hover:bg-gray-200 p-6 text-lg font-medium rounded-xl border-draw-button generate-solution-button"
                   >
                     <Aperture className="h-6 w-6 mr-3" />
                     <span>Enhance</span>
-                  </Button>
+                        </Button>
 
 
                         </div>
@@ -1831,7 +1831,7 @@ export default function SolutioningPage() {
                     const file = files[0]
                     if (file.type.startsWith('image/')) {
                       await processImageFile(file)
-                      setModals(prev => ({ ...prev, imageActions: false }))
+                  setModals(prev => ({ ...prev, imageActions: false }))
                     }
                   }
                 }}
@@ -1848,25 +1848,25 @@ export default function SolutioningPage() {
                     <div className="text-nexa-muted text-sm mb-4">
                       Drag & drop, upload from device, or Ctrl+V to paste from clipboard
                     </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        handleImageUpload(e)
-                        setModals(prev => ({ ...prev, imageActions: false }))
-                      }}
-                      className="hidden"
-                      id="new-image-upload"
-                    />
-                    <Button
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    handleImageUpload(e)
+                    setModals(prev => ({ ...prev, imageActions: false }))
+                  }}
+                  className="hidden"
+                  id="new-image-upload"
+                />
+                <Button
                       variant="outline"
                       className="border-nexa-border text-white hover:bg-white/10 mb-4"
-                      onClick={() => document.getElementById('new-image-upload')?.click()}
+                  onClick={() => document.getElementById('new-image-upload')?.click()}
                       disabled={loadingStates.uploading}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
+                >
+                  <Upload className="h-4 w-4 mr-2" />
                       Upload from Device
-                    </Button>
+                </Button>
                   </>
                 )}
               </div>
