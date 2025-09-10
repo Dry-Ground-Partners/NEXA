@@ -627,3 +627,108 @@ export async function updateLOESession(
     return false
   }
 }
+
+/**
+ * Get a session by UUID - returns the most appropriate data type available
+ * Prioritizes visuals data if available, falls back to structuring data
+ */
+export async function getSession(
+  sessionId: string
+): Promise<SessionResponse | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    const session = await prisma.aIArchitectureSession.findFirst({
+      where: {
+        uuid: sessionId,
+        userId: user.id,
+        deletedAt: null
+      }
+    })
+
+    if (!session) {
+      return null
+    }
+
+    // Determine which data to return based on availability
+    // For visuals pages, prioritize visual_assets_json if it exists
+    let data = null
+    let sessionType = 'structuring' // default
+
+    if (isValidContent(session.visualAssetsJson)) {
+      data = session.visualAssetsJson
+      sessionType = 'visuals'
+      console.log('📊 API: Returning visuals data')
+    } else if (isValidContent(session.sessionObjects)) {
+      data = session.sessionObjects  
+      sessionType = 'solutioning'
+      console.log('📊 API: Returning solutioning data')
+    } else if (isValidContent(session.sowObjects)) {
+      data = session.sowObjects
+      sessionType = 'sow'
+      console.log('📊 API: Returning SOW data')
+    } else if (isValidContent(session.loeObjects)) {
+      data = session.loeObjects
+      sessionType = 'loe'
+      console.log('📊 API: Returning LOE data')
+    } else if (isValidContent(session.diagramTextsJson)) {
+      data = session.diagramTextsJson
+      sessionType = 'structuring'
+      console.log('📊 API: Returning structuring data')
+    }
+
+    return {
+      id: session.id.toString(),
+      uuid: session.uuid,
+      title: session.title,
+      client: session.client,
+      sessionType: sessionType,
+      isTemplate: session.isTemplate,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      data: data
+    }
+  } catch (error) {
+    console.error('Error getting session:', error)
+    return null
+  }
+}
+
+/**
+ * Add visuals data to an existing session (for structuring → visuals workflow)
+ */
+export async function updateSessionWithVisuals(
+  sessionId: string,
+  visualsData: VisualsSessionData
+): Promise<boolean> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    console.log(`🎨 Adding visuals data to session: ${sessionId}`)
+    console.log(`   - Diagram sets: ${visualsData.diagramSets?.length || 0}`)
+    console.log(`   - Basic info: ${visualsData.basic?.title || 'N/A'}`)
+
+    await prisma.aIArchitectureSession.update({
+      where: {
+        uuid: sessionId,
+        userId: user.id
+      },
+      data: {
+        visualAssetsJson: visualsData as any, // Add to visual_assets_json column
+        updatedAt: new Date()
+      }
+    })
+
+    console.log('✅ updateSessionWithVisuals: Successfully added visuals to session')
+    return true
+  } catch (error) {
+    console.error('💥 updateSessionWithVisuals error:', error)
+    return false
+  }
+}

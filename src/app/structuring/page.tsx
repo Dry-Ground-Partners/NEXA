@@ -27,7 +27,7 @@ import {
   BarChart3
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
-import type { StructuringSessionData, SessionResponse } from '@/lib/sessions'
+import type { StructuringSessionData, SessionResponse, VisualsSessionData } from '@/lib/sessions'
 import { createDefaultStructuringData } from '@/lib/sessions'
 
 interface ContentTab {
@@ -584,7 +584,7 @@ export default function StructuringPage() {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            type: 'structuring',
+            sessionType: 'structuring',
             data: currentData
           })
         })
@@ -657,6 +657,94 @@ export default function StructuringPage() {
       setActiveMainTab('content')
     } else if (activeMainTab === 'content') {
       setActiveMainTab('solution')
+    }
+  }
+
+  // Data transformation function for structuring → visuals
+  const createVisualsDataFromStructuring = (structuringData: StructuringSessionData): VisualsSessionData => {
+    return {
+      // Copy basic information
+      basic: {
+        date: structuringData.basic.date,
+        engineer: structuringData.basic.engineer,
+        title: structuringData.basic.title,
+        client: structuringData.basic.client
+      },
+      
+      // Transform solutions to diagram sets
+      diagramSets: (() => {
+        const nonEmptySolutions = structuringData.solutionTabs
+          .filter(tab => tab.text.trim() !== '') // Only include non-empty solutions
+          .map((solution, index) => ({
+            id: index + 1,
+            ideation: solution.text,        // Solution becomes ideation
+            planning: '',                   // Empty for user to fill
+            sketch: '',                     // Empty for user to fill
+            image: null,                    // Empty for user to upload
+            expandedContent: '',
+            isExpanded: false
+          }))
+        
+        // Ensure at least one diagram set exists
+        return nonEmptySolutions.length > 0 ? nonEmptySolutions : [{
+          id: 1,
+          ideation: '',
+          planning: '',
+          sketch: '',
+          image: null,
+          expandedContent: '',
+          isExpanded: false
+        }]
+      })(),
+      
+      // Default UI state
+      uiState: {
+        activeDiagramTab: 1,
+        activeMainTab: 'diagrams'
+      },
+      
+      // Metadata
+      lastSaved: new Date().toISOString(),
+      version: 1
+    }
+  }
+
+  // Transition to visuals handler
+  const handleTransitionToVisuals = async () => {
+    if (!sessionId) {
+      alert('Please save your session first before transitioning to visuals.')
+      return
+    }
+
+    setSaving(true) // Use existing saving state for UI feedback
+    
+    try {
+      // 1. Get current structuring data
+      const currentStructuringData = collectCurrentData()
+      
+      // 2. Create visuals data structure
+      const visualsData = createVisualsDataFromStructuring(currentStructuringData)
+      
+      // 3. Update same session row with visual data
+      const response = await fetch(`/api/sessions/${sessionId}/add-visuals`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visualsData })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        // 4. Navigate to visuals with session loaded
+        window.location.href = `/visuals?session=${sessionId}`
+      } else {
+        alert('Failed to transition to visuals. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error transitioning to visuals:', error)
+      alert('Error transitioning to visuals. Please try again.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -1041,7 +1129,23 @@ export default function StructuringPage() {
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
-                <div />
+                <Button 
+                  onClick={handleTransitionToVisuals}
+                  disabled={saving}
+                  className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <>
+                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                      Transitioning...
+                    </>
+                  ) : (
+                    <>
+                      To visuals
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </Button>
               )}
             </div>
 

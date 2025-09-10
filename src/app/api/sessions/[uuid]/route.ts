@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { 
+  getSession,
   getStructuringSession, 
   updateStructuringSession,
   updateVisualsSession,
@@ -18,7 +19,7 @@ export async function GET(
   try {
     console.log(`📡 API: Get session request for UUID: ${params.uuid}`)
     
-    const session = await getStructuringSession(params.uuid)
+    const session = await getSession(params.uuid)
     
     if (!session) {
       console.log('❌ API: Session not found')
@@ -31,7 +32,7 @@ export async function GET(
       )
     }
     
-    console.log(`✅ API: Session found - "${session.title}"`)
+    console.log(`✅ API: Session found - "${session.title}" (${session.sessionType} data)`)
     
     return NextResponse.json({
       success: true,
@@ -77,7 +78,7 @@ export async function PUT(
     // Determine session type from existing session if not provided
     let sessionType = body.sessionType
     if (!sessionType) {
-      const existingSession = await getStructuringSession(params.uuid)
+      const existingSession = await getSession(params.uuid)
       sessionType = existingSession?.sessionType as any || 'structuring'
     }
     

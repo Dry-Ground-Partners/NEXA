@@ -92,6 +92,7 @@ export default function VisualsPage() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessionData, setSessionData] = useState<VisualsSessionData | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isLoadingSession, setIsLoadingSession] = useState(false)
 
 
   // Image upload utilities
@@ -194,6 +195,61 @@ export default function VisualsPage() {
         
         if (data.success) {
           setUser(data.user)
+          
+          // After user is authenticated, try to load session from URL
+          const urlParams = new URLSearchParams(window.location.search)
+          const sessionParam = urlParams.get('session')
+          
+          if (sessionParam) {
+            console.log(`🔗 Loading session from URL: ${sessionParam}`)
+            setIsLoadingSession(true)
+            try {
+              const sessionResponse = await fetch(`/api/sessions/${sessionParam}`)
+              const sessionResult = await sessionResponse.json()
+              
+              if (sessionResult.success && sessionResult.session?.data) {
+                const loadedData = sessionResult.session.data
+                console.log('✅ Loaded session data:', loadedData)
+                console.log('📊 Diagram sets in loaded data:', loadedData.diagramSets)
+                
+                // Set session ID
+                setSessionId(sessionParam)
+                
+                // Load basic info
+                setDate(loadedData.basic?.date || new Date().toISOString().split('T')[0])
+                setEngineer(loadedData.basic?.engineer || '')
+                setTitle(loadedData.basic?.title || '')
+                setClient(loadedData.basic?.client || '')
+                
+                // Load diagram sets
+                if (loadedData.diagramSets && loadedData.diagramSets.length > 0) {
+                  console.log(`🎨 Setting ${loadedData.diagramSets.length} diagram sets:`, loadedData.diagramSets)
+                  setDiagramSets(loadedData.diagramSets)
+                  setActiveDiagramTab(loadedData.diagramSets[0].id)
+                }
+                
+                // Load UI state
+                if (loadedData.uiState) {
+                  setActiveDiagramTab(loadedData.uiState.activeDiagramTab || 1)
+                  setActiveMainTab(loadedData.uiState.activeMainTab || 'diagrams')
+                }
+                
+                // Set session data for comparison
+                setSessionData(loadedData)
+                setHasUnsavedChanges(false)
+                
+                console.log(`🎯 Session loaded successfully! Diagram sets: ${loadedData.diagramSets?.length || 0}`)
+              } else {
+                console.log('❌ Failed to load session, removing from URL')
+                window.history.replaceState({}, '', '/visuals')
+              }
+            } catch (error) {
+              console.error('💥 Error loading session:', error)
+              window.history.replaceState({}, '', '/visuals')
+            } finally {
+              setIsLoadingSession(false)
+            }
+          }
         } else {
           window.location.href = '/auth/login'
         }
@@ -250,25 +306,27 @@ export default function VisualsPage() {
     }
   }, [sessionId, saving, hasUnsavedChanges, diagramSets, date, engineer, title, client, activeDiagramTab, activeMainTab])
 
-  // Track changes for auto-save
+  // Track changes for auto-save (but not during initial session loading)
   useEffect(() => {
-    if (sessionId) {
+    if (sessionId && !isLoadingSession) {
       setHasUnsavedChanges(true)
     }
   }, [
     date, engineer, title, client,
     diagramSets, activeDiagramTab, activeMainTab,
-    sessionId
+    sessionId, isLoadingSession
   ])
 
-  // Auto-save debounced
+  // Auto-save debounced (but not during initial session loading)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      autoSave()
-    }, 2000) // 2 second delay
+    if (!isLoadingSession) {
+      const timer = setTimeout(() => {
+        autoSave()
+      }, 2000) // 2 second delay
 
-    return () => clearTimeout(timer)
-  }, [autoSave])
+      return () => clearTimeout(timer)
+    }
+  }, [autoSave, isLoadingSession])
 
   // Add paste event listener for image upload
   useEffect(() => {
