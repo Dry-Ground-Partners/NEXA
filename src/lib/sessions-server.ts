@@ -821,3 +821,80 @@ export async function updateSessionWithSolutioning(
     return false
   }
 }
+
+/**
+ * Add SOW data to an existing session (for solutioning → sow workflow)
+ */
+export async function updateSessionWithSOW(
+  sessionId: string,
+  sowData: SOWSessionData
+): Promise<boolean> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    console.log(`📋 Adding SOW data to session: ${sessionId}`)
+    console.log(`   - Project: ${sowData.basic?.title || 'N/A'}`)
+    console.log(`   - Client: ${sowData.basic?.client || 'N/A'}`)
+    console.log(`   - Deliverables: ${sowData.scope?.deliverables?.length || 0}`)
+    console.log(`   - Timeline phases: ${sowData.timeline?.phases?.length || 0}`)
+
+    await prisma.aIArchitectureSession.update({
+      where: {
+        uuid: sessionId,
+        userId: user.id
+      },
+      data: {
+        sowObjects: sowData as any, // Add to sow_objects column
+        updatedAt: new Date()
+      }
+    })
+
+    console.log('✅ updateSessionWithSOW: Successfully added SOW to session')
+    return true
+  } catch (error) {
+    console.error('💥 updateSessionWithSOW error:', error)
+    return false
+  }
+}
+
+/**
+ * Add LOE data to an existing session (for sow → loe workflow)
+ */
+export async function updateSessionWithLOE(
+  sessionId: string,
+  loeData: LOESessionData
+): Promise<boolean> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    console.log(`📊 Adding LOE data to session: ${sessionId}`)
+    console.log(`   - Project: ${loeData.info?.project || 'N/A'}`)
+    console.log(`   - Client: ${loeData.info?.client || 'N/A'}`)
+    console.log(`   - Workstreams: ${loeData.workstreams?.workstreams?.length || 0}`)
+    console.log(`   - Resources: ${loeData.resources?.resources?.length || 0}`)
+
+    await prisma.aIArchitectureSession.update({
+      where: {
+        uuid: sessionId,
+        userId: user.id
+      },
+      data: {
+        loeObjects: loeData as any, // Add to loe_objects column
+        updatedAt: new Date()
+      }
+    })
+
+    console.log('✅ updateSessionWithLOE: Successfully added LOE to session')
+    return true
+    
+  } catch (error) {
+    console.error('💥 updateSessionWithLOE error:', error)
+    return false
+  }
+}

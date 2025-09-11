@@ -53,6 +53,28 @@ export interface PerNodeStackResponse {
   error?: string
 }
 
+// Interfaces for SOW generation
+export interface SOWGenerationRequest {
+  solutioningData: string // Concatenated valuable content from solutioning
+}
+
+export interface SOWGenerationResponse {
+  success: boolean
+  sowData?: any // SOWSessionData structure
+  error?: string
+}
+
+// Interfaces for LOE generation
+export interface LOEGenerationRequest {
+  sowData: string // Concatenated valuable content from SOW
+}
+
+export interface LOEGenerationResponse {
+  success: boolean
+  loeData?: any // LOESessionData structure
+  error?: string
+}
+
 /**
  * Analyze an image using LangSmith nexa-solutioning-vision prompt with OpenAI Vision API
  */
@@ -321,6 +343,150 @@ export async function analyzePerNodeStackWithLangSmith(request: PerNodeStackRequ
 
   } catch (error) {
     console.error('❌ Error in per-node stack analysis:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
+  }
+}
+
+/**
+ * Generate SOW using LangSmith nexa-push-tosow prompt
+ */
+export async function generateSOWWithLangSmith(request: SOWGenerationRequest): Promise<SOWGenerationResponse> {
+  try {
+    console.log('📋 Starting SOW generation with LangSmith prompt...')
+    console.log(`   - Content length: ${request.solutioningData.length} characters`)
+    
+    // Pull the prompt from LangSmith hub
+    console.log('📥 Pulling nexa-push-tosow prompt from LangSmith...')
+    const promptTemplate = await hub.pull('nexa-push-tosow', {
+      includeModel: true
+    })
+    console.log('✅ Successfully pulled SOW generation prompt from LangSmith')
+
+    // Invoke the prompt with the solutioning data
+    const result = await promptTemplate.invoke({
+      SOLUTIONING_DATA_WILL_BE_INSERTED_HERE: request.solutioningData
+    })
+
+    // Extract the JSON content from the result
+    let sowData: any
+    if (typeof result === 'string') {
+      // If it's a string, try to parse it as JSON
+      sowData = JSON.parse(result)
+    } else if (result && typeof result === 'object' && 'content' in result) {
+      // If it's an AIMessage with content
+      const content = (result as any).content
+      sowData = JSON.parse(content)
+    } else if (result && typeof result === 'object' && 'text' in result) {
+      // Alternative text property
+      const text = (result as any).text
+      sowData = JSON.parse(text)
+    } else {
+      throw new Error('Unexpected response format from LangSmith')
+    }
+
+    // Validate the response structure
+    if (!sowData || typeof sowData !== 'object') {
+      throw new Error('Invalid JSON response from LangSmith')
+    }
+
+    // Validate required SOW structure
+    const { basic, project, scope, clauses, timeline } = sowData
+    if (!basic || !project || !scope || !clauses || !timeline) {
+      throw new Error('Missing required SOW sections in LangSmith response')
+    }
+
+    // Add metadata fields
+    sowData.uiState = { activeMainTab: 'basic' }
+    sowData.lastSaved = new Date().toISOString()
+    sowData.version = 1
+
+    console.log('✅ SOW generation completed successfully')
+    console.log(`   - Project: ${basic.title}`)
+    console.log(`   - Deliverables: ${scope.deliverables?.length || 0}`)
+    console.log(`   - Timeline phases: ${timeline.phases?.length || 0}`)
+
+    return {
+      success: true,
+      sowData
+    }
+
+  } catch (error) {
+    console.error('❌ Error in SOW generation:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
+  }
+}
+
+/**
+ * Generate LOE using LangSmith nexa-push-toloe prompt
+ */
+export async function generateLOEWithLangSmith(request: LOEGenerationRequest): Promise<LOEGenerationResponse> {
+  try {
+    console.log('📊 Starting LOE generation with LangSmith prompt...')
+    console.log(`   - Content length: ${request.sowData.length} characters`)
+    
+    // Pull the prompt from LangSmith hub
+    console.log('📥 Pulling nexa-push-toloe prompt from LangSmith...')
+    const promptTemplate = await hub.pull('nexa-push-toloe', {
+      includeModel: true
+    })
+    console.log('✅ Successfully pulled LOE generation prompt from LangSmith')
+
+    // Invoke the prompt with the SOW data
+    const result = await promptTemplate.invoke({
+      SOW_DATA_WILL_BE_INSERTED_HERE: request.sowData
+    })
+
+    // Extract the JSON content from the result
+    let loeData: any
+    if (typeof result === 'string') {
+      // If it's a string, try to parse it as JSON
+      loeData = JSON.parse(result)
+    } else if (result && typeof result === 'object' && 'content' in result) {
+      // If it's an AIMessage with content
+      const content = (result as any).content
+      loeData = JSON.parse(content)
+    } else if (result && typeof result === 'object' && 'text' in result) {
+      // Alternative text property
+      const text = (result as any).text
+      loeData = JSON.parse(text)
+    } else {
+      throw new Error('Unexpected response format from LangSmith')
+    }
+
+    // Validate the response structure
+    if (!loeData || typeof loeData !== 'object') {
+      throw new Error('Invalid JSON response from LangSmith')
+    }
+
+    // Validate required LOE structure
+    const { info, workstreams, resources, assumptions } = loeData
+    if (!info || !workstreams || !resources || !assumptions) {
+      throw new Error('Missing required LOE sections in LangSmith response')
+    }
+
+    // Add metadata fields
+    loeData.lastSaved = new Date().toISOString()
+    loeData.version = 1
+
+    console.log('✅ LOE generation completed successfully')
+    console.log(`   - Project: ${info.project}`)
+    console.log(`   - Workstreams: ${workstreams.workstreams?.length || 0}`)
+    console.log(`   - Resources: ${resources.resources?.length || 0}`)
+    console.log(`   - Total effort: ${resources.buffer?.weeks || 0} weeks buffer`)
+
+    return {
+      success: true,
+      loeData
+    }
+
+  } catch (error) {
+    console.error('❌ Error in LOE generation:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred'

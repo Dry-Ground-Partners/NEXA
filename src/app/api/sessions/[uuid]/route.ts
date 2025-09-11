@@ -109,29 +109,29 @@ export async function PUT(
     let success
     if (sessionType === 'structuring') {
       const structuringData = body.data as StructuringSessionData
-      console.log(`   - Content tabs: ${structuringData.contentTabs.length}`)
-      console.log(`   - Solution tabs: ${structuringData.solutionTabs.length}`)
+      console.log(`   - Content tabs: ${structuringData.contentTabs?.length || 0}`)
+      console.log(`   - Solution tabs: ${structuringData.solutionTabs?.length || 0}`)
       success = await updateStructuringSession(params.uuid, structuringData)
     } else if (sessionType === 'visuals') {
       const visualsData = body.data as VisualsSessionData
-      console.log(`   - Diagram sets: ${visualsData.diagramSets.length}`)
+      console.log(`   - Diagram sets: ${visualsData.diagramSets?.length || 0}`)
       success = await updateVisualsSession(params.uuid, visualsData)
     } else if (sessionType === 'solutioning') {
       const solutioningData = body.data as SolutioningSessionData
-      console.log(`   - Solutions: ${Object.keys(solutioningData.solutions).length}`)
+      console.log(`   - Solutions: ${Object.keys(solutioningData.solutions || {}).length}`)
       console.log(`   - Current solution: ${solutioningData.currentSolution}`)
       success = await updateSolutioningSession(params.uuid, solutioningData)
     } else if (sessionType === 'sow') {
       const sowData = body.data as SOWSessionData
-      console.log(`   - Objectives: ${sowData.project.objectives.length}`)
-      console.log(`   - Deliverables: ${sowData.scope.deliverables.length}`)
-      console.log(`   - Phases: ${sowData.timeline.phases.length}`)
+      console.log(`   - Objectives: ${sowData.project?.objectives?.length || 0}`)
+      console.log(`   - Deliverables: ${sowData.scope?.deliverables?.length || 0}`)
+      console.log(`   - Phases: ${sowData.timeline?.phases?.length || 0}`)
       success = await updateSOWSession(params.uuid, sowData)
     } else if (sessionType === 'loe') {
       const loeData = body.data as LOESessionData
-      console.log(`   - Workstreams: ${loeData.workstreams.workstreams.length}`)
-      console.log(`   - Resources: ${loeData.resources.resources.length}`)
-      console.log(`   - Assumptions: ${loeData.assumptions.assumptions.length}`)
+      console.log(`   - Workstreams: ${loeData.workstreams?.workstreams?.length || 0}`)
+      console.log(`   - Resources: ${loeData.resources?.resources?.length || 0}`)
+      console.log(`   - Assumptions: ${loeData.assumptions?.assumptions?.length || 0}`)
       success = await updateLOESession(params.uuid, loeData)
     }
     

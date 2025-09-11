@@ -25,6 +25,8 @@ import {
   BarChart3
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
+import type { LOESessionData } from '@/lib/sessions'
+import { createDefaultLOEData } from '@/lib/sessions'
 
 interface Workstream {
   id: number
@@ -66,49 +68,8 @@ export default function LOEPage() {
   // Tab state - matching structuring/visuals/solutioning/sow pattern
   const [activeMainTab, setActiveMainTab] = useState('info')
   
-  // LOE Data State - restructured for tab-based access
-  const [loeData, setLOEData] = useState({
-    info: {
-      project: '',
-      client: '',
-      preparedBy: 'Dry Ground Partners',
-      date: new Date().toISOString().split('T')[0]
-    },
-    workstreams: {
-    overview: '',
-    workstreams: [
-      { id: 1, workstream: '', activities: '', duration: 2 }
-      ] as Workstream[]
-    },
-    resources: {
-    resources: [
-      { id: 1, role: 'Project Manager', personWeeks: 3.0, personHours: 60 },
-      { id: 2, role: 'Solution Architect', personWeeks: 4.0, personHours: 80 },
-      { id: 3, role: 'Developer', personWeeks: 8.0, personHours: 160 },
-      { id: 4, role: 'Quality Assurance', personWeeks: 2.0, personHours: 40 },
-      { id: 5, role: 'Business Analyst', personWeeks: 3.0, personHours: 60 }
-      ] as Resource[],
-    buffer: {
-      weeks: 1.0,
-      hours: 20
-      }
-    },
-    assumptions: {
-    assumptions: [
-      { id: 1, text: 'Client will provide necessary access and resources in a timely manner' },
-      { id: 2, text: 'All stakeholders will be available for interviews and feedback sessions' },
-      { id: 3, text: 'Technical infrastructure requirements will be defined during requirements phase' }
-      ] as Assumption[]
-    },
-    variations: {
-    goodOptions: [
-      { id: 1, feature: '', hours: 0, weeks: 0 }
-      ] as GoodOption[],
-    bestOptions: [
-      { id: 1, feature: '', hours: 0, weeks: 0 }
-      ] as BestOption[]
-    }
-  })
+  // LOE Data State - using the proper interface
+  const [loeData, setLOEData] = useState<LOESessionData>(createDefaultLOEData())
 
   // Loading states
   const [loadingStates, setLoadingStates] = useState({
@@ -134,17 +95,50 @@ export default function LOEPage() {
         console.log(`🔄 Loading LOE session from URL: ${sessionParam}`)
         
         try {
-          const response = await fetch(`/api/sessions/${sessionParam}`)
+          const response = await fetch(`/api/sessions/${sessionParam}?type=loe`)
           const result = await response.json()
           
           if (result.success && result.session?.data) {
             console.log('✅ LOE Session data loaded from URL')
             setSessionId(sessionParam)
             const loadedData = result.session.data
-            setLOEData(loadedData)
+            console.log('🔍 Raw LOE data structure:', JSON.stringify(loadedData, null, 2))
+            
+            // Ensure the data has the correct structure
+            const validatedData = {
+              ...createDefaultLOEData(),
+              ...loadedData,
+              info: {
+                ...createDefaultLOEData().info,
+                ...(loadedData.info || {})
+              },
+              workstreams: {
+                ...createDefaultLOEData().workstreams,
+                ...(loadedData.workstreams || {})
+              },
+              resources: {
+                ...createDefaultLOEData().resources,
+                ...(loadedData.resources || {})
+              },
+              assumptions: {
+                ...createDefaultLOEData().assumptions,
+                ...(loadedData.assumptions || {})
+              },
+              variations: {
+                ...createDefaultLOEData().variations,
+                ...(loadedData.variations || {})
+              }
+            }
+            
+            console.log('✅ Validated LOE data structure')
+            console.log(`   - Project: ${validatedData.info?.project || 'Untitled'}`)
+            console.log(`   - Workstreams: ${validatedData.workstreams?.workstreams?.length || 0}`)
+            console.log(`   - Resources: ${validatedData.resources?.resources?.length || 0}`)
+            
+            setLOEData(validatedData)
             setHasUnsavedChanges(false)
-            setLastSaved(new Date(loadedData.lastSaved))
-            console.log(`✅ LOE Session loaded: "${loadedData.info?.project || 'Untitled'}"`)
+            setLastSaved(new Date(validatedData.lastSaved))
+            console.log(`✅ LOE Session loaded: "${validatedData.info?.project || 'Untitled'}"`)
           } else {
             console.log('❌ Failed to load LOE session:', result.error)
             // Remove invalid session from URL
@@ -786,7 +780,7 @@ export default function LOEPage() {
                       variant="nexa"
                       id="project"
                       placeholder="Enter project name..."
-                        value={loeData.info.project}
+                        value={loeData.info?.project || ''}
                       onChange={(e) => setLOEData(prev => ({
                         ...prev,
                           info: { ...prev.info, project: e.target.value }
@@ -803,7 +797,7 @@ export default function LOEPage() {
                       variant="nexa"
                       id="client"
                       placeholder="Enter client name..."
-                        value={loeData.info.client}
+                        value={loeData.info?.client || ''}
                       onChange={(e) => setLOEData(prev => ({
                         ...prev,
                           info: { ...prev.info, client: e.target.value }
@@ -820,7 +814,7 @@ export default function LOEPage() {
                       variant="nexa"
                       id="preparedBy"
                       placeholder="Enter your name..."
-                        value={loeData.info.preparedBy}
+                        value={loeData.info?.preparedBy || ''}
                       onChange={(e) => setLOEData(prev => ({
                         ...prev,
                           info: { ...prev.info, preparedBy: e.target.value }
@@ -837,7 +831,7 @@ export default function LOEPage() {
                       variant="nexa"
                       type="date"
                       id="date"
-                        value={loeData.info.date}
+                        value={loeData.info?.date || ''}
                       onChange={(e) => setLOEData(prev => ({
                         ...prev,
                           info: { ...prev.info, date: e.target.value }

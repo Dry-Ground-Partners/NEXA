@@ -376,6 +376,68 @@ export default function SolutioningPage() {
   // Get current solution
   const currentSolution = sessionData.solutions[sessionData.currentSolution]
 
+  // Helper function to check if we have valid solutions for SOW generation
+  const hasValidSolutions = () => {
+    return Object.values(sessionData.solutions).some(solution => 
+      solution.structure?.title?.trim() !== '' && 
+      solution.structure?.steps?.trim() !== '' &&
+      solution.variables?.solutionExplanation?.trim() !== ''
+    )
+  }
+
+  // Transition to SOW handler
+  const handleTransitionToSOW = async () => {
+    if (!sessionId) {
+      alert('Please save your session first before transitioning to SOW.')
+      return
+    }
+
+    setSaving(true)
+    
+    try {
+      console.log('🚀 Starting transition to SOW...')
+
+      // 1. Generate SOW data from current solutioning data
+      const response = await fetch('/api/solutioning/generate-sow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ solutioningData: sessionData })
+      })
+      
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate SOW')
+      }
+      
+      console.log('✅ SOW generated successfully')
+      
+      // 2. Update existing session with SOW data (same UUID)
+      const sowResponse = await fetch(`/api/sessions/${sessionId}/add-sow`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sowData: result.sowData })
+      })
+      
+      const sowResult = await sowResponse.json()
+      
+      if (sowResult.success) {
+        console.log(`✅ Added SOW data to existing session: ${sessionId}`)
+        
+        // 3. Navigate to SOW with SAME UUID
+        window.location.href = `/sow?session=${sessionId}`
+      } else {
+        alert('Failed to add SOW data to session. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error transitioning to SOW:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      alert(`Error transitioning to SOW: ${errorMessage}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // Navigation functions for Additional Content section
   const handleAdditionalNext = () => {
     // From Additional Content, Next toggles to Structured Solution in same tab
@@ -1688,6 +1750,24 @@ export default function SolutioningPage() {
                             >
                               Next
                               <ArrowRight className="h-4 w-4 ml-2" />
+                            </Button>
+                          ) : hasValidSolutions() ? (
+                            <Button
+                              onClick={handleTransitionToSOW}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-600/60 to-blue-600/60 hover:from-slate-500/70 hover:to-blue-500/70 border border-slate-500/50 hover:border-slate-400/60 text-white text-sm font-medium rounded-lg backdrop-blur-sm transition-all duration-200 hover:shadow-lg"
+                            >
+                              {saving ? (
+                                <>
+                                  <RotateCw className="h-4 w-4 animate-spin" />
+                                  Generating SOW...
+                                </>
+                              ) : (
+                                <>
+                                  To SOW
+                                  <ArrowRight className="h-4 w-4" />
+                                </>
+                              )}
                             </Button>
                           ) : (
                             <div />

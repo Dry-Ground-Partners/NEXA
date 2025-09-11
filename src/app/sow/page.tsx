@@ -151,6 +151,82 @@ export default function SOWPage() {
     }
   }
 
+  // Helper function to check if SOW has valid data for LOE generation
+  const hasValidSOWData = () => {
+    return sessionData.scope?.deliverables?.length > 0 && 
+           sessionData.timeline?.phases?.length > 0 &&
+           sessionData.project?.background?.trim() !== ''
+  }
+
+  // Handle transition to LOE page
+  const handleTransitionToLOE = async () => {
+    if (!sessionId) {
+      alert('Please save your SOW first before transitioning to LOE.')
+      return
+    }
+
+    setSaving(true)
+    
+    try {
+      console.log('🚀 Starting transition to LOE...')
+      
+      // 1. Generate LOE data from SOW
+      console.log('📊 Generating LOE from SOW data...')
+      const response = await fetch('/api/sow/generate-loe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sowData: sessionData })
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to generate LOE: ${errorText}`)
+      }
+      
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'LOE generation failed')
+      }
+      
+      console.log('✅ LOE generated successfully')
+      console.log(`   - Workstreams: ${result.loeData.workstreams?.workstreams?.length || 0}`)
+      console.log(`   - Resources: ${result.loeData.resources?.resources?.length || 0}`)
+      
+      // 2. Add LOE data to same session UUID
+      console.log('📝 Adding LOE data to existing session...')
+      const loeResponse = await fetch(`/api/sessions/${sessionId}/add-loe`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loeData: result.loeData })
+      })
+      
+      if (!loeResponse.ok) {
+        const errorText = await loeResponse.text()
+        throw new Error(`Failed to save LOE: ${errorText}`)
+      }
+      
+      const loeResult = await loeResponse.json()
+      
+      if (!loeResult.success) {
+        throw new Error('Failed to save LOE to session')
+      }
+      
+      console.log('✅ LOE data saved to session successfully')
+      
+      // 3. Navigate to LOE page
+      console.log('🔗 Redirecting to LOE page...')
+      window.location.href = `/loe?session=${sessionId}`
+      
+    } catch (error: any) {
+      console.error('❌ Error transitioning to LOE:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      alert(`Error transitioning to LOE: ${errorMessage}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // Delete session function
   const handleDelete = async () => {
     if (!sessionId) return
@@ -188,7 +264,7 @@ export default function SOWPage() {
         console.log(`🔄 Loading SOW session from URL: ${sessionParam}`)
         
         try {
-          const response = await fetch(`/api/sessions/${sessionParam}`)
+          const response = await fetch(`/api/sessions/${sessionParam}?type=sow`)
           const result = await response.json()
           
           if (result.success && result.session.data) {
@@ -1192,7 +1268,27 @@ export default function SOWPage() {
                     Previous
                   </Button>
                   
-                  <div />
+                  {/* "To LOE →" button - only show when SOW data is valid */}
+                  {hasValidSOWData() && (
+                    <Button
+                      onClick={handleTransitionToLOE}
+                      disabled={saving}
+                      className={`
+                        relative overflow-hidden px-6 py-3 rounded-lg font-medium transition-all duration-300
+                        bg-gradient-to-r from-purple-500/20 to-blue-500/20 
+                        border border-purple-400/30 text-white
+                        hover:from-purple-500/30 hover:to-blue-500/30 hover:border-purple-400/50
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                        backdrop-blur-sm
+                        before:absolute before:inset-0 before:bg-gradient-to-r before:from-white/5 before:to-white/10 
+                        before:opacity-0 before:transition-opacity before:duration-300 hover:before:opacity-100
+                      `}
+                    >
+                      <span className="relative z-10 flex items-center">
+                        {saving ? 'Generating LOE...' : 'To LOE →'}
+                      </span>
+                    </Button>
+                  )}
                 </div>
               </TabsContent>
 
