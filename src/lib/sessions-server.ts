@@ -629,11 +629,13 @@ export async function updateLOESession(
 }
 
 /**
- * Get a session by UUID - returns the most appropriate data type available
- * Prioritizes visuals data if available, falls back to structuring data
+ * Get a session by UUID - returns data based on requested type or session's original type
+ * @param sessionId - The session UUID
+ * @param requestedDataType - Optional: specific data type requested (e.g., 'structuring', 'visuals')
  */
 export async function getSession(
-  sessionId: string
+  sessionId: string,
+  requestedDataType?: string
 ): Promise<SessionResponse | null> {
   try {
     const user = await getCurrentUser()
@@ -653,31 +655,82 @@ export async function getSession(
       return null
     }
 
-    // Determine which data to return based on availability
-    // For visuals pages, prioritize visual_assets_json if it exists
+    // Determine which data to return based on requested type or session's original type
     let data = null
-    let sessionType = 'structuring' // default
+    let sessionType = 'structuring' // fallback
 
-    if (isValidContent(session.visualAssetsJson)) {
-      data = session.visualAssetsJson
-      sessionType = 'visuals'
-      console.log('📊 API: Returning visuals data')
-    } else if (isValidContent(session.sessionObjects)) {
-      data = session.sessionObjects  
-      sessionType = 'solutioning'
-      console.log('📊 API: Returning solutioning data')
-    } else if (isValidContent(session.sowObjects)) {
-      data = session.sowObjects
-      sessionType = 'sow'
-      console.log('📊 API: Returning SOW data')
-    } else if (isValidContent(session.loeObjects)) {
-      data = session.loeObjects
-      sessionType = 'loe'
-      console.log('📊 API: Returning LOE data')
-    } else if (isValidContent(session.diagramTextsJson)) {
-      data = session.diagramTextsJson
-      sessionType = 'structuring'
-      console.log('📊 API: Returning structuring data')
+    if (requestedDataType) {
+      // Explicit request for specific data type
+      if (requestedDataType === 'structuring' && isValidContent(session.diagramTextsJson)) {
+        data = session.diagramTextsJson
+        sessionType = 'structuring'
+        console.log('📊 API: Returning requested structuring data')
+      } else if (requestedDataType === 'visuals' && isValidContent(session.visualAssetsJson)) {
+        data = session.visualAssetsJson
+        sessionType = 'visuals'
+        console.log('📊 API: Returning requested visuals data')
+      } else if (requestedDataType === 'solutioning' && isValidContent(session.sessionObjects)) {
+        data = session.sessionObjects
+        sessionType = 'solutioning'
+        console.log('📊 API: Returning requested solutioning data')
+      } else if (requestedDataType === 'sow' && isValidContent(session.sowObjects)) {
+        data = session.sowObjects
+        sessionType = 'sow'
+        console.log('📊 API: Returning requested SOW data')
+      } else if (requestedDataType === 'loe' && isValidContent(session.loeObjects)) {
+        data = session.loeObjects
+        sessionType = 'loe'
+        console.log('📊 API: Returning requested LOE data')
+      }
+    }
+
+    // Fallback: Use original session type logic if no specific request or requested type not available
+    if (!data) {
+      const originalType = session.sessionType || 'structuring'
+      if (originalType === 'structuring' && isValidContent(session.diagramTextsJson)) {
+        data = session.diagramTextsJson
+        sessionType = 'structuring'
+        console.log('📊 API: Fallback to original structuring data')
+      } else if (originalType === 'visuals' && isValidContent(session.visualAssetsJson)) {
+        data = session.visualAssetsJson
+        sessionType = 'visuals'
+        console.log('📊 API: Fallback to original visuals data')
+      } else if (originalType === 'solutioning' && isValidContent(session.sessionObjects)) {
+        data = session.sessionObjects
+        sessionType = 'solutioning'
+        console.log('📊 API: Fallback to original solutioning data')
+      } else if (originalType === 'sow' && isValidContent(session.sowObjects)) {
+        data = session.sowObjects
+        sessionType = 'sow'
+        console.log('📊 API: Fallback to original SOW data')
+      } else if (originalType === 'loe' && isValidContent(session.loeObjects)) {
+        data = session.loeObjects
+        sessionType = 'loe'
+        console.log('📊 API: Fallback to original LOE data')
+      } else {
+        // Last resort: return any available data
+        if (isValidContent(session.diagramTextsJson)) {
+          data = session.diagramTextsJson
+          sessionType = 'structuring'
+          console.log('📊 API: Last resort - structuring data')
+        } else if (isValidContent(session.visualAssetsJson)) {
+          data = session.visualAssetsJson
+          sessionType = 'visuals'
+          console.log('📊 API: Last resort - visuals data')
+        } else if (isValidContent(session.sessionObjects)) {
+          data = session.sessionObjects
+          sessionType = 'solutioning'
+          console.log('📊 API: Last resort - solutioning data')
+        } else if (isValidContent(session.sowObjects)) {
+          data = session.sowObjects
+          sessionType = 'sow'
+          console.log('📊 API: Last resort - SOW data')
+        } else if (isValidContent(session.loeObjects)) {
+          data = session.loeObjects
+          sessionType = 'loe'
+          console.log('📊 API: Last resort - LOE data')
+        }
+      }
     }
 
     return {
@@ -729,6 +782,42 @@ export async function updateSessionWithVisuals(
     return true
   } catch (error) {
     console.error('💥 updateSessionWithVisuals error:', error)
+    return false
+  }
+}
+
+/**
+ * Add solutioning data to an existing session (for visuals → solutioning workflow)
+ */
+export async function updateSessionWithSolutioning(
+  sessionId: string,
+  solutioningData: SolutioningSessionData
+): Promise<boolean> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    console.log(`🏗️ Adding solutioning data to session: ${sessionId}`)
+    console.log(`   - Solutions: ${Object.keys(solutioningData.solutions).length}`)
+    console.log(`   - Basic info: ${solutioningData.basic?.title || 'N/A'}`)
+
+    await prisma.aIArchitectureSession.update({
+      where: {
+        uuid: sessionId,
+        userId: user.id
+      },
+      data: {
+        sessionObjects: solutioningData as any, // Add to session_objects column
+        updatedAt: new Date()
+      }
+    })
+
+    console.log('✅ updateSessionWithSolutioning: Successfully added solutioning to session')
+    return true
+  } catch (error) {
+    console.error('💥 updateSessionWithSolutioning error:', error)
     return false
   }
 }

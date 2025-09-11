@@ -671,7 +671,7 @@ export default function LOEPage() {
         
         if (result.success) {
           console.log('✅ LOE session deleted successfully')
-          window.location.href = '/dashboard'
+        window.location.href = '/dashboard'
         } else {
           console.error('❌ Failed to delete LOE session:', result.error)
           alert(`Failed to delete LOE session: ${result.error}`)
@@ -1194,7 +1194,7 @@ export default function LOEPage() {
                         <Download className="h-4 w-4" />
                       )}
                     </Button>
-                  </div>
+                </div>
 
                 {/* Options Section (Good/Better/Best) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

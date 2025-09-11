@@ -116,7 +116,7 @@ export default function StructuringPage() {
         console.log(`🔄 Loading session from URL: ${sessionParam}`)
         
         try {
-          const response = await fetch(`/api/sessions/${sessionParam}`)
+          const response = await fetch(`/api/sessions/${sessionParam}?type=structuring`)
           const result = await response.json()
           
           if (result.success && result.session.data) {
@@ -129,27 +129,45 @@ export default function StructuringPage() {
             // Restore form state
             setDate(data.basic.date)
             setEngineer(data.basic.engineer)
-            setTitle(data.basic.title)
-            setClient(data.basic.client)
-            setContentTabs(data.contentTabs)
-            setSolutionTabs(data.solutionTabs)
-            setReportData(data.reportData)
-            setSolutionOverview(data.solutionOverview)
-            setOriginalPainPoints(data.originalPainPoints)
-            setGeneratedSolutions(data.generatedSolutions)
-            
-            // Restore UI state
-            if (data.uiState) {
-              setActiveMainTab(data.uiState.activeMainTab)
-              setActiveContentTab(data.uiState.activeContentTab)
-              setActiveSolutionTab(data.uiState.activeSolutionTab)
-              setIsRolledBack(data.uiState.isRolledBack)
-              setUseContextEcho(data.uiState.useContextEcho)
-              setUseTracebackReport(data.uiState.useTracebackReport)
+            // Only load if this is structuring data
+            if (result.session.sessionType === 'structuring' && data.basic && data.contentTabs && data.solutionTabs) {
+              setTitle(data.basic.title)
+              setClient(data.basic.client)
+              setContentTabs(data.contentTabs)
+              setSolutionTabs(data.solutionTabs)
+              setReportData(data.reportData)
+              setSolutionOverview(data.solutionOverview)
+              setOriginalPainPoints(data.originalPainPoints)
+              setGeneratedSolutions(data.generatedSolutions)
+              
+              // Restore UI state
+              if (data.uiState) {
+                setActiveMainTab(data.uiState.activeMainTab || 'project')
+                setActiveContentTab(data.uiState.activeContentTab || 1)
+                setActiveSolutionTab(data.uiState.activeSolutionTab || 1)
+                setIsRolledBack(data.uiState.isRolledBack || false)
+                setUseContextEcho(data.uiState.useContextEcho || true)
+                setUseTracebackReport(data.uiState.useTracebackReport || false)
+              }
+              
+              setLastSaved(new Date(data.lastSaved))
+              console.log(`✅ Session loaded: "${data.basic.title}"`)
+            } else {
+              console.log('❌ Session is not a structuring session, redirecting...')
+              // Redirect to appropriate page based on session type
+              if (result.session.sessionType === 'visuals') {
+                window.location.href = `/visuals?session=${sessionParam}`
+              } else if (result.session.sessionType === 'solutioning') {
+                window.location.href = `/solutioning?session=${sessionParam}`
+              } else if (result.session.sessionType === 'sow') {
+                window.location.href = `/sow?session=${sessionParam}`
+              } else if (result.session.sessionType === 'loe') {
+                window.location.href = `/loe?session=${sessionParam}`
+              } else {
+                window.history.replaceState({}, '', '/structuring')
+              }
+              return
             }
-            
-            setLastSaved(new Date(data.lastSaved))
-            console.log(`✅ Session loaded: "${data.basic.title}"`)
           } else {
             console.log('❌ Failed to load session:', result.error)
             // Remove invalid session from URL
@@ -252,7 +270,8 @@ export default function StructuringPage() {
   const deleteContentTab = () => {
     if (contentTabs.length === 1) return // Prevent deleting last tab
     
-    const filteredTabs = contentTabs.filter(tab => tab.id !== activeContentTab)
+    const currentActiveTab = activeContentTab || 1
+    const filteredTabs = contentTabs.filter(tab => tab.id !== currentActiveTab)
     setContentTabs(filteredTabs)
     setActiveContentTab(filteredTabs[0]?.id || 1)
   }
@@ -273,7 +292,8 @@ export default function StructuringPage() {
   const deleteSolutionTab = () => {
     if (solutionTabs.length === 1) return // Prevent deleting last tab
     
-    const filteredTabs = solutionTabs.filter(tab => tab.id !== activeSolutionTab)
+    const currentActiveSolutionTab = activeSolutionTab || 1
+    const filteredTabs = solutionTabs.filter(tab => tab.id !== currentActiveSolutionTab)
     setSolutionTabs(filteredTabs)
     setActiveSolutionTab(filteredTabs[0]?.id || 1)
   }
@@ -888,7 +908,7 @@ export default function StructuringPage() {
                   <div>
                     <h2 className="text-white text-xl font-semibold mb-4">Content</h2>
                     
-                    <Tabs value={activeContentTab.toString()} onValueChange={(value) => setActiveContentTab(parseInt(value))}>
+                    <Tabs value={(activeContentTab || 1).toString()} onValueChange={(value) => setActiveContentTab(parseInt(value))}>
                       {/* Content Tab Navigation */}
                       <div className="flex items-center justify-between mb-4">
                         <TabsList className="bg-black border-b border-nexa-border flex-1 justify-start">
@@ -1037,7 +1057,7 @@ export default function StructuringPage() {
                       </Button>
                     </div>
                     
-                    <Tabs value={activeSolutionTab.toString()} onValueChange={(value) => setActiveSolutionTab(parseInt(value))}>
+                    <Tabs value={(activeSolutionTab || 1).toString()} onValueChange={(value) => setActiveSolutionTab(parseInt(value))}>
                       {/* Solution Tab Navigation */}
                       <div className="flex items-center justify-between mb-4">
                         <TabsList className="bg-black border-b border-nexa-border flex-1 justify-start">
@@ -1132,7 +1152,7 @@ export default function StructuringPage() {
                 <Button 
                   onClick={handleTransitionToVisuals}
                   disabled={saving}
-                  className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="bg-gradient-to-r from-slate-600/60 to-blue-600/60 hover:from-slate-500/70 hover:to-blue-500/70 border border-slate-500/50 hover:border-slate-400/60 text-white backdrop-blur-sm transition-all duration-200 hover:shadow-lg disabled:opacity-50"
                 >
                   {saving ? (
                     <>

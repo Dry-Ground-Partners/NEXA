@@ -17,9 +17,16 @@ export async function GET(
   { params }: { params: { uuid: string } }
 ) {
   try {
-    console.log(`📡 API: Get session request for UUID: ${params.uuid}`)
+    // Extract requested data type from query parameter
+    const { searchParams } = new URL(request.url)
+    const requestedDataType = searchParams.get('type')
     
-    const session = await getSession(params.uuid)
+    console.log(`📡 API: Get session request for UUID: ${params.uuid}`)
+    if (requestedDataType) {
+      console.log(`🎯 API: Requested data type: ${requestedDataType}`)
+    }
+    
+    const session = await getSession(params.uuid, requestedDataType || undefined)
     
     if (!session) {
       console.log('❌ API: Session not found')

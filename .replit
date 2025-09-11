@@ -42,6 +42,10 @@ localPort = 5001
 externalPort = 3001
 exposeLocalhost = true
 
+[[ports]]
+localPort = 5555
+externalPort = 3002
+
 [env]
 PORT = "5000"
 # WE NEED THESE HARDCODED, PREPENDED TO AT-MOST RUNTIME PICK UP

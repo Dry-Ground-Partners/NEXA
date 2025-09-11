@@ -244,3 +244,5 @@ echo '{"project":"Test","client":"Test",...}' | python3 pdf-service/generate_sow
 - **Concurrent handling**: Node.js can spawn multiple Python processes
 
 This implementation provides a robust, scalable solution for SOW PDF generation with exact visual fidelity to the original system.
+
+

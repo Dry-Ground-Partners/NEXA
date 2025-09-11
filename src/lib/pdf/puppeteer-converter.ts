@@ -66,3 +66,5 @@ export async function generatePDFBlobFromHTML(data: CoverPageData): Promise<Blob
   return new Blob([buffer], { type: 'application/pdf' })
 }
 
+
+

@@ -206,11 +206,11 @@ model AIArchitectureSession {
   client                String?   @db.VarChar(255)
   
   // JSON Document Storage for different workflows (like original NEXA)
-  sessionObjects        Json      @default("{}") @map("session_objects")
-  sowObjects            Json      @default("{}") @map("sow_objects")
-  loeObjects            Json      @default("{}") @map("loe_objects")
-  diagramTextsJson      Json      @default("{}") @map("diagram_texts_json")
-  visualAssetsJson      Json      @default("{}") @map("visual_assets_json")
+  sessionObjects        Json?     @default("{}") @map("session_objects")
+  sowObjects            Json?     @default("{}") @map("sow_objects")
+  loeObjects            Json?     @default("{}") @map("loe_objects")
+  diagramTextsJson      Json?     @default("{}") @map("diagram_texts_json")
+  visualAssetsJson      Json?     @default("{}") @map("visual_assets_json")
   
   // Metadata
   sessionType           String    @default("solution") @map("session_type") @db.VarChar(50)

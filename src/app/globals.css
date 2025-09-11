@@ -846,7 +846,7 @@
   .scrollable-tabs-container:hover .tab-fade-left,
   .scrollable-tabs-container:hover .tab-fade-right {
       opacity: 1;
-  }
+    }
 
   /* Hide scrollbar class */
   .scrollbar-hide {

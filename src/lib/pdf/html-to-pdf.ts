@@ -39,3 +39,5 @@ export function openHTMLCoverForPrint(data: CoverPageData): void {
   }
 }
 
+
+

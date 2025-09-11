@@ -204,7 +204,7 @@ export default function VisualsPage() {
             console.log(`🔗 Loading session from URL: ${sessionParam}`)
             setIsLoadingSession(true)
             try {
-              const sessionResponse = await fetch(`/api/sessions/${sessionParam}`)
+              const sessionResponse = await fetch(`/api/sessions/${sessionParam}?type=visuals`)
               const sessionResult = await sessionResponse.json()
               
               if (sessionResult.success && sessionResult.session?.data) {
@@ -371,7 +371,7 @@ export default function VisualsPage() {
     
     setDiagramSets(prevSets => {
       const updatedSets = prevSets.map(set => 
-        set.id === id ? { ...set, [field]: value } : set
+      set.id === id ? { ...set, [field]: value } : set
       )
       const updatedValue = updatedSets.find(set => set.id === id)?.[field]
       console.log('📊 Updated diagram sets:', typeof updatedValue === 'string' ? updatedValue.substring(0, 100) : updatedValue)
@@ -420,8 +420,8 @@ export default function VisualsPage() {
               : set
           ))
         } else {
-          updateDiagramSet(modal.diagramId, modal.field as keyof DiagramSet, modal.content)
-        }
+        updateDiagramSet(modal.diagramId, modal.field as keyof DiagramSet, modal.content)
+      }
       }
       // For image fields, the upload handlers already update the state and close modal
     }
@@ -641,6 +641,260 @@ export default function VisualsPage() {
     }
   }
 
+  // Check if diagrams have both images and ideations for solutioning transition
+  const hasDiagramsWithImages = () => {
+    return diagramSets.some(set => 
+      set.image && set.image.trim() !== '' && 
+      set.ideation && set.ideation.trim() !== ''
+    )
+  }
+
+  // Data transformation: Visuals → Solutioning
+  const createSolutioningDataFromVisuals = (validDiagrams: DiagramSet[]) => {
+    const solutions: { [key: number]: any } = {}
+    
+    validDiagrams.forEach((diagram, index) => {
+      const solutionId = index + 1
+      solutions[solutionId] = {
+        id: solutionId,
+        additional: {
+          imageData: diagram.image,  // Base64 image data
+          imageUrl: null            // Will be populated after ImgBB upload
+        },
+        variables: {
+          aiAnalysis: '',           // Will be populated after AI analysis
+          solutionExplanation: diagram.ideation // Use ideation as explanation
+        },
+        structure: {
+          title: '',               // Will be auto-structured
+          steps: '',               // Will be auto-structured
+          approach: '',            // Will be auto-structured
+          difficulty: 3,           // Default
+          layout: 1,               // Default
+          stack: ''                // Will be generated later
+        }
+      }
+    })
+
+    return {
+      basic: {
+        date: date,
+        engineer: engineer,
+        title: title,
+        recipient: client  // Map client to recipient
+      },
+      currentSolution: 1,
+      solutionCount: validDiagrams.length,
+      solutions,
+      uiState: {
+        activeMainTab: 'solution-1',
+        activeSubTab: 'additional'
+      },
+      lastSaved: new Date().toISOString(),
+      version: 1
+    }
+  }
+
+  // Helper API functions for automation
+  const uploadImageToImgBB = async (base64Image: string, fileName: string = 'diagram.png') => {
+    // Convert base64 to blob (remove data:image/png;base64, prefix if present)
+    const base64Data = base64Image.split(',')[1] || base64Image
+    const byteCharacters = atob(base64Data)
+    const byteNumbers = new Array(byteCharacters.length)
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i)
+    }
+    const byteArray = new Uint8Array(byteNumbers)
+    const blob = new Blob([byteArray], { type: 'image/png' })
+    
+    // Create FormData
+    const formData = new FormData()
+    formData.append('image', blob, fileName)
+    
+    // Upload to ImgBB
+    const uploadResponse = await fetch('/api/solutioning/upload-image', {
+      method: 'POST',
+      body: formData
+    })
+    
+    const result = await uploadResponse.json()
+    if (!result.success) {
+      throw new Error(result.error || 'Image upload failed')
+    }
+    return result
+  }
+
+  const performVisionAnalysis = async (base64Image: string, additionalContext: string) => {
+    const response = await fetch('/api/solutioning/analyze-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        imageData: base64Image,
+        additionalContext: additionalContext || 'Diagram analysis for solution structuring'
+      })
+    })
+    
+    const result = await response.json()
+    if (!result.success) {
+      throw new Error(result.error || 'Vision analysis failed')
+    }
+    return result.analysis
+  }
+
+  const structureSolutionAuto = async (explanation: string, analysis: string) => {
+    const response = await fetch('/api/solutioning/structure-solution', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        solutionExplanation: explanation,
+        aiAnalysis: analysis 
+      })
+    })
+    
+    const result = await response.json()
+    if (!result.success) {
+      throw new Error(result.error || 'Solution structuring failed')
+    }
+    return {
+      title: result.structure.title,
+      steps: result.structure.steps,
+      approach: result.structure.approach
+    }
+  }
+
+  const updateSolutionInSession = async (sessionId: string, solutionId: number, updates: any) => {
+    const response = await fetch('/api/solutioning/update-solution', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, solutionId, updates })
+    })
+    
+    return await response.json()
+  }
+
+  // Automation process - sequential processing to avoid API overload
+  const automateImageProcessing = async (sessionId: string, diagrams: DiagramSet[]) => {
+    // Process each diagram sequentially to avoid API overload
+    for (let i = 0; i < diagrams.length; i++) {
+      const diagram = diagrams[i]
+      const solutionId = i + 1
+      
+      console.log(`🔄 Processing solution ${solutionId}/${diagrams.length}...`)
+      
+      try {
+        // 1. Upload image to ImgBB
+        console.log(`📤 Uploading image for solution ${solutionId}...`)
+        const uploadResult = await uploadImageToImgBB(diagram.image!, `solution-${solutionId}-diagram.png`)
+        
+        // 2. Trigger AI vision analysis
+        console.log(`🤖 Analyzing image for solution ${solutionId}...`)
+        const analysisResult = await performVisionAnalysis(diagram.image!, diagram.ideation)
+        
+        // 3. Structure the solution
+        console.log(`🏗️ Structuring solution ${solutionId}...`)
+        const structureResult = await structureSolutionAuto(
+          diagram.ideation,  // solutionExplanation
+          analysisResult     // aiAnalysis
+        )
+        
+        // 4. Update session with processed data
+        console.log(`💾 Updating solution ${solutionId} in session...`)
+        console.log(`   - Image URL: ${uploadResult.imageUrl}`)
+        console.log(`   - AI Analysis length: ${analysisResult?.length || 0} chars`)
+        console.log(`   - Structure title: "${structureResult.title}"`)
+        
+        const updateResult = await updateSolutionInSession(sessionId, solutionId, {
+          imageUrl: uploadResult.imageUrl,
+          aiAnalysis: analysisResult,
+          ...structureResult
+        })
+        
+        if (!updateResult.success) {
+          console.error(`❌ Failed to update solution ${solutionId}:`, updateResult.error)
+          throw new Error(updateResult.error || 'Failed to update session')
+        }
+        
+        console.log(`✅ Solution ${solutionId} processed and saved successfully!`)
+        
+      } catch (error) {
+        console.error(`❌ Error processing solution ${solutionId}:`, error)
+        // Log specific error details for debugging
+        if (error instanceof Error) {
+          console.error(`   Error details: ${error.message}`)
+        }
+        // Continue with next solution but track the failure
+        throw error // Re-throw to stop automation on first failure for better debugging
+      }
+    }
+    
+    console.log('✅ All solutions processed!')
+  }
+
+  // Main transition handler
+  const handleTransitionToSolutioning = async () => {
+    if (!sessionId) {
+      alert('Please save your session first before transitioning to solutioning.')
+      return
+    }
+
+    setSaving(true)
+    
+    try {
+      // 1. Filter diagrams with both image and ideation
+      const validDiagrams = diagramSets.filter(set => 
+        set.image && set.image.trim() !== '' && 
+        set.ideation && set.ideation.trim() !== ''
+      )
+      
+      if (validDiagrams.length === 0) {
+        alert('Please add at least one image with ideation text before transitioning.')
+        return
+      }
+
+      console.log(`🚀 Starting transition to solutioning with ${validDiagrams.length} diagrams...`)
+
+      // 2. Create solutioning data structure
+      const solutioningData = createSolutioningDataFromVisuals(validDiagrams)
+      
+      // 3. Update existing session with solutioning data (same UUID)
+      const response = await fetch(`/api/sessions/${sessionId}/add-solutioning`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ solutioningData })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        console.log(`✅ Added solutioning data to existing session: ${sessionId}`)
+        
+        try {
+          // 4. Wait for automation process to complete (don't navigate until done)
+          console.log(`🔄 Starting automation for ${validDiagrams.length} diagrams...`)
+          await automateImageProcessing(sessionId, validDiagrams)
+          console.log(`✅ All automation completed successfully!`)
+          
+          // 5. Navigate to solutioning only AFTER automation completes
+          console.log(`🎯 Redirecting to solutioning with same UUID: ${sessionId}`)
+          window.location.href = `/solutioning?session=${sessionId}`
+        } catch (automationError: any) {
+          console.error('❌ Automation failed:', automationError)
+          const errorMessage = automationError instanceof Error ? automationError.message : String(automationError)
+          alert(`Automation failed: ${errorMessage}. Some solutions may be incomplete.`)
+          // Still navigate but warn user
+          window.location.href = `/solutioning?session=${sessionId}`
+        }
+      } else {
+        alert('Failed to add solutioning data to session. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error transitioning to solutioning:', error)
+      alert('Error transitioning to solutioning. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const openDrawIo = (diagramId: number) => {
     const diagramSet = diagramSets.find(set => set.id === diagramId)
     
@@ -743,7 +997,7 @@ export default function VisualsPage() {
                       <RotateCw className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
                       <Save className="h-4 w-4 mr-2" />
-                    )}
+                  )}
                     <span className={saving ? "shimmer-text" : ""}>
                       {hasUnsavedChanges ? 'Save*' : 'Save'}
                     </span>
@@ -1080,7 +1334,27 @@ export default function VisualsPage() {
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 ) : (
+                  hasDiagramsWithImages() ? (
+                    <Button
+                      onClick={handleTransitionToSolutioning}
+                      disabled={saving}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-600/60 to-blue-600/60 hover:from-slate-500/70 hover:to-blue-500/70 border border-slate-500/50 hover:border-slate-400/60 text-white text-sm font-medium rounded-lg backdrop-blur-sm transition-all duration-200 hover:shadow-lg"
+                    >
+                      {saving ? (
+                        <>
+                          <RotateCw className="h-4 w-4 animate-spin" />
+                          Processing & Automating...
+                        </>
+                      ) : (
+                        <>
+                          To solutioning
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                  </Button>
+                ) : (
                   <div />
+                  )
                 )}
               </div>
             </Card>
@@ -1129,11 +1403,11 @@ export default function VisualsPage() {
                       </>
                     ) : (
                       <>
-                        <Upload className="h-12 w-12 text-nexa-muted mx-auto mb-4" />
-                        <div className="text-white font-medium mb-2">Upload Solution Diagram</div>
-                        <div className="text-nexa-muted text-sm mb-4">
+                    <Upload className="h-12 w-12 text-nexa-muted mx-auto mb-4" />
+                    <div className="text-white font-medium mb-2">Upload Solution Diagram</div>
+                    <div className="text-nexa-muted text-sm mb-4">
                           Drag & drop, upload from device, or Ctrl+V to paste from clipboard
-                        </div>
+                    </div>
                         <input
                           type="file"
                           accept="image/*"
@@ -1142,15 +1416,15 @@ export default function VisualsPage() {
                           id="image-upload-input"
                           disabled={uploadingImage}
                         />
-                        <Button
-                          variant="outline"
-                          className="border-nexa-border text-white hover:bg-white/10"
+                    <Button
+                      variant="outline"
+                      className="border-nexa-border text-white hover:bg-white/10"
                           onClick={() => document.getElementById('image-upload-input')?.click()}
                           disabled={uploadingImage}
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload from Device
-                        </Button>
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload from Device
+                    </Button>
                       </>
                     )}
                   </div>
@@ -1219,19 +1493,19 @@ export default function VisualsPage() {
                 </Button>
               ) : (
                 <>
-                  <Button
-                    onClick={closeModal}
-                    variant="outline"
-                    className="border-nexa-border text-white hover:bg-white/10"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={saveModal}
-                    className="bg-white text-black hover:bg-gray-100"
-                  >
-                    Save
-                  </Button>
+              <Button
+                onClick={closeModal}
+                variant="outline"
+                className="border-nexa-border text-white hover:bg-white/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={saveModal}
+                className="bg-white text-black hover:bg-gray-100"
+              >
+                Save
+              </Button>
                 </>
               )}
             </div>

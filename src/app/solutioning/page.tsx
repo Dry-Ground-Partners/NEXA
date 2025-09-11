@@ -126,7 +126,62 @@ export default function SolutioningPage() {
     approach: false
   })
 
+  // Load session from URL on mount
   useEffect(() => {
+    const loadSession = async () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const sessionParam = urlParams.get('session')
+      
+      if (sessionParam) {
+        console.log(`🔄 Loading solutioning session from URL: ${sessionParam}`)
+        
+        try {
+          const response = await fetch(`/api/sessions/${sessionParam}?type=solutioning`)
+          const result = await response.json()
+          
+          if (result.success && result.session.data) {
+            const data = result.session.data as SolutioningSessionData
+            
+            console.log('✅ Loaded solutioning session data:', data)
+            console.log(`📊 Solutions loaded: ${Object.keys(data.solutions).length}`)
+            
+            // Restore session data
+            setSessionId(sessionParam)
+            setSessionData(data)
+            setHasUnsavedChanges(false)
+            setLastSaved(new Date(data.lastSaved || Date.now()))
+            
+            // Restore UI state if present
+            if (data.uiState) {
+              setActiveMainTab(data.uiState.activeMainTab || 'basic')
+              setActiveSubTab(data.uiState.activeSubTab || 'additional')
+            }
+            
+            console.log(`✅ Session loaded successfully: "${data.basic.title}"`)
+          } else {
+            console.log('❌ Session is not a solutioning session or failed to load, redirecting...')
+            // Redirect to appropriate page based on session type
+            if (result.session?.sessionType === 'structuring') {
+              window.location.href = `/structuring?session=${sessionParam}`
+            } else if (result.session?.sessionType === 'visuals') {
+              window.location.href = `/visuals?session=${sessionParam}`
+            } else if (result.session?.sessionType === 'sow') {
+              window.location.href = `/sow?session=${sessionParam}`
+            } else if (result.session?.sessionType === 'loe') {
+              window.location.href = `/loe?session=${sessionParam}`
+            } else {
+              console.log('❌ Failed to load session:', result.error)
+              // Remove invalid session from URL
+              window.history.replaceState({}, '', '/solutioning')
+            }
+          }
+        } catch (error) {
+          console.error('💥 Error loading session:', error)
+          window.history.replaceState({}, '', '/solutioning')
+        }
+      }
+    }
+
     const fetchUser = async () => {
       try {
         const response = await fetch('/api/auth/me')
@@ -134,6 +189,8 @@ export default function SolutioningPage() {
         
         if (data.success) {
           setUser(data.user)
+          // Load session after user is authenticated
+          await loadSession()
         } else {
           window.location.href = '/auth/login'
         }
@@ -144,7 +201,7 @@ export default function SolutioningPage() {
         setLoading(false)
       }
     }
-
+    
     fetchUser()
   }, [])
 
