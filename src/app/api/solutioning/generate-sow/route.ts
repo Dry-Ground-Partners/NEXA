@@ -107,3 +107,4 @@ function extractValuableContent(solutioningData: any): string {
   
   return sections.join('\n\n')
 }
+

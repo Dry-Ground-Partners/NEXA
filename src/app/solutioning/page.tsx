@@ -943,26 +943,13 @@ export default function SolutioningPage() {
       })
 
       if (response.ok) {
-        const result = await response.json()
+        // NEW: Handle binary PDF response directly
+        const pdfBlob = await response.blob()
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+        window.open(pdfUrl, '_blank')
         
-        if (result.success) {
-          // Import client-side converter dynamically
-          const { generatePDFFromHTMLClient } = await import('@/lib/pdf/client-converter')
-          
-          console.log('🔄 Generating PDF for preview...')
-          
-          // Generate PDF on client-side
-          const pdfBlob = await generatePDFFromHTMLClient(result.templateData)
-          
-          // Create URL and open PDF in new tab for preview
-          const pdfUrl = URL.createObjectURL(pdfBlob)
-          window.open(pdfUrl, '_blank')
-          
-          console.log('✅ PDF Preview: PDF opened in new tab successfully')
-          showAnimatedNotification('PDF preview opened in new tab!', 'success')
-        } else {
-          throw new Error(result.error || 'Unknown error')
-        }
+        console.log('✅ PDF Preview: PDF opened in new tab successfully')
+        showAnimatedNotification('PDF preview opened in new tab!', 'success')
       } else {
         const errorData = await response.json()
         console.error('❌ PDF Preview: Error response:', errorData)
