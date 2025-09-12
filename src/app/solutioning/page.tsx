@@ -84,6 +84,73 @@ export default function SolutioningPage() {
     layoutModal: false,
     difficultyModal: false
   })
+  
+  // Hyper-Canvas modal state
+  const [showHyperCanvas, setShowHyperCanvas] = useState(false)
+  const [previewBlob, setPreviewBlob] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+
+  // Generate PDF preview blob for Hyper-Canvas
+  const generatePreviewBlob = useCallback(async () => {
+    if (!sessionId) return
+    
+    setPreviewLoading(true)
+    try {
+      console.log('🎨 Hyper-Canvas: Generating PDF preview blob...')
+      const response = await fetch('/api/solutioning/preview-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionData, sessionId })
+      })
+      
+      if (response.ok) {
+        const pdfBlob = await response.blob()
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+        setPreviewBlob(pdfUrl)
+        console.log('✅ Hyper-Canvas: PDF preview blob generated successfully')
+      } else {
+        console.error('❌ Hyper-Canvas: Failed to generate preview blob')
+      }
+    } catch (error) {
+      console.error('❌ Hyper-Canvas: Error generating preview blob:', error)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }, [sessionData, sessionId])
+
+  // Open Hyper-Canvas modal and generate preview
+  const openHyperCanvas = useCallback(() => {
+    setShowHyperCanvas(true)
+    generatePreviewBlob()
+  }, [generatePreviewBlob])
+
+  // Close Hyper-Canvas modal and cleanup
+  const closeHyperCanvas = useCallback(() => {
+    setShowHyperCanvas(false)
+    if (previewBlob) {
+      URL.revokeObjectURL(previewBlob)
+      setPreviewBlob(null)
+    }
+    setPreviewLoading(false)
+  }, [previewBlob])
+
+  // Save session function (placeholder for now)
+  const saveSession = useCallback(async () => {
+    if (!sessionId) return
+    
+    setSaving(true)
+    try {
+      console.log('💾 Saving session...', sessionId)
+      // Add actual save logic here when needed
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate save
+      setLastSaved(new Date())
+      console.log('✅ Session saved successfully')
+    } catch (error) {
+      console.error('❌ Failed to save session:', error)
+    } finally {
+      setSaving(false)
+    }
+  }, [sessionId])
 
   // Loading states
   const [loadingStates, setLoadingStates] = useState({
@@ -201,7 +268,7 @@ export default function SolutioningPage() {
         setLoading(false)
       }
     }
-    
+
     fetchUser()
   }, [])
 
@@ -978,34 +1045,28 @@ export default function SolutioningPage() {
       })
 
       if (response.ok) {
-        const result = await response.json()
+        // NEW: Handle binary PDF response directly
+        const pdfBlob = await response.blob()
         
-        if (result.success) {
-          // Import client-side converter dynamically
-          const { generatePDFFromHTMLClient } = await import('@/lib/pdf/client-converter')
-          
-          console.log('🔄 Generating PDF on client-side...')
-          
-          // Generate PDF on client-side
-          const pdfBlob = await generatePDFFromHTMLClient(result.templateData)
-          
-          // Create download link
-          const url = URL.createObjectURL(pdfBlob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = result.filename || 'NEXA_Report.pdf'
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          
-          // Clean up
-          URL.revokeObjectURL(url)
-          
-          console.log('✅ PDF Generate: Downloaded successfully')
-          showAnimatedNotification('PDF generated and downloaded successfully!', 'success')
-        } else {
-          throw new Error(result.error || 'Unknown error')
-        }
+        // Generate smart filename
+        const projectTitle = sessionData.basic?.title || 'Untitled_Project'
+        const cleanTitle = projectTitle.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')
+        const filename = `${cleanTitle}_Report.pdf`
+        
+        // Create download link
+        const url = URL.createObjectURL(pdfBlob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        
+        // Clean up
+        URL.revokeObjectURL(url)
+        
+        console.log('✅ PDF Generate: Downloaded successfully as', filename)
+        showAnimatedNotification('PDF generated and downloaded successfully!', 'success')
       } else {
         const errorData = await response.json()
         console.error('❌ PDF Generate: Error response:', errorData)
@@ -1444,7 +1505,7 @@ export default function SolutioningPage() {
                       ) : (
                         <Zap className="h-4 w-4 mr-2" />
                       )}
-                      Enhance
+                      AI Enhance
                     </Button>
                   </div>
                 </div>
@@ -1707,13 +1768,13 @@ export default function SolutioningPage() {
                     </div>
                   </div>
 
-                  {/* AI Enhancement Button */}
+                  {/* Hyper-Canvas Button */}
                         <Button
-                    onClick={() => alert('AI Enhancement would improve all content')}
+                    onClick={openHyperCanvas}
                     className="w-full border border-nexa-border text-gray-800 bg-gray-100 hover:bg-gray-200 p-6 text-lg font-medium rounded-xl border-draw-button generate-solution-button"
                   >
                     <Aperture className="h-6 w-6 mr-3" />
-                    <span>Enhance</span>
+                    <span>Hyper-Canvas</span>
                         </Button>
 
 
@@ -2257,6 +2318,159 @@ export default function SolutioningPage() {
             </div>
             <div className="text-white font-medium">Structuring your solution...</div>
             <div className="text-nexa-muted text-sm mt-2">This may take a few moments</div>
+          </div>
+        </div>
+      )}
+
+      {/* Hyper-Canvas Modal */}
+      {showHyperCanvas && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="w-full h-full max-w-none max-h-none bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-white/5 backdrop-blur-sm border-b border-white/10 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500/30 to-purple-500/30 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                  <Aperture className="h-5 w-5 text-white" />
+                </div>
+                <h2 className="text-white text-xl font-semibold">Nexa Hyper-Canvas Editor</h2>
+              </div>
+              <Button
+                onClick={closeHyperCanvas}
+                variant="ghost"
+                size="sm"
+                className="text-white/70 hover:text-white hover:bg-white/10 rounded-lg"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex h-[calc(100%-4rem)]">
+              {/* Document Preview - 75% */}
+              <div className="w-3/4 border-r border-white/10 bg-white/5 backdrop-blur-sm">
+                <div className="p-6 h-full flex flex-col">
+                  {/* Refresh Control */}
+                  <div className="mb-4 flex justify-end">
+                    <Button
+                      onClick={generatePreviewBlob}
+                      disabled={previewLoading}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/70 hover:text-white hover:bg-white/10 rounded-lg"
+                    >
+                      {previewLoading ? (
+                        <RotateCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {/* PDF Preview Area */}
+                  <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-4 overflow-hidden">
+                    {previewLoading ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-white text-center">
+                          <div className="relative">
+                            <div className="w-16 h-16 border-4 border-blue-500/30 rounded-full mx-auto mb-4 animate-pulse"></div>
+                            <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-blue-400 rounded-full mx-auto animate-spin"></div>
+                          </div>
+                          <p className="text-lg font-medium">Generating Preview...</p>
+                          <p className="text-sm text-white/60">Please wait</p>
+                        </div>
+                      </div>
+                    ) : previewBlob ? (
+                      <div className="w-full h-full bg-white rounded-lg shadow-2xl overflow-hidden">
+                        <iframe
+                          src={previewBlob}
+                          className="w-full h-full border-0"
+                          title="PDF Preview"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-white/60 text-center">
+                          <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                          <p className="text-lg font-medium">PDF Preview</p>
+                          <p className="text-sm">Click to generate preview</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
+              {/* AI Chat Assistant - 25% */}
+              <div className="w-1/4 bg-white/5 backdrop-blur-sm">
+                <div className="p-4 h-full flex flex-col">
+
+                  {/* Chat History */}
+                  <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-4 mb-4 overflow-y-auto">
+                    <div className="space-y-4">
+                      {/* Sample Messages */}
+                      <div className="text-white/80 text-sm">
+                        <div className="bg-blue-500/20 rounded-lg p-3 mb-2">
+                          <strong>User:</strong> Make the timeline more aggressive
+                        </div>
+                        <div className="bg-purple-500/20 rounded-lg p-3">
+                          <strong>AI:</strong> I've compressed the development phases by 2 weeks each. Would you like me to highlight any risks with this accelerated timeline?
+                        </div>
+                      </div>
+                      <div className="text-white/40 text-xs text-center">
+                        Start a conversation to edit your document...
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chat Input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Describe your changes..."
+                      className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-blue-400/50 focus:ring-1 focus:ring-blue-400/30"
+                      disabled
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          // Handle send message
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Controls */}
+            <div className="absolute top-4 right-4 flex gap-3">
+              <Button 
+                onClick={generatePDF}
+                disabled={loadingStates.generating}
+                size="sm"
+                className="bg-blue-500/20 hover:bg-blue-500/30 text-white border border-blue-400/30 backdrop-blur-sm"
+              >
+                {loadingStates.generating ? (
+                  <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Download
+              </Button>
+              <Button 
+                onClick={saveSession}
+                disabled={saving}
+                size="sm"
+                className="bg-green-500/20 hover:bg-green-500/30 text-white border border-green-400/30 backdrop-blur-sm"
+              >
+                {saving ? (
+                  <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Save
+              </Button>
+            </div>
           </div>
         </div>
       )}
