@@ -36,6 +36,8 @@ import {
 import type { AuthUser } from '@/types'
 import type { SolutioningSessionData, SessionResponse } from '@/lib/sessions'
 import { createDefaultSolutioningData } from '@/lib/sessions'
+import { useHyperCanvasChat } from '@/hooks/useHyperCanvasChat'
+import { ChatInterface } from '@/components/hyper-canvas/ChatInterface'
 
 interface Solution {
   id: number
@@ -90,6 +92,13 @@ export default function SolutioningPage() {
   const [previewBlob, setPreviewBlob] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
 
+  // Hyper-Canvas chat integration
+  const { chatState, sendMessage, initializeChat, canSendMessage } = useHyperCanvasChat(
+    sessionId || '',
+    user?.id || '',
+    user?.currentOrganization?.id || user?.organizations?.[0]?.organizationId || ''
+  )
+
   // Generate PDF preview blob for Hyper-Canvas
   const generatePreviewBlob = useCallback(async () => {
     if (!sessionId) return
@@ -122,7 +131,11 @@ export default function SolutioningPage() {
   const openHyperCanvas = useCallback(() => {
     setShowHyperCanvas(true)
     generatePreviewBlob()
-  }, [generatePreviewBlob])
+    // Initialize chat when modal opens
+    if (sessionId && user?.id) {
+      initializeChat()
+    }
+  }, [generatePreviewBlob, initializeChat, sessionId, user?.id])
 
   // Close Hyper-Canvas modal and cleanup
   const closeHyperCanvas = useCallback(() => {
@@ -2403,42 +2416,15 @@ export default function SolutioningPage() {
 
               {/* AI Chat Assistant - 25% */}
               <div className="w-1/4 bg-white/5 backdrop-blur-sm">
-                <div className="p-4 h-full flex flex-col">
-
-                  {/* Chat History */}
-                  <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-4 mb-4 overflow-y-auto">
-                    <div className="space-y-4">
-                      {/* Sample Messages */}
-                      <div className="text-white/80 text-sm">
-                        <div className="bg-blue-500/20 rounded-lg p-3 mb-2">
-                          <strong>User:</strong> Make the timeline more aggressive
-                        </div>
-                        <div className="bg-purple-500/20 rounded-lg p-3">
-                          <strong>AI:</strong> I've compressed the development phases by 2 weeks each. Would you like me to highlight any risks with this accelerated timeline?
-                        </div>
-                      </div>
-                      <div className="text-white/40 text-xs text-center">
-                        Start a conversation to edit your document...
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Chat Input */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Describe your changes..."
-                      className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-blue-400/50 focus:ring-1 focus:ring-blue-400/30"
-                      disabled
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault()
-                          // Handle send message
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
+                <ChatInterface
+                  messages={chatState.messages}
+                  isTyping={chatState.isTyping}
+                  onSendMessage={sendMessage}
+                  memoryState={chatState.memoryState}
+                  canSendMessage={canSendMessage}
+                  isInitializing={chatState.isInitializing}
+                  error={chatState.error}
+                />
               </div>
             </div>
 
