@@ -317,6 +317,41 @@ export default function SOWPage() {
     return () => clearInterval(interval)
   }, [autoSave])
 
+  // Keyboard shortcuts for SOW tabs
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.tagName === 'SELECT' ||
+        activeElement.hasAttribute('contenteditable')
+      )
+      
+      if (isInputFocused) return // Don't trigger shortcuts when typing
+      
+      // SOW tab shortcuts
+      const tabMap: { [key: string]: string } = {
+        '1': 'basic',
+        '2': 'project',
+        '3': 'scope',
+        '4': 'clauses',
+        '5': 'timeline'
+      }
+      
+      if (tabMap[event.key]) {
+        event.preventDefault()
+        setActiveMainTab(tabMap[event.key])
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
   // Mark as unsaved when data changes
   useEffect(() => {
     setHasUnsavedChanges(true)

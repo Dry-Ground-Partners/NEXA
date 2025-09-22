@@ -339,3 +339,205 @@ export function clearThreadMemory(threadId: string) {
   }
 }
 
+/**
+ * Create maestro chain with same context structure as quickshot
+ */
+export async function createMaestroChain() {
+  let promptTemplate
+
+  try {
+    // Pull maestro prompt from LangSmith
+    console.log('📥 Attempting to pull nexa-canvas-maestro from LangSmith...')
+    const hubPrompt = await hub.pull('nexa-canvas-maestro', {
+      includeModel: true
+    })
+    console.log('✅ Successfully pulled maestro prompt from LangSmith')
+    promptTemplate = hubPrompt
+  } catch (error) {
+    console.log('⚠️ Using fallback maestro prompt')
+    
+    // Fallback prompt with same context structure
+    promptTemplate = PromptTemplate.fromTemplate(`
+SUMMARY: {summary}
+(SUMMARY ENDS HERE)
+
+OLDER MESSAGES: {older_messages}
+(OLDER MESSAGES END HERE)
+
+CURRENT TEMPLATE: {current_template}
+(CURRENT TEMPLATE ENDS HERE)
+
+MODIFICATION INSTRUCTION: {instruction}
+
+You are Nexa's Canvas Maestro, an expert document modification AI. Your job is to precisely modify HTML templates based on user instructions while maintaining document structure and styling.
+
+CORE RESPONSIBILITIES:
+1. Analyze the current HTML template structure
+2. Understand the modification instruction in context of the conversation
+3. Apply changes while preserving styling, layout, and functionality
+4. Provide clear explanation of modifications made
+
+RESPONSE FORMAT (Always return exactly this JSON):
+{{
+  "modified_template": "Complete HTML document with all changes applied",
+  "explanation": "Brief summary of modifications and their impact"
+}}
+
+MODIFICATION GUIDELINES:
+- Preserve all CSS styling and layout structures
+- Maintain document hierarchy and organization
+- Apply changes precisely as requested
+- Ensure all HTML remains valid and well-formed
+- Keep explanations concise but informative
+
+EXAMPLES:
+
+Instruction: "Make the timeline more aggressive"
+Output:
+{{
+  "modified_template": "<html>...modified timeline with shorter durations...</html>",
+  "explanation": "Compressed timeline phases by 30% and added urgent language to show accelerated delivery"
+}}
+
+Instruction: "Add more technical details to the API section"
+Output:
+{{
+  "modified_template": "<html>...enhanced API section with technical specs...</html>",
+  "explanation": "Expanded API documentation with endpoints, authentication methods, and rate limiting details"
+}}
+
+RULES:
+- Always return valid JSON in the exact format above
+- modified_template must be complete, valid HTML
+- explanation should be 1-2 sentences describing the changes
+- Preserve all original styling and structure
+- Apply changes contextually based on conversation history
+`)
+  }
+
+  const llm = new ChatOpenAI({
+    modelName: 'gpt-4o',
+    temperature: 0.3, // Lower temperature for precise modifications
+    openAIApiKey: process.env.OPENAI_API_KEY
+  })
+
+  const chain = promptTemplate.pipe(llm)
+  return chain
+}
+
+/**
+ * Execute maestro document modification with shared context
+ */
+export async function maestroTurn(
+  threadId: string,
+  userId: string, 
+  sessionId: string,
+  organizationId: string,
+  instruction: string,
+  currentTemplate: string
+): Promise<any> {
+  
+  console.log(`🎭 Maestro turn started: ${threadId}`)
+  console.log(`   Instruction: "${instruction.substring(0, 50)}..."`)
+  
+  // Get the SAME memory instance used by quickshot
+  const memory = getOrCreateMemory(threadId)
+  
+  try {
+    // Get maestro chain with shared context structure
+    const maestroChain = await createMaestroChain()
+    
+    // Configure LangSmith tagging (same pattern as quickshot)
+    const config: RunnableConfig = {
+      tags: [
+        `thread:${threadId}`,
+        `user:${userId}`,
+        `session:${sessionId}`,
+        `org:${organizationId}`,
+        'maestro',
+        'hyper-canvas'
+      ],
+      metadata: {
+        thread_id: threadId,
+        user_id: userId,
+        session_id: sessionId,
+        organization_id: organizationId,
+        feature: 'maestro-document-modification',
+        timestamp: new Date().toISOString()
+      }
+    }
+    
+    // Get memory context (same as quickshot)
+    const memoryVariables = await memory.loadMemoryVariables({})
+    const summary = memoryVariables.summary || ''
+    const olderMessages = memoryVariables.older_messages || ''
+    
+    console.log(`🧠 Maestro memory context: ${summary.substring(0, 50)}...`)
+    
+    // Invoke maestro with shared context + current template + instruction
+    const result = await maestroChain.invoke({
+      summary: summary,
+      older_messages: olderMessages,
+      current_template: currentTemplate,
+      instruction: instruction
+    }, config)
+    
+    // Extract and parse maestro response
+    let responseText: string
+    if (typeof result === 'string') {
+      responseText = result
+    } else if (result && typeof result === 'object' && 'content' in result) {
+      responseText = (result as any).content
+    } else {
+      responseText = JSON.stringify(result)
+    }
+    
+    // Clean JSON response (same as quickshot)
+    let cleanedResponse = responseText.trim()
+    if (cleanedResponse.startsWith('```json')) {
+      cleanedResponse = cleanedResponse.substring(7)
+    } else if (cleanedResponse.startsWith('```')) {
+      cleanedResponse = cleanedResponse.substring(3)
+    }
+    if (cleanedResponse.endsWith('```')) {
+      cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3)
+    }
+    
+    const maestroResponse = JSON.parse(cleanedResponse.trim())
+    
+    // Validate maestro response
+    if (!maestroResponse.modified_template || !maestroResponse.explanation) {
+      throw new Error('Invalid maestro response format')
+    }
+    
+    // Update memory with maestro interaction
+    await memory.saveContext(
+      { input: `[MAESTRO REQUEST] ${instruction}` },
+      { text: `[MAESTRO COMPLETED] ${maestroResponse.explanation}` }
+    )
+    
+    console.log(`✅ Maestro turn completed: ${maestroResponse.explanation}`)
+    
+    return {
+      success: true,
+      modified_template: maestroResponse.modified_template,
+      explanation: maestroResponse.explanation,
+      memoryState: {
+        summary: (await memory.loadMemoryVariables({})).summary || 'No conversation yet',
+        messageCount: 0,
+        tokenBudget: 2000
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Maestro turn error:', error)
+    
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown maestro error',
+      modified_template: null,
+      explanation: 'I encountered an issue while modifying the document. Please try again.'
+    }
+  }
+}
+

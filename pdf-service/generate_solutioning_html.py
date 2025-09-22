@@ -5,13 +5,12 @@ import sys
 import os
 import base64
 import datetime
-from weasyprint import HTML
 from jinja2 import Template
 
-def generate_solutioning_pdf_from_json(solutioning_data):
-    """Generate Solutioning PDF from JSON data and return PDF bytes."""
+def generate_solutioning_html_from_json(solutioning_data):
+    """Generate Solutioning HTML from JSON data and return HTML string."""
     try:
-        # Logo handling (same as SOW/LOE)
+        # Logo handling (same as PDF version)
         curr_dir = os.path.dirname(os.path.abspath(__file__))
         
         # Main logo for cover page
@@ -34,7 +33,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             with open(dg_logo_path, 'rb') as f:
                 dg_logo_base64 = base64.b64encode(f.read()).decode('utf-8')
         
-        # Extract and transform data
+        # Extract and transform data (EXACT COPY from PDF script)
         basic_info = {
             'date': solutioning_data.get('basic', {}).get('date', ''),
             'title': solutioning_data.get('basic', {}).get('title', 'Solution Overview Report'),
@@ -50,16 +49,13 @@ def generate_solutioning_pdf_from_json(solutioning_data):
         except:
             basic_info['formatted_date'] = basic_info['date']
         
-        # Format title with line breaks if it contains a colon
-        title = basic_info.get('title', 'Report')
-        if ':' in title:
-            parts = title.split(':', 1)
-            formatted_title = f"{parts[0]}:<br>{parts[1].strip()}"
-        else:
-            formatted_title = title
+        # Format title with line breaks (same logic as PDF script)
+        formatted_title = basic_info['title']
+        if formatted_title:
+            formatted_title = formatted_title.replace('\\n', '<br>')
         basic_info['formatted_title'] = formatted_title
         
-        # Transform solutions from current format to old format
+        # Transform solutions from current format to old format (EXACT COPY)
         solutions = []
         solution_number = 1
         
@@ -88,11 +84,11 @@ def generate_solutioning_pdf_from_json(solutioning_data):
         # Generate session ID for footer (extract from sessionProtocol or generate)
         session_id = solutioning_data.get('sessionProtocol', 'SH123')
         
-        print(f"🐍 Processing {len(solutions)} solutions", file=sys.stderr)
+        print(f"🐍 Processing {len(solutions)} solutions for HTML template", file=sys.stderr)
         for sol in solutions:
             print(f"🐍 Solution {sol['number']}: {sol['title']} (Layout {sol['layout']})", file=sys.stderr)
         
-        # HTML Template - EXACT COPY from old system
+        # HTML Template - EXACT COPY from PDF script
         html_template = """
         <!DOCTYPE html>
         <html>
@@ -753,12 +749,10 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             session_id=session_id
         )
 
-        html_doc = HTML(string=html_content)
-        pdf_bytes = html_doc.write_pdf()
-        return pdf_bytes
+        return html_content
         
     except Exception as e:
-        print(f"🐍 Error generating PDF: {str(e)}", file=sys.stderr)
+        print(f"🐍 Error generating HTML: {str(e)}", file=sys.stderr)
         return None
 
 def main():
@@ -768,31 +762,19 @@ def main():
             print("🐍 No input data received", file=sys.stderr)
             sys.exit(1)
         
-        print(f"🐍 Received input data length: {len(input_data)}", file=sys.stderr)
+        data = json.loads(input_data)
+        html_content = generate_solutioning_html_from_json(data)
         
-        solutioning_data = json.loads(input_data)
-        print(f"🐍 Parsed JSON successfully", file=sys.stderr)
-        
-        pdf_bytes = generate_solutioning_pdf_from_json(solutioning_data)
-        
-        if pdf_bytes:
-            print(f"🐍 Generated PDF successfully, size: {len(pdf_bytes)} bytes", file=sys.stderr)
-            sys.stdout.buffer.write(pdf_bytes)
-            sys.exit(0)
+        if html_content:
+            print(html_content)
         else:
-            print("🐍 Failed to generate PDF", file=sys.stderr)
+            print("🐍 Failed to generate HTML", file=sys.stderr)
             sys.exit(1)
             
-    except json.JSONDecodeError as e:
-        print(f"🐍 JSON parsing error: {str(e)}", file=sys.stderr)
-        sys.exit(1)
     except Exception as e:
-        print(f"🐍 Script error: {str(e)}", file=sys.stderr)
+        print(f"🐍 Error: {str(e)}", file=sys.stderr)
         sys.exit(1)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-
-
-
 

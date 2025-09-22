@@ -341,6 +341,38 @@ export default function VisualsPage() {
     }
   }, [modal.isOpen, modal.isImageField, modal.diagramId])
 
+  // Keyboard shortcuts for visuals tabs
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.tagName === 'SELECT' ||
+        activeElement.hasAttribute('contenteditable')
+      )
+      
+      if (isInputFocused) return // Don't trigger shortcuts when typing
+      
+      // Visuals tab shortcuts
+      const tabMap: { [key: string]: string } = {
+        '1': 'information',
+        '2': 'diagrams'
+      }
+      
+      if (tabMap[event.key]) {
+        event.preventDefault()
+        setActiveMainTab(tabMap[event.key])
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
   // Diagram set management
   const addDiagramSet = () => {
     const newId = Math.max(...diagramSets.map(set => set.id)) + 1

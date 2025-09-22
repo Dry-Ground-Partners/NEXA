@@ -26,7 +26,9 @@ export interface ChatState {
 export function useHyperCanvasChat(
   sessionId: string, 
   userId: string, 
-  organizationId?: string
+  organizationId?: string,
+  sessionData?: any,
+  onDocumentUpdate?: (newBlobUrl: string) => void
 ) {
   const [chatState, setChatState] = useState<ChatState>({
     messages: [],
@@ -55,6 +57,64 @@ export function useHyperCanvasChat(
     messageTimeouts.current = []
   }, [])
   
+  // Helper function to extract current template from session data
+  const extractCurrentTemplate = useCallback(async (sessionData: any, sessionId: string): Promise<string> => {
+    if (!sessionData) {
+      console.error('❌ No session data available for template extraction')
+      return '<html><body><h1>No session data available</h1></body></html>'
+    }
+
+    try {
+      // Call the SAME API that generates the preview to get the exact HTML template
+      console.log('🎯 Extracting current template via preview API...')
+      
+      const response = await fetch('/api/solutioning/preview-html', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionData, sessionId })
+      })
+      
+      if (response.ok) {
+        const htmlTemplate = await response.text()
+        console.log('✅ Successfully extracted real template, length:', htmlTemplate.length)
+        return htmlTemplate
+      } else {
+        console.error('❌ Failed to extract template via API')
+        throw new Error('Failed to extract template')
+      }
+    } catch (error) {
+      console.error('❌ Error extracting template:', error)
+      throw error
+    }
+  }, [])
+
+  // Helper function to refresh document preview
+  const refreshDocumentPreview = useCallback(async (modifiedTemplate: string) => {
+    try {
+      console.log('📄 Refreshing document preview with maestro modifications...')
+      
+      const response = await fetch('/api/hyper-canvas/template-to-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ htmlTemplate: modifiedTemplate })
+      })
+      
+      if (response.ok) {
+        const pdfBlob = await response.blob()
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+        
+        // Callback to update preview (passed from solutioning page)
+        onDocumentUpdate?.(pdfUrl)
+        
+        console.log('✅ Document preview refreshed with maestro modifications')
+      } else {
+        console.error('❌ Failed to convert template to PDF')
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh document preview:', error)
+    }
+  }, [onDocumentUpdate])
+
   const initializeChat = useCallback(async () => {
     if (!sessionId || !userId) {
       console.error('❌ Cannot initialize chat: missing sessionId or userId')
@@ -177,38 +237,214 @@ export function useHyperCanvasChat(
           memoryState: data.memoryState || prev.memoryState
         }))
         
-        // Add assistant messages with delays
+        // Add assistant messages with sophisticated maestro flow
         if (data.chat_responses && Array.isArray(data.chat_responses)) {
-          data.chat_responses.forEach((responseContent: string, index: number) => {
-            const timeout = setTimeout(() => {
-              const assistantMessage: ChatMessage = {
-                id: `assistant_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
-                role: 'assistant',
-                content: responseContent,
-                timestamp: new Date(),
-                status: 'delivered'
-              }
-              
-              setChatState(prev => ({
-                ...prev,
-                messages: [...prev.messages, assistantMessage],
-                isTyping: index < data.chat_responses.length - 1
-              }))
-              
-              console.log(`💬 Assistant message ${index + 1}/${data.chat_responses.length}: ${responseContent.substring(0, 30)}...`)
-            }, (index + 1) * 1500) // 1.5s delay between messages
+          const responses = data.chat_responses
+          
+          if (data.maestro && data.message_to_maestro && responses.length > 0) {
+            // MAESTRO FLOW: Hold the last message, post others first
+            console.log('🎭 Maestro mode: Holding final message until document modification')
             
-            messageTimeouts.current.push(timeout)
-          })
-          
-          // Stop typing and reset processing flag after last message
-          const finalTimeout = setTimeout(() => {
-            setChatState(prev => ({ ...prev, isTyping: false }))
-            isProcessing.current = false
-            console.log('✅ Chat turn completed')
-          }, data.chat_responses.length * 1500 + 500)
-          
-          messageTimeouts.current.push(finalTimeout)
+            const initialResponses = responses.slice(0, -1) // All but last
+            const finalResponse = responses[responses.length - 1] // Last message
+            
+            // Post initial responses with maestro timing (3-7s)
+            const baseDelay = () => 3000 + Math.random() * 4000
+            let cumulativeDelay = 0
+            
+            initialResponses.forEach((responseContent: string, index: number) => {
+              const currentDelay = baseDelay()
+              cumulativeDelay += currentDelay
+              
+              const timeout = setTimeout(() => {
+                const assistantMessage: ChatMessage = {
+                  id: `assistant_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+                  role: 'assistant',
+                  content: responseContent,
+                  timestamp: new Date(),
+                  status: 'delivered'
+                }
+                
+                setChatState(prev => ({
+                  ...prev,
+                  messages: [...prev.messages, assistantMessage],
+                  isTyping: true // Keep typing indicator
+                }))
+                
+                console.log(`💬 Assistant message ${index + 1}/${initialResponses.length} (maestro mode): ${responseContent.substring(0, 30)}...`)
+              }, cumulativeDelay)
+              
+              messageTimeouts.current.push(timeout)
+            })
+            
+            // Trigger maestro after initial messages
+            const maestroTimeout = setTimeout(async () => {
+              console.log('🎭 Triggering maestro:', data.message_to_maestro)
+              
+              try {
+                // Extract current template and call maestro
+                const currentTemplate = await extractCurrentTemplate(sessionData, sessionId)
+                
+                const maestroResponse = await fetch('/api/hyper-canvas/maestro', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    currentTemplate,
+                    maestroInstruction: data.message_to_maestro,
+                    threadId: chatState.threadId,
+                    sessionId,
+                    userId,
+                    organizationId
+                  })
+                })
+                
+                const maestroData = await maestroResponse.json()
+                
+                if (maestroData.success) {
+                  console.log('✅ Maestro completed:', maestroData.explanation)
+                  
+                  // Update document preview
+                  await refreshDocumentPreview(maestroData.modified_template)
+                  
+                  // NOW post the final quickshot message
+                  const finalTimeout = setTimeout(() => {
+                    const finalMessage: ChatMessage = {
+                      id: `assistant_final_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                      role: 'assistant',
+                      content: finalResponse,
+                      timestamp: new Date(),
+                      status: 'delivered'
+                    }
+                    
+                    setChatState(prev => ({
+                      ...prev,
+                      messages: [...prev.messages, finalMessage],
+                      isTyping: true // Still typing for explanation
+                    }))
+                    
+                    console.log(`💬 Final quickshot message: ${finalResponse.substring(0, 30)}...`)
+                  }, 1000) // Brief delay after maestro completion
+                  
+                  messageTimeouts.current.push(finalTimeout)
+                  
+                  // Post maestro explanation as separate message
+                  const explanationTimeout = setTimeout(() => {
+                    const explanationMessage: ChatMessage = {
+                      id: `maestro_explanation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                      role: 'assistant',
+                      content: `📋 ${maestroData.explanation}`,
+                      timestamp: new Date(),
+                      status: 'delivered'
+                    }
+                    
+                    setChatState(prev => ({
+                      ...prev,
+                      messages: [...prev.messages, explanationMessage],
+                      isTyping: false, // Done!
+                      memoryState: maestroData.memoryState || prev.memoryState
+                    }))
+                    
+                    isProcessing.current = false
+                    console.log(`🎭 Maestro explanation: ${maestroData.explanation}`)
+                    console.log('✅ Maestro chat turn completed')
+                  }, 2500) // Delay for explanation
+                  
+                  messageTimeouts.current.push(explanationTimeout)
+                  
+                } else {
+                  console.error('❌ Maestro failed:', maestroData.error)
+                  
+                  // Still post final message even if maestro fails
+                  const fallbackTimeout = setTimeout(() => {
+                    const finalMessage: ChatMessage = {
+                      id: `assistant_final_fallback_${Date.now()}`,
+                      role: 'assistant',
+                      content: finalResponse,
+                      timestamp: new Date(),
+                      status: 'delivered'
+                    }
+                    
+                    const errorMessage: ChatMessage = {
+                      id: `maestro_error_${Date.now()}`,
+                      role: 'assistant',
+                      content: `⚠️ ${maestroData.explanation || 'Document modification encountered an issue, but I can still help with other tasks.'}`,
+                      timestamp: new Date(),
+                      status: 'delivered'
+                    }
+                    
+                    setChatState(prev => ({
+                      ...prev,
+                      messages: [...prev.messages, finalMessage, errorMessage],
+                      isTyping: false
+                    }))
+                    
+                    isProcessing.current = false
+                  }, 1000)
+                  
+                  messageTimeouts.current.push(fallbackTimeout)
+                }
+                
+              } catch (maestroError) {
+                console.error('❌ Maestro request failed:', maestroError)
+                
+                // Fallback: post final message anyway
+                const fallbackTimeout = setTimeout(() => {
+                  const finalMessage: ChatMessage = {
+                    id: `assistant_final_error_${Date.now()}`,
+                    role: 'assistant',
+                    content: finalResponse,
+                    timestamp: new Date(),
+                    status: 'delivered'
+                  }
+                  
+                  setChatState(prev => ({
+                    ...prev,
+                    messages: [...prev.messages, finalMessage],
+                    isTyping: false
+                  }))
+                  
+                  isProcessing.current = false
+                }, 1000)
+                
+                messageTimeouts.current.push(fallbackTimeout)
+              }
+            }, cumulativeDelay + 1000) // Start maestro after initial messages
+            
+            messageTimeouts.current.push(maestroTimeout)
+            
+          } else {
+            // NORMAL FLOW: Post all messages with regular timing
+            responses.forEach((responseContent: string, index: number) => {
+              const timeout = setTimeout(() => {
+                const assistantMessage: ChatMessage = {
+                  id: `assistant_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+                  role: 'assistant',
+                  content: responseContent,
+                  timestamp: new Date(),
+                  status: 'delivered'
+                }
+                
+                setChatState(prev => ({
+                  ...prev,
+                  messages: [...prev.messages, assistantMessage],
+                  isTyping: index < responses.length - 1
+                }))
+                
+                console.log(`💬 Assistant message ${index + 1}/${responses.length} (normal mode): ${responseContent.substring(0, 30)}...`)
+              }, (index + 1) * 1500) // Regular 1.5s timing
+              
+              messageTimeouts.current.push(timeout)
+            })
+            
+            // Complete normal flow
+            const finalTimeout = setTimeout(() => {
+              setChatState(prev => ({ ...prev, isTyping: false }))
+              isProcessing.current = false
+              console.log('✅ Normal chat turn completed')
+            }, responses.length * 1500 + 500)
+            
+            messageTimeouts.current.push(finalTimeout)
+          }
         } else {
           // No responses, stop immediately
           setChatState(prev => ({ ...prev, isTyping: false }))
@@ -273,7 +509,7 @@ export function useHyperCanvasChat(
       
       isProcessing.current = false
     }
-  }, [chatState.threadId, sessionId, userId, organizationId, clearTimeouts])
+  }, [chatState.threadId, sessionId, userId, organizationId, clearTimeouts, sessionData, extractCurrentTemplate, refreshDocumentPreview])
   
   const clearChat = useCallback(() => {
     clearTimeouts()

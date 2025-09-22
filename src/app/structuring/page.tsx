@@ -260,6 +260,39 @@ export default function StructuringPage() {
     }
   }, [hasUnsavedChanges, sessionId, autoSave])
 
+  // Keyboard shortcuts for structuring tabs
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.tagName === 'SELECT' ||
+        activeElement.hasAttribute('contenteditable')
+      )
+      
+      if (isInputFocused) return // Don't trigger shortcuts when typing
+      
+      // Structuring tab shortcuts
+      const tabMap: { [key: string]: string } = {
+        '1': 'project',
+        '2': 'content',
+        '3': 'solution'
+      }
+      
+      if (tabMap[event.key]) {
+        event.preventDefault()
+        setActiveMainTab(tabMap[event.key])
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
   // Content tab management
   const addContentTab = () => {
     const newId = Math.max(...contentTabs.map(tab => tab.id)) + 1

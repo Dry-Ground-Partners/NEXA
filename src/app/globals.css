@@ -187,7 +187,63 @@
     text-wrap: balance;
   }
 
-  /* Custom scrollbar for dark theme */
+  /* Line clamp utilities */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  /* Ultra-minimalistic scrollbars - just a thin black line */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #000000 transparent;
+  }
+
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  *::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #000000;
+    border-radius: 0;
+    transition: background-color 0.15s ease;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: #333333;
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background: #000000;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Custom scrollbar class for specific elements that need different styling */
   .nexa-scrollbar::-webkit-scrollbar {
     width: 8px;
   }

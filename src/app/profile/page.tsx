@@ -61,6 +61,41 @@ export default function ProfilePage() {
     fetchUserProfile()
   }, [])
 
+  // Keyboard shortcuts for profile tabs
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.tagName === 'SELECT' ||
+        activeElement.hasAttribute('contenteditable')
+      )
+      
+      if (isInputFocused) return // Don't trigger shortcuts when typing
+      
+      // Profile tab shortcuts
+      const tabMap: { [key: string]: string } = {
+        '1': 'nexa',
+        '2': 'profile',
+        '3': 'organizations',
+        '4': 'billing',
+        '5': 'settings'
+      }
+      
+      if (tabMap[event.key]) {
+        event.preventDefault()
+        setActiveTab(tabMap[event.key])
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
   const fetchUserProfile = async () => {
     try {
       const response = await fetch('/api/auth/me')

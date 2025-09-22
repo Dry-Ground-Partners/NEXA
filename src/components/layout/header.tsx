@@ -6,11 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   User,
   LogOut,
-  Lightbulb,
-  FileText,
-  Calculator,
-  Layers,
-  Palette,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -19,19 +14,12 @@ interface HeaderProps {
     email: string;
   };
   currentPage?: string;
+  onSidebarToggle?: () => void;
+  isSidebarOpen?: boolean;
 }
 
-export function Header({ user, currentPage = "Dashboard" }: HeaderProps) {
-  const [isNavOpen, setIsNavOpen] = useState(false);
+export function Header({ user, currentPage = "Dashboard", onSidebarToggle, isSidebarOpen = false }: HeaderProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  const toggleNav = () => {
-    setIsNavOpen(!isNavOpen);
-  };
-
-  const closeNav = () => {
-    setIsNavOpen(false);
-  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -70,8 +58,14 @@ export function Header({ user, currentPage = "Dashboard" }: HeaderProps) {
           {/* Center: Logo */}
           <div className="absolute left-1/2 transform -translate-x-1/2">
             <div
-              className="flex items-center gap-3 cursor-pointer transition-all duration-200 hover:scale-105 hover:opacity-90"
-              onClick={toggleNav}
+              className={`
+                flex items-center gap-3 cursor-pointer transition-all duration-300 ease-in-out
+                ${isSidebarOpen 
+                  ? 'opacity-20 scale-75 pointer-events-none' 
+                  : 'opacity-100 scale-100 hover:scale-105 hover:opacity-90'
+                }
+              `}
+              onClick={onSidebarToggle}
             >
               <img
                 src="/images/nexanonameicon.png?v=1"
@@ -116,60 +110,7 @@ export function Header({ user, currentPage = "Dashboard" }: HeaderProps) {
             )}
           </div>
         </div>
-
-        {/* Navigation Section - Collapsible */}
-        {isNavOpen && (
-          <div className="bg-black border-t border-nexa-border py-5">
-            <div className="flex justify-center">
-              <div className="flex flex-wrap justify-center gap-4 max-w-4xl">
-                <Link
-                  href="/structuring"
-                  className="nav-button"
-                  onClick={closeNav}
-                >
-                  <Layers className="h-8 w-8 mb-2 text-white" />
-                  <span className="text-sm font-medium text-white">
-                    Structuring
-                  </span>
-                </Link>
-
-                <Link href="/visuals" className="nav-button" onClick={closeNav}>
-                  <Palette className="h-8 w-8 mb-2 text-white" />
-                  <span className="text-sm font-medium text-white">
-                    Visuals
-                  </span>
-                </Link>
-
-                <Link
-                  href="/solutioning"
-                  className="nav-button"
-                  onClick={closeNav}
-                >
-                  <Lightbulb className="h-8 w-8 mb-2 text-white" />
-                  <span className="text-sm font-medium text-white">
-                    Solutioning
-                  </span>
-                </Link>
-
-                <Link href="/sow" className="nav-button" onClick={closeNav}>
-                  <FileText className="h-8 w-8 mb-2 text-white" />
-                  <span className="text-sm font-medium text-white">SoW</span>
-                </Link>
-
-                <Link href="/loe" className="nav-button" onClick={closeNav}>
-                  <Calculator className="h-8 w-8 mb-2 text-white" />
-                  <span className="text-sm font-medium text-white">LoE</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* Overlay to close nav when clicking outside */}
-      {isNavOpen && (
-        <div className="fixed inset-0 bg-black/20 z-[-1]" onClick={closeNav} />
-      )}
     </header>
   );
 }

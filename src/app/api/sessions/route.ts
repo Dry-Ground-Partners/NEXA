@@ -14,13 +14,23 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📡 API: Get user sessions request')
     
+    // Get limit from query params
+    const { searchParams } = new URL(request.url)
+    const limitParam = searchParams.get('limit')
+    const limit = limitParam ? parseInt(limitParam, 10) : undefined
+    
+    console.log(`📡 API: Session limit: ${limit || 'no limit'}`)
+    
     const sessions = await getUserStructuringSessions()
     
-    console.log(`✅ API: Found ${sessions.length} sessions`)
+    // Apply limit if specified
+    const limitedSessions = limit ? sessions.slice(0, limit) : sessions
+    
+    console.log(`✅ API: Found ${sessions.length} sessions, returning ${limitedSessions.length}`)
     
     return NextResponse.json({
       success: true,
-      sessions
+      sessions: limitedSessions
     })
   } catch (error) {
     console.error('💥 API: Error getting sessions:', error)

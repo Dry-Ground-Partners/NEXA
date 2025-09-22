@@ -223,6 +223,40 @@ export default function LOEPage() {
     return () => clearTimeout(autoSaveTimer)
   }, [sessionId, saving, hasUnsavedChanges, collectCurrentData])
 
+  // Keyboard shortcuts for LOE tabs
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.tagName === 'SELECT' ||
+        activeElement.hasAttribute('contenteditable')
+      )
+      
+      if (isInputFocused) return // Don't trigger shortcuts when typing
+      
+      // LOE tab shortcuts
+      const tabMap: { [key: string]: string } = {
+        '1': 'info',
+        '2': 'workstreams',
+        '3': 'resources',
+        '4': 'assumptions'
+      }
+      
+      if (tabMap[event.key]) {
+        event.preventDefault()
+        setActiveMainTab(tabMap[event.key])
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
   // Navigation functions - matching pattern from other pages
   const handleNext = () => {
     const tabOrder = ['info', 'workstreams', 'resources', 'assumptions', 'variations']

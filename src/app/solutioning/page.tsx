@@ -92,11 +92,26 @@ export default function SolutioningPage() {
   const [previewBlob, setPreviewBlob] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
 
+  // Add maestro document update handler
+  const handleDocumentUpdate = useCallback((newBlobUrl: string) => {
+    // Revoke old blob URL to prevent memory leaks
+    if (previewBlob) {
+      URL.revokeObjectURL(previewBlob)
+    }
+    
+    // Set new blob URL (this automatically refreshes the iframe)
+    setPreviewBlob(newBlobUrl)
+    
+    console.log('✅ Document preview updated by maestro')
+  }, [previewBlob])
+
   // Hyper-Canvas chat integration
   const { chatState, sendMessage, initializeChat, canSendMessage } = useHyperCanvasChat(
     sessionId || '',
     user?.id || '',
-    user?.currentOrganization?.id || user?.organizations?.[0]?.organizationId || ''
+    user?.currentOrganization?.id || user?.organizations?.[0]?.organizationId || '',
+    sessionData, // Pass session data for template extraction
+    handleDocumentUpdate // Pass document update handler
   )
 
   // Generate PDF preview blob for Hyper-Canvas

@@ -113,7 +113,9 @@ export function ChatInterface({
                 className={`max-w-[85%] p-3 rounded-lg ${
                   message.role === 'user'
                     ? 'bg-blue-500/20 text-white border border-blue-400/30'
-                    : 'bg-white/10 text-white border border-white/20'
+                    : message.content.startsWith('📋')
+                      ? 'bg-green-600/20 text-green-100 border border-green-500/30' // Maestro explanation styling
+                      : 'bg-white/10 text-white border border-white/20' // Regular quickshot styling
                 } ${
                   message.status === 'error' 
                     ? 'border-red-500/50 bg-red-500/10' 
@@ -142,7 +144,7 @@ export function ChatInterface({
             </div>
           ))}
           
-          {/* Typing indicator */}
+          {/* Enhanced typing indicator with maestro detection */}
           {isTyping && (
             <div className="flex justify-start">
               <div className="bg-white/10 text-white p-3 rounded-lg border border-white/20">
@@ -152,7 +154,16 @@ export function ChatInterface({
                     <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce delay-75"></div>
                     <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce delay-150"></div>
                   </div>
-                  <span className="text-xs text-white/60">Quickshot is thinking...</span>
+                  <span className="text-xs text-white/60">
+                    {/* Detect if maestro is likely working based on recent messages */}
+                    {messages.length > 0 && messages.slice(-3).some(msg => 
+                      msg.role === 'assistant' && 
+                      (msg.content.toLowerCase().includes('modifying') ||
+                       msg.content.toLowerCase().includes('document') ||
+                       msg.content.toLowerCase().includes('template') ||
+                       msg.content.toLowerCase().includes('working with our document team'))
+                    ) ? 'Modifying document...' : 'Quickshot is thinking...'}
+                  </span>
                 </div>
               </div>
             </div>
