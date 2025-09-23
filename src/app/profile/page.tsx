@@ -785,19 +785,26 @@ export default function ProfilePage() {
                     </Link>
                   </div>
 
-                  {user.organizations && user.organizations.length > 0 ? (
+                  {user.organizationMemberships && user.organizationMemberships.length > 0 ? (
                     <div className="grid gap-4">
-                      {user.organizations.map((membership) => (
-                        <Card key={membership.id} variant="nexa" className="p-6">
+                      {user.organizationMemberships.map((membership) => (
+                        <Card key={membership.id} className="backdrop-blur-md bg-black border border-slate-700/50 p-6 hover:border-slate-600/50 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-nexa-accent rounded-lg flex items-center justify-center text-black font-bold">
+                              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
                                 {membership.organization?.name?.charAt(0).toUpperCase() || 'O'}
                               </div>
-                              <div>
-                                <h4 className="text-lg font-semibold text-white">
-                                  {membership.organization?.name || 'Unknown Organization'}
-                                </h4>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-1">
+                                  <h4 className="text-lg font-semibold text-white">
+                                    {membership.organization?.name || 'Unknown Organization'}
+                                  </h4>
+                                  {membership.organization?.planType && (
+                                    <span className="px-2 py-1 bg-blue-600/20 text-blue-400 text-xs font-medium rounded-full border border-blue-500/30">
+                                      {membership.organization.planType.charAt(0).toUpperCase() + membership.organization.planType.slice(1)}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-2 text-sm">
                                   <span className={`flex items-center gap-1 ${getRoleColor(membership.role)}`}>
                                     {getRoleIcon(membership.role)}
@@ -805,13 +812,27 @@ export default function ProfilePage() {
                                   </span>
                                   <span className="text-nexa-muted">•</span>
                                   <span className="text-nexa-muted">
-                                    Joined {new Date(membership.joinedAt || membership.createdAt).toLocaleDateString()}
+                                    Joined {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : 'Unknown'}
                                   </span>
+                                  {membership.organization?.status && (
+                                    <>
+                                      <span className="text-nexa-muted">•</span>
+                                      <span className={`text-xs font-medium ${
+                                        membership.organization.status === 'active' ? 'text-green-400' : 'text-yellow-400'
+                                      }`}>
+                                        {membership.organization.status.charAt(0).toUpperCase() + membership.organization.status.slice(1)}
+                                      </span>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button variant="outline" size="sm">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30"
+                              >
                                 <Settings className="w-4 h-4" />
                               </Button>
                               <ChevronRight className="w-5 h-5 text-nexa-muted" />
@@ -821,7 +842,7 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   ) : (
-                    <Card variant="nexa" className="p-8 text-center">
+                    <Card className="backdrop-blur-md bg-black border border-slate-700/50 p-8 text-center">
                       <Building className="w-16 h-16 text-nexa-muted mx-auto mb-4" />
                       <h4 className="text-lg font-semibold text-white mb-2">No Organizations</h4>
                       <p className="text-nexa-muted mb-6">
@@ -829,12 +850,16 @@ export default function ProfilePage() {
                       </p>
                       <div className="flex justify-center gap-3">
                         <Link href="/organizations/create">
-                          <Button>
+                          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                             <Plus className="w-4 h-4 mr-2" />
                             Create Organization
                           </Button>
                         </Link>
-                        <Button variant="outline" disabled>
+                        <Button 
+                          variant="outline" 
+                          disabled
+                          className="bg-white/5 border-white/20 text-white"
+                        >
                           <Mail className="w-4 h-4 mr-2" />
                           Join Organization
                         </Button>

@@ -30,6 +30,7 @@ export async function middleware(request: NextRequest) {
     '/auth/verify-email-pending',
     '/auth/accept-invitation',
     '/auth/reset-password',
+    '/invite', // Allow invitation acceptance without authentication
     '/onboarding', // Allow onboarding for authenticated users without orgs
     '/images',
     '/static',
@@ -43,7 +44,8 @@ export async function middleware(request: NextRequest) {
     '/api/auth/register',
     '/api/auth/verify-email',
     '/api/auth/resend-verification',
-    '/api/organizations/check-domain'
+    '/api/organizations/check-domain',
+    '/api/invitations' // Allow invitation validation and acceptance
   ]
 
   // API routes that require authentication but not organization membership

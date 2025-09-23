@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
+import { NextRequest } from 'next/server'
 
 const prisma = new PrismaClient()
 
@@ -203,6 +204,22 @@ export function generateToken(user: User): string {
   }
 
   return jwt.sign(payload, secret, { expiresIn: '7d' })
+}
+
+/**
+ * Generate JWT token for API usage (alias for generateToken)
+ */
+export function generateJWT(payload: { id: string; email: string; organizationId?: string }): string {
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is not set')
+  }
+
+  return jwt.sign({
+    userId: payload.id,
+    email: payload.email,
+    organizationId: payload.organizationId
+  }, secret, { expiresIn: '7d' })
 }
 
 /**
@@ -447,6 +464,46 @@ export async function changeUserPassword(userId: string, currentPassword: string
   } catch (error) {
     console.error('Error changing password:', error)
     return false
+  }
+}
+
+/**
+ * Verify authentication from API request
+ */
+export async function verifyAuth(request: NextRequest): Promise<User | null> {
+  try {
+    // Try to get token from cookies first
+    let token = request.cookies.get('auth-token')?.value
+    
+    // If no cookie token, try Authorization header
+    if (!token) {
+      const authHeader = request.headers.get('authorization')
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7)
+      }
+    }
+
+    if (!token) {
+      return null
+    }
+
+    const payload = verifyToken(token)
+    if (!payload || !payload.userId) {
+      return null
+    }
+
+    // Get fresh user data from database
+    const user = await getUserById(payload.userId)
+    
+    // Ensure user is still active
+    if (!user || user.status !== 'active') {
+      return null
+    }
+
+    return user
+  } catch (error) {
+    console.error('Error verifying auth:', error)
+    return null
   }
 }
 

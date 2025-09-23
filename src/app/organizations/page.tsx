@@ -1,0 +1,1162 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { 
+  Building, 
+  Users, 
+  CreditCard, 
+  History,
+  Plus, 
+  Settings, 
+  ChevronRight,
+  Crown,
+  Shield,
+  User,
+  ArrowLeft,
+  Lock,
+  Key,
+  CheckCircle,
+  MoreHorizontal,
+  Zap,
+  DollarSign,
+  Mail,
+  UserPlus,
+  UserMinus,
+  Trash2,
+  Calendar,
+  Clock,
+  X
+} from 'lucide-react'
+import Link from 'next/link'
+import type { AuthUser } from '@/types'
+
+interface Organization {
+  id: string
+  name: string
+  slug: string
+  logoUrl?: string
+  planType: string
+  status: string
+}
+
+interface OrganizationMembership {
+  id: string
+  role: string
+  status: string
+  joinedAt: Date | null
+  organization: Organization
+}
+
+interface User extends AuthUser {
+  organizationMemberships: OrganizationMembership[]
+}
+
+export default function OrganizationsPage() {
+  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('all')
+  const [accessActiveSection, setAccessActiveSection] = useState('sessions')
+  
+  // Organization switching state
+  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null)
+  const [organizationData, setOrganizationData] = useState<any>({
+    members: [],
+    sessions: [],
+    billing: null,
+    usage: null,
+    roles: {}
+  })
+  const [organizationLoading, setOrganizationLoading] = useState(false)
+  
+  // Modal states
+  const [roleModalOpen, setRoleModalOpen] = useState(false)
+  const [selectedRole, setSelectedRole] = useState<string>('')
+  const [inviteModalOpen, setInviteModalOpen] = useState(false)
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+
+  // Helper function to format timestamps
+  const formatTimestamp = (timestamp: string | Date) => {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffHours / 24)
+    
+    if (diffHours < 1) return 'Just now'
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
+    return date.toLocaleDateString()
+  }
+
+  // Modal handlers
+  const openRoleModal = (role: string) => {
+    setSelectedRole(role)
+    setRoleModalOpen(true)
+  }
+
+  const closeRoleModal = () => {
+    setRoleModalOpen(false)
+    setSelectedRole('')
+  }
+
+  const openInviteModal = () => {
+    setInviteModalOpen(true)
+  }
+
+  const closeInviteModal = () => {
+    setInviteModalOpen(false)
+    setInviteError(null)
+    setInviteLoading(false)
+  }
+
+  const handleInviteSubmit = async (formData: FormData) => {
+    if (!selectedOrganization) return
+
+    setInviteLoading(true)
+    setInviteError(null)
+
+    try {
+      const email = formData.get('email') as string
+      const firstName = formData.get('firstName') as string
+      const lastName = formData.get('lastName') as string
+      const role = formData.get('role') as string
+      const personalMessage = formData.get('personalMessage') as string
+
+      const response = await fetch(`/api/organizations/${selectedOrganization.id}/invitations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          firstName,
+          lastName,
+          role,
+          personalMessage
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setInviteError(data.error || 'Failed to send invitation')
+        return
+      }
+
+      // Success - close modal and refresh data
+      closeInviteModal()
+      
+      // Refresh organization data to show the new pending invitation
+      if (selectedOrganization) {
+        switchToOrganization(selectedOrganization)
+      }
+
+      // Show success message (you can add a toast notification here)
+      console.log('Invitation sent successfully to', email)
+
+    } catch (error) {
+      setInviteError('Failed to send invitation')
+      console.error('Error sending invitation:', error)
+    } finally {
+      setInviteLoading(false)
+    }
+  }
+
+  const rolePermissions = {
+    owner: { label: 'Owner', color: 'text-yellow-400' },
+    admin: { label: 'Admin', color: 'text-blue-400' },
+    member: { label: 'Member', color: 'text-green-400' },
+    viewer: { label: 'Viewer', color: 'text-gray-400' },
+    billing: { label: 'Billing', color: 'text-purple-400' }
+  }
+
+  useEffect(() => {
+    fetchUserProfile()
+  }, [])
+
+  // Set default organization (user's owned org) when user data loads
+  useEffect(() => {
+    if (user && user.organizationMemberships && !selectedOrganization) {
+      // Find the organization where user is owner, or default to first organization
+      const ownedOrg = user.organizationMemberships.find(membership => membership.role === 'owner')
+      const defaultOrg = ownedOrg || user.organizationMemberships[0]
+      
+      if (defaultOrg) {
+        switchToOrganization(defaultOrg.organization)
+      }
+    }
+  }, [user, selectedOrganization])
+
+  // Keyboard shortcuts for organizations tabs
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.tagName === 'SELECT' ||
+        activeElement.hasAttribute('contenteditable')
+      )
+      
+      if (isInputFocused) return // Don't trigger shortcuts when typing
+      
+      // Organizations tab shortcuts
+      const tabMap: { [key: string]: string } = {
+        '1': 'all',
+        '2': 'access',
+        '3': 'billing',
+        '4': 'history'
+      }
+      
+      if (tabMap[event.key]) {
+        event.preventDefault()
+        setActiveTab(tabMap[event.key])
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch('/api/auth/me')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.user) {
+          setUser(result.user)
+        } else {
+          setError('Failed to load profile')
+        }
+      } else {
+        setError('Failed to load profile')
+      }
+    } catch (error) {
+      setError('Network error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Organization switching functionality
+  const switchToOrganization = async (organization: Organization) => {
+    console.log('🔄 Switching to organization:', organization.name)
+    setOrganizationLoading(true)
+    setSelectedOrganization(organization)
+    
+    try {
+      // Fetch real organization data from APIs
+      const [sessionsResponse, membersResponse] = await Promise.all([
+        fetch(`/api/organizations/${organization.id}/sessions`),
+        fetch(`/api/organizations/${organization.id}/members`)
+      ])
+      
+      const sessionsData = await sessionsResponse.json()
+      const membersData = await membersResponse.json()
+      
+      if (!sessionsData.success || !membersData.success) {
+        throw new Error('Failed to fetch organization data')
+      }
+      
+      setOrganizationData({
+        members: membersData.members || [],
+        sessions: sessionsData.sessions || [],
+        roles: membersData.roles || {},
+        billing: null,
+        usage: null
+      })
+      
+      console.log('✅ Real organization data loaded:', {
+        sessions: sessionsData.sessions?.length || 0,
+        members: membersData.members?.length || 0,
+        roles: membersData.roles
+      })
+      
+    } catch (error) {
+      console.error('❌ Failed to switch organization:', error)
+      // Fallback to empty data
+      setOrganizationData({
+        members: [],
+        sessions: [],
+        roles: {},
+        billing: null,
+        usage: null
+      })
+    } finally {
+      setOrganizationLoading(false)
+    }
+  }
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'owner': return 'text-yellow-400'
+      case 'admin': return 'text-blue-400'  
+      case 'member': return 'text-green-400'
+      case 'viewer': return 'text-gray-400'
+      default: return 'text-gray-400'
+    }
+  }
+
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'owner': return <Crown className="w-4 h-4" />
+      case 'admin': return <Shield className="w-4 h-4" />
+      case 'member': return <User className="w-4 h-4" />
+      case 'viewer': return <User className="w-4 h-4" />
+      default: return <User className="w-4 h-4" />
+    }
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-white">Loading organizations...</div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-red-400">Failed to load organizations</div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="nexa-background min-h-screen p-6">
+        <div className="max-w-6xl mx-auto">
+          
+          {/* Tab Navigation Row */}
+          <div className="flex items-end justify-between mb-0">
+            {/* Left: Label + Tab Strip */}
+            <div className="flex items-end gap-8">
+              {/* Organizations Label */}
+              <div className="flex items-center gap-2 text-white pb-3 ml-16">
+                <Building className="w-4 h-4" />
+                <span>Organizations</span>
+              </div>
+              
+              {/* Main Tabs */}
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                  <TabsTrigger value="all">
+                    <Building className="w-4 h-4 mr-2" />
+                    All
+                  </TabsTrigger>
+                  <TabsTrigger value="access">
+                    <Users className="w-4 h-4 mr-2" />
+                    Access
+                  </TabsTrigger>
+                  <TabsTrigger value="billing">
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Billing
+                  </TabsTrigger>
+                  <TabsTrigger value="history">
+                    <History className="w-4 h-4 mr-2" />
+                    History
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </div>
+
+          {/* Content Card */}
+          <Card variant="nexa" className="rounded-tr-none border-t border-nexa-border p-8 mt-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              
+              {/* All Organizations Tab Content */}
+              <TabsContent value="all" className="mt-0">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold text-white mb-2">Your Organizations</h3>
+                      <p className="text-nexa-muted">Manage your organization memberships and access</p>
+                    </div>
+                    <Link href="/organizations/create">
+                      <Button className="flex items-center gap-2 bg-white hover:bg-gray-100 text-black border border-gray-300">
+                        <Plus className="w-4 h-4" />
+                        Create Organization
+                      </Button>
+                    </Link>
+                  </div>
+
+                  {user.organizationMemberships && user.organizationMemberships.length > 0 ? (
+                    <div className="grid gap-4">
+                      {user.organizationMemberships.map((membership) => (
+                        <Card key={membership.id} className="backdrop-blur-md bg-black border border-slate-700/50 p-6 hover:border-slate-600/50 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                                {membership.organization?.name?.charAt(0).toUpperCase() || 'O'}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-1">
+                                  <h4 className="text-lg font-semibold text-white">
+                                    {membership.organization?.name || 'Unknown Organization'}
+                                  </h4>
+                                  {membership.organization?.planType && (
+                                    <span className="px-2 py-1 bg-blue-600/20 text-blue-400 text-xs font-medium rounded-full border border-blue-500/30">
+                                      {membership.organization.planType.charAt(0).toUpperCase() + membership.organization.planType.slice(1)}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className={`flex items-center gap-1 ${getRoleColor(membership.role)}`}>
+                                    {getRoleIcon(membership.role)}
+                                    {membership.role.charAt(0).toUpperCase() + membership.role.slice(1)}
+                                  </span>
+                                  <span className="text-nexa-muted">•</span>
+                                  <span className="text-nexa-muted">
+                                    Joined {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : 'Unknown'}
+                                  </span>
+                                  {membership.organization?.status && (
+                                    <>
+                                      <span className="text-nexa-muted">•</span>
+                                      <span className={`text-xs font-medium ${
+                                        membership.organization.status === 'active' ? 'text-green-400' : 'text-yellow-400'
+                                      }`}>
+                                        {membership.organization.status.charAt(0).toUpperCase() + membership.organization.status.slice(1)}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30"
+                                onClick={() => {
+                                  if (membership.organization) {
+                                    switchToOrganization(membership.organization)
+                                    setActiveTab('access') // Switch to access tab to show organization data
+                                  }
+                                }}
+                                disabled={organizationLoading}
+                              >
+                                {organizationLoading && selectedOrganization?.id === membership.organization?.id ? (
+                                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="backdrop-blur-md bg-black border border-slate-700/50 p-8 text-center">
+                      <Building className="w-16 h-16 text-nexa-muted mx-auto mb-4" />
+                      <h4 className="text-lg font-semibold text-white mb-2">No Organizations</h4>
+                      <p className="text-nexa-muted mb-6">
+                        You're currently not a member of any organizations. Create one to collaborate with your team or join an existing organization.
+                      </p>
+                      <div className="flex justify-center gap-3">
+                        <Link href="/organizations/create">
+                          <Button className="bg-white hover:bg-gray-100 text-black border border-gray-300">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Organization
+                          </Button>
+                        </Link>
+                        <Button 
+                          variant="outline" 
+                          disabled
+                          className="bg-white/5 border-white/20 text-white"
+                        >
+                          <Mail className="w-4 h-4 mr-2" />
+                          Join Organization
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Access Management Tab Content */}
+              <TabsContent value="access" className="mt-0">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Shield className="h-6 w-6 text-white" />
+                      <h3 className="text-lg font-semibold text-white">Access Management</h3>
+                    </div>
+                    <div className="text-sm text-nexa-muted">
+                      {selectedOrganization ? (
+                        <div className="flex items-center gap-2">
+                          <span>Organization:</span>
+                          <span className="text-white font-medium">{selectedOrganization.name}</span>
+                          <button 
+                            onClick={() => setActiveTab('all')}
+                            className="text-blue-400 hover:text-blue-300 text-xs"
+                          >
+                            (switch)
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-yellow-400">Select an organization first</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Section Navigation */}
+                  <div className="flex items-center gap-2 bg-white/5 p-2 rounded-lg border border-white/10">
+                    {[
+                      { id: 'sessions', label: 'Session Controls', icon: Lock },
+                      { id: 'roles', label: 'Role Enforcement', icon: Key },
+                      { id: 'members', label: 'Member Management', icon: Users }
+                    ].map(section => {
+                      const Icon = section.icon
+                      const isActive = accessActiveSection === section.id
+                      return (
+                        <button
+                          key={section.id}
+                          onClick={() => setAccessActiveSection(section.id as any)}
+                          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md transition-all duration-200 ${
+                            isActive 
+                              ? 'bg-white text-black font-medium' 
+                              : 'text-nexa-muted hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span className="text-sm">{section.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Session Controls Section */}
+                  {accessActiveSection === 'sessions' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-lg font-medium text-white">Session Access Controls</h4>
+                          <p className="text-sm text-nexa-muted">Manage access to organization sessions and their collaborators</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm rounded-lg transition-all">
+                            Bulk Actions
+                          </button>
+                          <button className="px-3 py-1.5 bg-white text-black hover:bg-gray-100 text-sm font-medium rounded-lg transition-all">
+                            Export Sessions
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Sessions List */}
+                      {selectedOrganization && organizationData.sessions.length > 0 ? (
+                        <div className="backdrop-blur-md bg-black border border-slate-700/50 rounded-xl overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="border-b border-white/10">
+                                <tr>
+                                  <th className="text-left p-4 text-sm font-medium text-white">Session</th>
+                                  <th className="text-left p-4 text-sm font-medium text-white">Created By</th>
+                                  <th className="text-left p-4 text-sm font-medium text-white">Access Level</th>
+                                  <th className="text-left p-4 text-sm font-medium text-white">Last Modified</th>
+                                  <th className="text-left p-4 text-sm font-medium text-white">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {organizationData.sessions.map((session: any) => (
+                                  <tr key={session.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                    <td className="p-4">
+                                      <div>
+                                        <div className="text-white text-sm font-medium">{session.title}</div>
+                                      </div>
+                                    </td>
+                                    <td className="p-4">
+                                      <div className="text-white text-sm">{session.createdBy}</div>
+                                    </td>
+                                    <td className="p-4">
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        session.accessLevel === 'public' ? 'bg-green-600/20 text-green-400' :
+                                        session.accessLevel === 'organization' ? 'bg-blue-600/20 text-blue-400' :
+                                        session.accessLevel === 'restricted' ? 'bg-yellow-600/20 text-yellow-400' :
+                                        'bg-red-600/20 text-red-400'
+                                      }`}>
+                                        {session.accessLevel.charAt(0).toUpperCase() + session.accessLevel.slice(1)}
+                                      </span>
+                                    </td>
+                                    <td className="p-4">
+                                      <div className="text-white text-sm">{formatTimestamp(session.lastModified)}</div>
+                                    </td>
+                                    <td className="p-4">
+                                      <div className="flex items-center justify-center">
+                                        <button className="p-1 hover:bg-white/10 rounded text-nexa-muted hover:text-white transition-colors">
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="backdrop-blur-md bg-black border border-slate-700/50 rounded-xl p-8 text-center">
+                          <Lock className="w-16 h-16 text-nexa-muted mx-auto mb-4" />
+                          <h4 className="text-lg font-semibold text-white mb-2">
+                            {selectedOrganization ? 'No Sessions Found' : 'Select Organization'}
+                          </h4>
+                          <p className="text-nexa-muted">
+                            {selectedOrganization 
+                              ? 'This organization has no sessions yet. Create some sessions to manage access controls.'
+                              : 'Please select an organization from the "All" tab to view session access controls.'
+                            }
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Role Enforcement Section */}
+                  {accessActiveSection === 'roles' && (
+                    <div className="space-y-6">
+                      <div>
+                        <h4 className="text-lg font-medium text-white">Role Distribution & Management</h4>
+                        <p className="text-sm text-nexa-muted">View role distribution and manage permissions for each role type</p>
+                      </div>
+                      
+                      {selectedOrganization ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {Object.entries(rolePermissions).map(([roleKey, roleInfo]) => {
+                            const count = organizationData.roles[roleKey as keyof typeof organizationData.roles] || 0
+                            const Icon = roleKey === 'owner' ? Crown : 
+                                        roleKey === 'admin' ? Shield : 
+                                        roleKey === 'billing' ? CreditCard : User
+                            
+                            return (
+                              <Card 
+                                key={roleKey} 
+                                className="backdrop-blur-md bg-black border border-slate-700/50 p-6 hover:border-slate-600/50 transition-colors cursor-pointer"
+                                onClick={() => openRoleModal(roleKey)}
+                              >
+                                <div className="flex items-center justify-between mb-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br ${
+                                      roleKey === 'owner' ? 'from-yellow-500 to-amber-600' :
+                                      roleKey === 'admin' ? 'from-blue-500 to-blue-600' :
+                                      roleKey === 'member' ? 'from-green-500 to-green-600' :
+                                      roleKey === 'viewer' ? 'from-gray-500 to-gray-600' :
+                                      'from-purple-500 to-purple-600'
+                                    }`}>
+                                      <Icon className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                      <h5 className="text-white font-medium">{roleInfo.label}</h5>
+                                      <p className="text-nexa-muted text-xs">Role</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-2xl font-bold text-white">{count}</div>
+                                    <div className="text-nexa-muted text-xs">members</div>
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-nexa-muted">Permissions</span>
+                                    <span className={roleInfo.color}>
+                                      {roleKey === 'owner' ? 'Full Access' :
+                                       roleKey === 'admin' ? 'Management' :
+                                       roleKey === 'member' ? 'Standard' :
+                                       roleKey === 'viewer' ? 'Read Only' :
+                                       'Billing Only'}
+                                    </span>
+                                  </div>
+                                  
+                                  {count > 0 && (
+                                    <button className="w-full mt-3 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm rounded-lg transition-all">
+                                      View {count} {roleInfo.label}{count === 1 ? '' : 's'}
+                                    </button>
+                                  )}
+                                </div>
+                              </Card>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="backdrop-blur-md bg-black border border-slate-700/50 rounded-xl p-8 text-center">
+                          <Key className="w-16 h-16 text-nexa-muted mx-auto mb-4" />
+                          <h4 className="text-lg font-semibold text-white mb-2">Select Organization</h4>
+                          <p className="text-nexa-muted">
+                            Please select an organization from the "All" tab to view role distribution and management options.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Member Management Section */}
+                  {accessActiveSection === 'members' && (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-lg font-medium text-white">Member Management</h4>
+                          <p className="text-sm text-nexa-muted">Add, remove, and manage organization members</p>
+                        </div>
+                        <Button 
+                          className="flex items-center gap-2 bg-white hover:bg-gray-100 text-black border border-gray-300"
+                          onClick={openInviteModal}
+                        >
+                          <UserPlus className="w-4 h-4" />
+                          Invite Member
+                        </Button>
+                      </div>
+                      
+                      {/* Member List */}
+                      {selectedOrganization && organizationData.members.length > 0 ? (
+                        <div className="backdrop-blur-md bg-black border border-slate-700/50 rounded-xl overflow-hidden">
+                          <div className="p-6">
+                            <h5 className="text-white font-medium mb-4">
+                              Organization Members ({organizationData.members.length})
+                            </h5>
+                            <div className="space-y-3">
+                              {organizationData.members.map((user: any) => (
+                                <div key={user.id} className="flex items-center justify-between py-3 px-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                                      {user.name.split(' ').map((n: string) => n[0]).join('')}
+                                    </div>
+                                    <div>
+                                      <div className="text-white text-sm font-medium">{user.name}</div>
+                                      <div className="text-nexa-muted text-xs">{user.email}</div>
+                                      <div className="text-nexa-muted text-xs">
+                                        Joined {user.joinedAt} • Last active {user.lastActive}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1">
+                                      {user.isOwner && <Crown className="h-3 w-3 text-yellow-400" />}
+                                      <span className={`text-sm font-medium ${rolePermissions[user.role as keyof typeof rolePermissions]?.color || 'text-gray-400'}`}>
+                                        {rolePermissions[user.role as keyof typeof rolePermissions]?.label || 'Unknown'}
+                                      </span>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="text-white text-sm font-medium">{user.sessionsAccess}</div>
+                                      <div className="text-nexa-muted text-xs">sessions</div>
+                                    </div>
+                                    <div className="flex items-center justify-center">
+                                      <button className="p-1 hover:bg-white/10 rounded text-nexa-muted hover:text-white transition-colors">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="backdrop-blur-md bg-black border border-slate-700/50 rounded-xl p-8 text-center">
+                          <Users className="w-16 h-16 text-nexa-muted mx-auto mb-4" />
+                          <h4 className="text-lg font-semibold text-white mb-2">
+                            {selectedOrganization ? 'No Members Found' : 'Select Organization'}
+                          </h4>
+                          <p className="text-nexa-muted">
+                            {selectedOrganization 
+                              ? 'This organization has no members yet. Invite some members to get started.'
+                              : 'Please select an organization from the "All" tab to view and manage members.'
+                            }
+                          </p>
+                          {selectedOrganization && (
+                            <Button 
+                              className="mt-4 bg-white hover:bg-gray-100 text-black border border-gray-300"
+                              onClick={openInviteModal}
+                            >
+                              <UserPlus className="w-4 h-4 mr-2" />
+                              Invite First Member
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Billing Tab Content */}
+              <TabsContent value="billing" className="mt-0">
+                <div className="space-y-6">
+                  {/* Current Plan */}
+                  <Card className="backdrop-blur-md bg-black border border-slate-700/50 p-6">
+                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <CreditCard className="w-5 h-5" />
+                      Current Plan
+                    </h4>
+                    
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h5 className="text-xl font-bold text-white mb-2">Professional Plan</h5>
+                        <p className="text-nexa-muted">Perfect for growing teams and advanced projects</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-white">$29<span className="text-sm text-nexa-muted">/month</span></div>
+                        <div className="text-xs text-nexa-muted">Billed monthly</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-nexa-muted">Billing Cycle</span>
+                        <span className="text-white">Monthly</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-nexa-muted">Next Billing Date</span>
+                        <span className="text-white">March 15, 2024</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-nexa-muted">Payment Method</span>
+                        <span className="text-white">•••• 4242</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-nexa-muted">Status</span>
+                        <span className="text-green-400">Active</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button variant="outline" disabled>Change Plan</Button>
+                      <Button variant="outline" disabled>Update Payment</Button>
+                      <Button variant="outline" disabled>Cancel Subscription</Button>
+                    </div>
+                  </Card>
+
+                  {/* Usage & Limits */}
+                  <Card className="backdrop-blur-md bg-black border border-slate-700/50 p-6">
+                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-yellow-400" />
+                      Usage & Limits
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-nexa-muted">AI Credits</span>
+                          <span className="text-white">2,847 / 5,000</span>
+                        </div>
+                        <div className="w-full bg-nexa-border rounded-full h-2">
+                          <div className="bg-blue-400 h-2 rounded-full" style={{width: '57%'}}></div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-nexa-muted">Storage</span>
+                          <span className="text-white">1.2 GB / 10 GB</span>
+                        </div>
+                        <div className="w-full bg-nexa-border rounded-full h-2">
+                          <div className="bg-green-400 h-2 rounded-full" style={{width: '12%'}}></div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-nexa-muted">Team Members</span>
+                          <span className="text-white">3 / 10</span>
+                        </div>
+                        <div className="w-full bg-nexa-border rounded-full h-2">
+                          <div className="bg-purple-400 h-2 rounded-full" style={{width: '30%'}}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Billing History */}
+                  <Card className="backdrop-blur-md bg-black border border-slate-700/50 p-6">
+                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 text-green-400" />
+                      Billing History
+                    </h4>
+                    
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-3 border-b border-nexa-border/30">
+                        <div>
+                          <div className="text-white font-medium">Professional Plan</div>
+                          <div className="text-nexa-muted text-sm">February 15, 2024</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white">$29.00</div>
+                          <div className="text-green-400 text-sm">Paid</div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center py-3 border-b border-nexa-border/30">
+                        <div>
+                          <div className="text-white font-medium">Professional Plan</div>
+                          <div className="text-nexa-muted text-sm">January 15, 2024</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white">$29.00</div>
+                          <div className="text-green-400 text-sm">Paid</div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center py-3 border-b border-nexa-border/30">
+                        <div>
+                          <div className="text-white font-medium">Professional Plan</div>
+                          <div className="text-nexa-muted text-sm">December 15, 2023</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white">$29.00</div>
+                          <div className="text-green-400 text-sm">Paid</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button variant="outline" className="w-full mt-4" disabled>
+                      View All Invoices
+                    </Button>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              {/* History Tab Content */}
+              <TabsContent value="history" className="mt-0">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <History className="h-6 w-6 text-white" />
+                    <h3 className="text-lg font-semibold text-white">Organization History</h3>
+                  </div>
+                  
+                  <Card className="backdrop-blur-md bg-black border border-slate-700/50 p-8 text-center">
+                    <Clock className="w-16 h-16 text-nexa-muted mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-white mb-2">Activity History</h4>
+                    <p className="text-nexa-muted mb-6">
+                      Organization activity history and audit trails will be available here. This includes member changes, permission updates, billing events, and more.
+                    </p>
+                    <div className="flex justify-center gap-3">
+                      <Button 
+                        variant="outline" 
+                        disabled
+                        className="bg-white/5 border-white/20 text-white"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        View Audit Log
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        disabled
+                        className="bg-white/5 border-white/20 text-white"
+                      >
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        Export Activity
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
+              </TabsContent>
+              
+            </Tabs>
+          </Card>
+        </div>
+      </div>
+
+      {/* Role Enforcement Modal */}
+      {roleModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-black border border-slate-700/50 rounded-xl p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                {rolePermissions[selectedRole as keyof typeof rolePermissions]?.label} Members
+              </h3>
+              <button
+                onClick={closeRoleModal}
+                className="text-nexa-muted hover:text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-3 overflow-y-auto flex-1">
+              {organizationData.members
+                .filter((member: any) => member.role === selectedRole)
+                .map((member: any) => (
+                  <div key={member.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                      {member.name.split(' ').map((n: string) => n[0]).join('')}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white text-sm font-medium">{member.name}</div>
+                      <div className="text-nexa-muted text-xs">{member.email}</div>
+                    </div>
+                    {member.isOwner && <Crown className="h-4 w-4 text-yellow-400" />}
+                  </div>
+                ))}
+              
+              {organizationData.members.filter((member: any) => member.role === selectedRole).length === 0 && (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-nexa-muted mx-auto mb-3" />
+                  <p className="text-nexa-muted">No members with this role</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Member Modal */}
+      {inviteModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-black border border-slate-700/50 rounded-xl p-6 w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">Invite New Member</h3>
+              <button
+                onClick={closeInviteModal}
+                className="text-nexa-muted hover:text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* Error Message */}
+            {inviteError && (
+              <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <X className="w-4 h-4 text-red-400" />
+                  <span className="text-red-400 text-sm">{inviteError}</span>
+                </div>
+              </div>
+            )}
+
+            <form 
+              className="space-y-4" 
+              action={handleInviteSubmit}
+              onSubmit={(e) => {
+                e.preventDefault()
+                const formData = new FormData(e.currentTarget)
+                handleInviteSubmit(formData)
+              }}
+            >
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="colleague@company.com"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-nexa-muted focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                  required
+                  disabled={inviteLoading}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  First Name *
+                </label>
+                <input
+                  type="text"
+                  name="firstName"
+                  placeholder="John"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-nexa-muted focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                  required
+                  disabled={inviteLoading}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Last Name *
+                </label>
+                <input
+                  type="text"
+                  name="lastName"
+                  placeholder="Doe"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-nexa-muted focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                  required
+                  disabled={inviteLoading}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Role *
+                </label>
+                <select
+                  name="role"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                  defaultValue="member"
+                  disabled={inviteLoading}
+                >
+                  <option value="viewer">Viewer - Read-only access</option>
+                  <option value="member">Member - Standard access</option>
+                  <option value="admin">Admin - Full management access</option>
+                  <option value="billing">Billing - Billing and usage access</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Personal Message (Optional)
+                </label>
+                <textarea
+                  name="personalMessage"
+                  placeholder="Welcome to our organization! We're excited to have you join our team."
+                  rows={3}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-nexa-muted focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none"
+                  disabled={inviteLoading}
+                />
+              </div>
+              
+              <div className="flex items-center gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeInviteModal}
+                  className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                  disabled={inviteLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-white hover:bg-gray-100 text-black border border-gray-300"
+                  disabled={inviteLoading || !selectedOrganization}
+                >
+                  {inviteLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      <span>Sending...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      <span>Send Invitation</span>
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </DashboardLayout>
+  )
+}
+
+
+
