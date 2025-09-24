@@ -45,23 +45,33 @@ export async function sendVerificationEmail(data: EmailVerificationData): Promis
       subject: 'Verify your NEXA account'
     }
 
-    const azureEndpoint = 'https://prod-60.westus.logic.azure.com:443/workflows/2becfb6f393d4642890b33e6ba6fc906/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=xBWH5M1AaZLVFDlgnotk_Iox9ylXdmOlqklclk_LxJs'
+    // Use the same email service configuration as invitations
+    const emailServiceUrl = process.env.EMAIL_SERVICE_URL
+    const emailServiceKey = process.env.KEY_CONAN_2FA
 
-    // Debug log for environment variable
-    console.log('KEY_CONAN_2FA env var:', process.env.KEY_CONAN_2FA ? 'SET' : 'NOT SET')
-    console.log('KEY_CONAN_2FA length:', (process.env.KEY_CONAN_2FA || '').length)
+    if (!emailServiceUrl || !emailServiceKey) {
+      console.error('Email service configuration missing. EMAIL_SERVICE_URL and KEY_CONAN_2FA must be set.')
+      console.log('EMAIL_SERVICE_URL set:', !!emailServiceUrl)
+      console.log('KEY_CONAN_2FA set:', !!emailServiceKey)
+      return false
+    }
 
-    const response = await fetch(azureEndpoint, {
+    console.log('Sending verification email to:', data.email)
+    console.log('Using email service URL:', emailServiceUrl)
+
+    const response = await fetch(emailServiceUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'KEY_CONAN_2FA': process.env.KEY_CONAN_2FA || ''
+        'KEY_CONAN_2FA': emailServiceKey
       },
       body: JSON.stringify(emailPayload)
     })
 
     if (!response.ok) {
-      console.error('Failed to send verification email:', await response.text())
+      const errorText = await response.text()
+      console.error('Failed to send verification email:', errorText)
+      console.error('Response status:', response.status)
       return false
     }
 
@@ -92,16 +102,28 @@ export async function sendInvitationEmail(data: InvitationEmailData): Promise<bo
       subject: `You're invited to join ${data.organizationName} on NEXA`
     }
 
-    const azureEndpoint = 'https://prod-60.westus.logic.azure.com:443/workflows/2becfb6f393d4642890b33e6ba6fc906/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=xBWH5M1AaZLVFDlgnotk_Iox9ylXdmOlqklclk_LxJs'
+    // Use the same email service configuration
+    const emailServiceUrl = process.env.EMAIL_SERVICE_URL
+    const emailServiceKey = process.env.KEY_CONAN_2FA
 
-    const response = await fetch(azureEndpoint, {
+    if (!emailServiceUrl || !emailServiceKey) {
+      console.error('Email service configuration missing. EMAIL_SERVICE_URL and KEY_CONAN_2FA must be set.')
+      return false
+    }
+
+    const response = await fetch(emailServiceUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'KEY_CONAN_2FA': process.env.KEY_CONAN_2FA || ''
+        'KEY_CONAN_2FA': emailServiceKey
       },
       body: JSON.stringify(emailPayload)
     })
+
+    if (!response.ok) {
+      console.error('Failed to send invitation email:', await response.text())
+      return false
+    }
 
     return response.ok
   } catch (error) {
@@ -126,16 +148,28 @@ export async function sendWelcomeEmail(email: string, userName: string, organiza
       subject: 'Welcome to NEXA!'
     }
 
-    const azureEndpoint = 'https://prod-60.westus.logic.azure.com:443/workflows/2becfb6f393d4642890b33e6ba6fc906/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=xBWH5M1AaZLVFDlgnotk_Iox9ylXdmOlqklclk_LxJs'
+    // Use the same email service configuration
+    const emailServiceUrl = process.env.EMAIL_SERVICE_URL
+    const emailServiceKey = process.env.KEY_CONAN_2FA
 
-    const response = await fetch(azureEndpoint, {
+    if (!emailServiceUrl || !emailServiceKey) {
+      console.error('Email service configuration missing. EMAIL_SERVICE_URL and KEY_CONAN_2FA must be set.')
+      return false
+    }
+
+    const response = await fetch(emailServiceUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'KEY_CONAN_2FA': process.env.KEY_CONAN_2FA || ''
+        'KEY_CONAN_2FA': emailServiceKey
       },
       body: JSON.stringify(emailPayload)
     })
+
+    if (!response.ok) {
+      console.error('Failed to send welcome email:', await response.text())
+      return false
+    }
 
     return response.ok
   } catch (error) {

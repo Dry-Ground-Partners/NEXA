@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { useUser } from '@/contexts/user-context'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -38,8 +39,8 @@ import type { AuthUser } from '@/types'
 interface Organization {
   id: string
   name: string
-  slug: string
-  logoUrl?: string
+  slug: string | null
+  logoUrl?: string | null
   planType: string
   status: string
 }
@@ -58,14 +59,11 @@ interface User extends AuthUser {
 
 export default function OrganizationsPage() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { user, loading, error, selectedOrganization, setSelectedOrganization, refreshUser } = useUser()
   const [activeTab, setActiveTab] = useState('all')
   const [accessActiveSection, setAccessActiveSection] = useState('sessions')
   
-  // Organization switching state
-  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null)
+  // Organization data state (local to this page)
   const [organizationData, setOrganizationData] = useState<any>({
     members: [],
     sessions: [],
@@ -156,7 +154,7 @@ export default function OrganizationsPage() {
       
       // Refresh organization data to show the new pending invitation
       if (selectedOrganization) {
-        switchToOrganization(selectedOrganization)
+        loadOrganizationData(selectedOrganization.organization)
       }
 
       // Show success message (you can add a toast notification here)
@@ -177,23 +175,6 @@ export default function OrganizationsPage() {
     viewer: { label: 'Viewer', color: 'text-gray-400' },
     billing: { label: 'Billing', color: 'text-purple-400' }
   }
-
-  useEffect(() => {
-    fetchUserProfile()
-  }, [])
-
-  // Set default organization (user's owned org) when user data loads
-  useEffect(() => {
-    if (user && user.organizationMemberships && !selectedOrganization) {
-      // Find the organization where user is owner, or default to first organization
-      const ownedOrg = user.organizationMemberships.find(membership => membership.role === 'owner')
-      const defaultOrg = ownedOrg || user.organizationMemberships[0]
-      
-      if (defaultOrg) {
-        switchToOrganization(defaultOrg.organization)
-      }
-    }
-  }, [user, selectedOrganization])
 
   // Keyboard shortcuts for organizations tabs
   useEffect(() => {
@@ -229,31 +210,35 @@ export default function OrganizationsPage() {
     }
   }, [])
 
-  const fetchUserProfile = async () => {
-    try {
-      const response = await fetch('/api/auth/me')
-      if (response.ok) {
-        const result = await response.json()
-        if (result.success && result.user) {
-          setUser(result.user)
-        } else {
-          setError('Failed to load profile')
-        }
-      } else {
-        setError('Failed to load profile')
-      }
-    } catch (error) {
-      setError('Network error occurred')
-    } finally {
-      setLoading(false)
-    }
+
+  // Organization switching functionality - updates global state only
+  const switchToOrganization = (organization: Organization) => {
+    console.log('🔄 Switching to organization:', organization.name)
+    
+    // Update global organization context - this will affect header and other components
+    // The useEffect will automatically load the data when selectedOrganization changes
+    setSelectedOrganization({
+      id: organization.id,
+      role: user?.organizationMemberships?.find(m => m.organization.id === organization.id)?.role || 'member',
+      status: 'active',
+      organization: {
+        id: organization.id,
+        name: organization.name,
+        slug: organization.slug || null,
+        logoUrl: organization.logoUrl || null,
+        planType: organization.planType,
+        status: organization.status
+      },
+      joinedAt: user?.organizationMemberships?.find(m => m.organization.id === organization.id)?.joinedAt || null
+    })
+    
+    // Switch to access tab to show the organization data
+    setActiveTab('access')
   }
 
-  // Organization switching functionality
-  const switchToOrganization = async (organization: Organization) => {
-    console.log('🔄 Switching to organization:', organization.name)
+  // Load organization data without changing the global state
+  const loadOrganizationData = useCallback(async (organization: Organization) => {
     setOrganizationLoading(true)
-    setSelectedOrganization(organization)
     
     try {
       // Fetch real organization data from APIs
@@ -277,14 +262,14 @@ export default function OrganizationsPage() {
         usage: null
       })
       
-      console.log('✅ Real organization data loaded:', {
+      console.log('✅ Organization data loaded for:', organization.name, {
         sessions: sessionsData.sessions?.length || 0,
         members: membersData.members?.length || 0,
         roles: membersData.roles
       })
       
     } catch (error) {
-      console.error('❌ Failed to switch organization:', error)
+      console.error('❌ Failed to load organization data:', error)
       // Fallback to empty data
       setOrganizationData({
         members: [],
@@ -296,7 +281,15 @@ export default function OrganizationsPage() {
     } finally {
       setOrganizationLoading(false)
     }
-  }
+  }, [])
+
+  // Load organization data when selectedOrganization changes from global context
+  useEffect(() => {
+    if (selectedOrganization) {
+      console.log('🔄 Loading data for selected organization:', selectedOrganization.organization.name)
+      loadOrganizationData(selectedOrganization.organization)
+    }
+  }, [selectedOrganization, loadOrganizationData])
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -318,28 +311,46 @@ export default function OrganizationsPage() {
     }
   }
 
+  // Determine content based on state
+  let content
+
   if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-white">Loading organizations...</div>
-        </div>
-      </DashboardLayout>
+    content = (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-white">Loading organizations...</div>
+      </div>
     )
-  }
-
-  if (!user) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-red-400">Failed to load organizations</div>
+  } else if (error) {
+    content = (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-red-400 mb-4">Failed to load user data</div>
+          <div className="text-nexa-muted text-sm mb-4">{error}</div>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
         </div>
-      </DashboardLayout>
+      </div>
     )
-  }
-
-  return (
-    <DashboardLayout>
+  } else if (!user) {
+    content = (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-red-400 mb-4">No user data available</div>
+          <button 
+            onClick={() => router.push('/auth/login')} 
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    )
+  } else {
+    content = (
       <div className="nexa-background min-h-screen p-6">
         <div className="max-w-6xl mx-auto">
           
@@ -348,9 +359,24 @@ export default function OrganizationsPage() {
             {/* Left: Label + Tab Strip */}
             <div className="flex items-end gap-8">
               {/* Organizations Label */}
-              <div className="flex items-center gap-2 text-white pb-3 ml-16">
-                <Building className="w-4 h-4" />
-                <span>Organizations</span>
+              <div className="flex items-center gap-4 text-white pb-3 ml-16">
+                <div className="flex items-center gap-2">
+                  <Building className="w-4 h-4" />
+                  <span>Organizations</span>
+                </div>
+                {selectedOrganization && (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-blue-600/20 text-blue-400 rounded-full border border-blue-500/30 text-xs">
+                    <Building className="w-3 h-3" />
+                    <span>Active: {selectedOrganization.organization.name}</span>
+                    <button 
+                      onClick={() => setSelectedOrganization(null)}
+                      className="text-blue-300 hover:text-white transition-colors"
+                      title="Clear selection"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
               </div>
               
               {/* Main Tabs */}
@@ -400,7 +426,11 @@ export default function OrganizationsPage() {
                   {user.organizationMemberships && user.organizationMemberships.length > 0 ? (
                     <div className="grid gap-4">
                       {user.organizationMemberships.map((membership) => (
-                        <Card key={membership.id} className="backdrop-blur-md bg-black border border-slate-700/50 p-6 hover:border-slate-600/50 transition-colors">
+                        <Card key={membership.id} className={`backdrop-blur-md bg-black p-6 transition-colors ${
+                          selectedOrganization?.organization.id === membership.organization?.id 
+                            ? 'border border-blue-500 bg-blue-500/5' 
+                            : 'border border-slate-700/50 hover:border-slate-600/50'
+                        }`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                               <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
@@ -414,6 +444,11 @@ export default function OrganizationsPage() {
                                   {membership.organization?.planType && (
                                     <span className="px-2 py-1 bg-blue-600/20 text-blue-400 text-xs font-medium rounded-full border border-blue-500/30">
                                       {membership.organization.planType.charAt(0).toUpperCase() + membership.organization.planType.slice(1)}
+                                    </span>
+                                  )}
+                                  {selectedOrganization?.organization.id === membership.organization?.id && (
+                                    <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs font-medium rounded-full border border-green-500/30">
+                                      ACTIVE
                                     </span>
                                   )}
                                 </div>
@@ -503,7 +538,7 @@ export default function OrganizationsPage() {
                       {selectedOrganization ? (
                         <div className="flex items-center gap-2">
                           <span>Organization:</span>
-                          <span className="text-white font-medium">{selectedOrganization.name}</span>
+                          <span className="text-white font-medium">{selectedOrganization.organization.name}</span>
                           <button 
                             onClick={() => setActiveTab('all')}
                             className="text-blue-400 hover:text-blue-300 text-xs"
@@ -584,7 +619,7 @@ export default function OrganizationsPage() {
                                       </div>
                                     </td>
                                     <td className="p-4">
-                                      <div className="text-white text-sm">{session.createdBy}</div>
+                                      <div className="text-white text-sm">{session.createdBy?.name || 'Unknown'}</div>
                                     </td>
                                     <td className="p-4">
                                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -593,11 +628,14 @@ export default function OrganizationsPage() {
                                         session.accessLevel === 'restricted' ? 'bg-yellow-600/20 text-yellow-400' :
                                         'bg-red-600/20 text-red-400'
                                       }`}>
-                                        {session.accessLevel.charAt(0).toUpperCase() + session.accessLevel.slice(1)}
+                                        {session.accessLevel ? 
+                                          session.accessLevel.charAt(0).toUpperCase() + session.accessLevel.slice(1) : 
+                                          'Organization'
+                                        }
                                       </span>
                                     </td>
                                     <td className="p-4">
-                                      <div className="text-white text-sm">{formatTimestamp(session.lastModified)}</div>
+                                      <div className="text-white text-sm">{formatTimestamp(session.lastModified || session.updatedAt || session.createdAt)}</div>
                                     </td>
                                     <td className="p-4">
                                       <div className="flex items-center justify-center">
@@ -970,11 +1008,9 @@ export default function OrganizationsPage() {
               
             </Tabs>
           </Card>
-        </div>
-      </div>
 
-      {/* Role Enforcement Modal */}
-      {roleModalOpen && (
+          {/* Role Enforcement Modal */}
+          {roleModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-black border border-slate-700/50 rounded-xl p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between mb-4">
@@ -1151,12 +1187,28 @@ export default function OrganizationsPage() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+          </div>
+          )}
 
+        </div>
+      </div>
+    )
+  }
+
+  // Single DashboardLayout wrapper
+  return (
+    <DashboardLayout>
+      {content}
     </DashboardLayout>
   )
 }
+
+
+
+
+
+
+
 
 
 

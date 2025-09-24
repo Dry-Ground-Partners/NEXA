@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (user.status === 'active') {
+    if (user.emailVerifiedAt) {
       return NextResponse.json(
         { success: false, error: 'Email already verified' },
         { status: 400 }

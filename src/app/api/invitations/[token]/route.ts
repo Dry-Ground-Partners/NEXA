@@ -221,6 +221,8 @@ export async function POST(
     const authToken = await generateJWT({
       id: updatedUser.id,
       email: updatedUser.email,
+      emailVerifiedAt: updatedUser.emailVerifiedAt,
+      status: updatedUser.status,
       organizationId: invitation.organizationId
     })
 

@@ -38,6 +38,11 @@ export async function middleware(request: NextRequest) {
     '/favicon.ico'
   ]
 
+  // Routes that require authentication but allow unverified email
+  const unverifiedEmailAllowedRoutes = [
+    '/auth/verify-email-pending'
+  ]
+
   // API routes that don't require authentication
   const publicApiRoutes = [
     '/api/auth/login',
@@ -99,6 +104,20 @@ export async function middleware(request: NextRequest) {
     
     response.cookies.delete('auth-token')
     return response
+  }
+
+  // Check if user has verified email (skip for verification-related paths and APIs)
+  const isUnverifiedEmailAllowed = unverifiedEmailAllowedRoutes.some(route => pathname.startsWith(route))
+  const isVerificationApiRoute = pathname.startsWith('/api/auth/verify-email') || pathname.startsWith('/api/auth/resend-verification')
+  
+  if (!isUnverifiedEmailAllowed && !isVerificationApiRoute && !payload.emailVerifiedAt) {
+    console.log('User email not verified, redirecting to verify-email-pending')
+    
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Email verification required' }, { status: 403 })
+    }
+    
+    return NextResponse.redirect(new URL(`/auth/verify-email-pending?email=${encodeURIComponent(payload.email)}`, request.url))
   }
 
   // Check if user has organization membership (skip for onboarding-related paths and auth-only APIs)

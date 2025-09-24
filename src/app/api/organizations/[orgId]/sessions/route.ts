@@ -1,93 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { getCurrentUser } from '@/lib/auth'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
+import { verifyAuth } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { orgId: string } }
 ) {
   try {
-    const user = await getCurrentUser()
-    
+    const user = await verifyAuth(request)
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Not authenticated' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { orgId } = params
 
     // Verify user has access to this organization
-    const userMembership = user.organizationMemberships?.find(
-      membership => membership.organization.id === orgId
-    )
+    const userMembership = await prisma.organizationMembership.findFirst({
+      where: {
+        userId: user.id,
+        organizationId: orgId,
+        status: 'active'
+      }
+    })
 
     if (!userMembership) {
       return NextResponse.json(
-        { success: false, error: 'Access denied to this organization' },
+        { error: 'Access denied to this organization' },
         { status: 403 }
       )
     }
 
-    // Fetch sessions for this organization
+    // Get all sessions for this organization (simplified query first)
     const sessions = await prisma.aIArchitectureSession.findMany({
       where: {
         organizationId: orgId,
         deletedAt: null
       },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            fullName: true,
+            email: true
+          }
+        }
+      },
       orderBy: {
         updatedAt: 'desc'
       },
-      select: {
-        id: true,
-        uuid: true,
-        title: true,
-        client: true,
-        sessionType: true,
-        createdAt: true,
-        updatedAt: true,
-        userId: true,
-        user: {
-          select: {
-            fullName: true,
-            firstName: true,
-            lastName: true
-          }
-        }
-      }
+      take: 20
     })
-
-    const formattedSessions = sessions.map(session => ({
-      id: session.id.toString(),
-      uuid: session.uuid,
-      title: session.title || 'Untitled Session',
-      type: session.sessionType,
-      createdBy: session.user?.fullName || session.user?.firstName || 'Unknown User',
-      collaborators: 1, // For now, just the creator
-      lastModified: session.updatedAt,
-      accessLevel: 'organization', // Default for now
-      status: 'active'
-    }))
 
     return NextResponse.json({
       success: true,
-      sessions: formattedSessions
+      sessions: sessions.map(session => ({
+        id: session.id,
+        uuid: session.uuid,
+        title: session.title || 'Untitled Session',
+        client: session.client || 'No Client',
+        sessionType: session.sessionType || 'solution',
+        isTemplate: session.isTemplate || false,
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+        lastModified: session.updatedAt, // Map updatedAt to lastModified
+        accessLevel: 'organization', // Default access level
+        createdBy: {
+          id: session.user.id,
+          name: session.user.fullName || `${session.user.firstName} ${session.user.lastName}`,
+          email: session.user.email
+        }
+      })),
+      totalSessions: sessions.length
     })
 
   } catch (error) {
     console.error('Error fetching organization sessions:', error)
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { error: `Internal server error: ${error.message}` },
       { status: 500 }
     )
   }
 }
-
-
-
-
-
-

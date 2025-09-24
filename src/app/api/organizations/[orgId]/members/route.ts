@@ -1,39 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { getCurrentUser } from '@/lib/auth'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
+import { verifyAuth } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { orgId: string } }
 ) {
   try {
-    const user = await getCurrentUser()
-    
+    const user = await verifyAuth(request)
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Not authenticated' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { orgId } = params
 
     // Verify user has access to this organization
-    const userMembership = user.organizationMemberships?.find(
-      membership => membership.organization.id === orgId
-    )
+    const userMembership = await prisma.organizationMembership.findFirst({
+      where: {
+        userId: user.id,
+        organizationId: orgId,
+        status: 'active'
+      }
+    })
 
     if (!userMembership) {
       return NextResponse.json(
-        { success: false, error: 'Access denied to this organization' },
+        { error: 'Access denied to this organization' },
         { status: 403 }
       )
     }
 
-    // Fetch all members for this organization
-    const memberships = await prisma.organizationMembership.findMany({
+    // Get all active members of the organization
+    const members = await prisma.organizationMembership.findMany({
       where: {
         organizationId: orgId,
         status: 'active'
@@ -47,68 +45,49 @@ export async function GET(
             lastName: true,
             fullName: true,
             avatarUrl: true,
-            status: true
+            status: true,
+            emailVerifiedAt: true
           }
         }
       },
-      orderBy: {
-        joinedAt: 'desc'
-      }
+      orderBy: [
+        { role: 'asc' }, // owners first, then admins, etc.
+        { joinedAt: 'asc' }
+      ]
     })
 
-    // Calculate session access for each member
-    const memberData = await Promise.all(
-      memberships.map(async (membership) => {
-        // Count sessions this user has access to
-        const sessionCount = await prisma.aIArchitectureSession.count({
-          where: {
-            organizationId: orgId,
-            userId: membership.userId,
-            deletedAt: null
-          }
-        })
-
-        return {
-          id: membership.id,
-          name: membership.user.fullName || `${membership.user.firstName} ${membership.user.lastName}`.trim(),
-          email: membership.user.email,
-          role: membership.role,
-          isOwner: membership.role === 'owner',
-          sessionsAccess: sessionCount,
-          lastActive: '2 hours ago', // TODO: Calculate from actual activity
-          status: membership.status,
-          joinedAt: membership.joinedAt?.toLocaleDateString() || 'Unknown'
-        }
-      })
-    )
-
-    // Calculate role distribution
-    const roles = {
-      owner: memberships.filter(m => m.role === 'owner').length,
-      admin: memberships.filter(m => m.role === 'admin').length,
-      member: memberships.filter(m => m.role === 'member').length,
-      viewer: memberships.filter(m => m.role === 'viewer').length,
-      billing: memberships.filter(m => m.role === 'billing').length
-    }
+    // Count members by role for role summary
+    const roleCounts = members.reduce((acc, member) => {
+      acc[member.role] = (acc[member.role] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
 
     return NextResponse.json({
       success: true,
-      members: memberData,
-      roles: roles,
-      totalMembers: memberships.length
+      members: members.map(member => ({
+        id: member.id,
+        userId: member.user.id,
+        email: member.user.email,
+        name: member.user.fullName,
+        firstName: member.user.firstName,
+        lastName: member.user.lastName,
+        avatarUrl: member.user.avatarUrl,
+        role: member.role,
+        status: member.status,
+        joinedAt: member.joinedAt,
+        emailVerified: !!member.user.emailVerifiedAt,
+        userStatus: member.user.status,
+        lastActive: member.joinedAt // Can be enhanced with actual last activity tracking
+      })),
+      roles: roleCounts,
+      totalMembers: members.length
     })
 
   } catch (error) {
     console.error('Error fetching organization members:', error)
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
 }
-
-
-
-
-
-

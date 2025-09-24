@@ -195,6 +195,7 @@ export function generateToken(user: User): string {
     userId: user.id,
     email: user.email,
     status: user.status,
+    emailVerifiedAt: user.emailVerifiedAt,
     hasOrganization: !!(user.organizationMemberships && user.organizationMemberships.length > 0)
   }
 
@@ -209,7 +210,7 @@ export function generateToken(user: User): string {
 /**
  * Generate JWT token for API usage (alias for generateToken)
  */
-export function generateJWT(payload: { id: string; email: string; organizationId?: string }): string {
+export function generateJWT(payload: { id: string; email: string; organizationId?: string; emailVerifiedAt?: Date | null; status?: string }): string {
   const secret = process.env.JWT_SECRET
   if (!secret) {
     throw new Error('JWT_SECRET environment variable is not set')
@@ -218,7 +219,10 @@ export function generateJWT(payload: { id: string; email: string; organizationId
   return jwt.sign({
     userId: payload.id,
     email: payload.email,
-    organizationId: payload.organizationId
+    emailVerifiedAt: payload.emailVerifiedAt,
+    status: payload.status || 'active',
+    organizationId: payload.organizationId,
+    hasOrganization: !!payload.organizationId
   }, secret, { expiresIn: '7d' })
 }
 

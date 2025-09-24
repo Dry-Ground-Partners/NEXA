@@ -13,13 +13,29 @@ interface HeaderProps {
     fullName: string | null;
     email: string;
   };
+  selectedOrganization?: {
+    organization: {
+      id: string;
+      name: string;
+      slug: string | null;
+    };
+    role: string;
+  } | null;
   currentPage?: string;
   onSidebarToggle?: () => void;
   isSidebarOpen?: boolean;
 }
 
-export function Header({ user, currentPage = "Dashboard", onSidebarToggle, isSidebarOpen = false }: HeaderProps) {
+export function Header({ user, selectedOrganization, currentPage = "Dashboard", onSidebarToggle, isSidebarOpen = false }: HeaderProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Determine what to display in the header - prioritize organization name
+  const getDisplayName = () => {
+    if (selectedOrganization?.organization?.name) {
+      return selectedOrganization.organization.name;
+    }
+    return currentPage;
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -50,9 +66,9 @@ export function Header({ user, currentPage = "Dashboard", onSidebarToggle, isSid
     <header className="bg-black border-b border-nexa-border relative">
       <div className="container mx-auto">
         <div className="flex items-center justify-between h-16 px-6">
-          {/* Left: Page identifier */}
+          {/* Left: Organization/Page identifier */}
           <div className="flex items-center">
-            <span className="text-white font-medium">{currentPage}</span>
+            <span className="text-white font-medium">{getDisplayName()}</span>
           </div>
 
           {/* Center: Logo */}

@@ -4,21 +4,18 @@ import { useState, useEffect } from 'react'
 import { Header } from './header'
 import { Footer } from './footer'
 import { Sidebar } from './sidebar'
+import { useUser } from '@/contexts/user-context'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
   currentPage?: string
-  user?: {
-    fullName: string | null
-    email: string
-  }
 }
 
-export function DashboardLayout({ 
+function DashboardLayoutInner({ 
   children, 
-  currentPage = 'Dashboard',
-  user 
+  currentPage = 'Dashboard'
 }: DashboardLayoutProps) {
+  const { user, selectedOrganization } = useUser()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   const toggleSidebar = () => {
@@ -91,7 +88,8 @@ export function DashboardLayout({
       >
         <Header 
           currentPage={currentPage} 
-          user={user} 
+          user={user}
+          selectedOrganization={selectedOrganization}
           onSidebarToggle={toggleSidebar}
           isSidebarOpen={isSidebarOpen}
         />
@@ -104,6 +102,10 @@ export function DashboardLayout({
       </div>
     </div>
   )
+}
+
+export function DashboardLayout(props: DashboardLayoutProps) {
+  return <DashboardLayoutInner {...props} />
 }
 
 
