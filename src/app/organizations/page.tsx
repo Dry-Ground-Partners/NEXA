@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { useUser } from '@/contexts/user-context'
@@ -77,6 +77,7 @@ export default function OrganizationsPage() {
   const [roleModalOpen, setRoleModalOpen] = useState(false)
   const [selectedRole, setSelectedRole] = useState<string>('')
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
+  const [roleChangeDropdownOpen, setRoleChangeDropdownOpen] = useState<string | null>(null)
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
 
@@ -113,6 +114,36 @@ export default function OrganizationsPage() {
     setInviteModalOpen(false)
     setInviteError(null)
     setInviteLoading(false)
+  }
+
+  // Handle role change
+  const handleRoleChange = async (memberId: string, newRole: string) => {
+    if (!selectedOrganization) return
+
+    try {
+      const response = await fetch(`/api/organizations/${selectedOrganization.organization.id}/members/${memberId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role: newRole }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update role')
+      }
+
+      // Refresh organization data to show updated role
+      await loadOrganizationData(selectedOrganization.organization)
+      setRoleChangeDropdownOpen(null)
+      
+      console.log('✅ Role updated successfully')
+    } catch (error: any) {
+      console.error('❌ Failed to update role:', error)
+      alert(`Failed to update role: ${error.message}`)
+    }
   }
 
   const handleInviteSubmit = async (formData: FormData) => {
@@ -291,6 +322,23 @@ export default function OrganizationsPage() {
     }
   }, [selectedOrganization, loadOrganizationData])
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (roleChangeDropdownOpen) {
+        const target = event.target as Element
+        if (!target.closest('.role-dropdown-container')) {
+          setRoleChangeDropdownOpen(null)
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [roleChangeDropdownOpen])
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'owner': return 'text-yellow-400'
@@ -359,24 +407,9 @@ export default function OrganizationsPage() {
             {/* Left: Label + Tab Strip */}
             <div className="flex items-end gap-8">
               {/* Organizations Label */}
-              <div className="flex items-center gap-4 text-white pb-3 ml-16">
-                <div className="flex items-center gap-2">
-                  <Building className="w-4 h-4" />
-                  <span>Organizations</span>
-                </div>
-                {selectedOrganization && (
-                  <div className="flex items-center gap-2 px-3 py-1 bg-blue-600/20 text-blue-400 rounded-full border border-blue-500/30 text-xs">
-                    <Building className="w-3 h-3" />
-                    <span>Active: {selectedOrganization.organization.name}</span>
-                    <button 
-                      onClick={() => setSelectedOrganization(null)}
-                      className="text-blue-300 hover:text-white transition-colors"
-                      title="Clear selection"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
+              <div className="flex items-center gap-2 text-white pb-3 ml-16">
+                <Building className="w-4 h-4" />
+                <span>Organizations</span>
               </div>
               
               {/* Main Tabs */}
@@ -401,6 +434,18 @@ export default function OrganizationsPage() {
                 </TabsList>
               </Tabs>
             </div>
+
+            {/* Right: Organization Pill */}
+            {selectedOrganization && (
+              <button 
+                onClick={() => setActiveTab('all')}
+                className="flex items-center gap-2 px-3 py-1 bg-blue-600/20 text-blue-400 rounded-full border border-blue-500/30 text-xs hover:bg-blue-600/30 transition-colors mb-3"
+                title="Go to All Organizations"
+              >
+                <Building className="w-3 h-3" />
+                <span>{selectedOrganization.organization.name}</span>
+              </button>
+            )}
           </div>
 
           {/* Content Card */}
@@ -461,16 +506,6 @@ export default function OrganizationsPage() {
                                   <span className="text-nexa-muted">
                                     Joined {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : 'Unknown'}
                                   </span>
-                                  {membership.organization?.status && (
-                                    <>
-                                      <span className="text-nexa-muted">•</span>
-                                      <span className={`text-xs font-medium ${
-                                        membership.organization.status === 'active' ? 'text-green-400' : 'text-yellow-400'
-                                      }`}>
-                                        {membership.organization.status.charAt(0).toUpperCase() + membership.organization.status.slice(1)}
-                                      </span>
-                                    </>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -529,27 +564,9 @@ export default function OrganizationsPage() {
               {/* Access Management Tab Content */}
               <TabsContent value="access" className="mt-0">
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Shield className="h-6 w-6 text-white" />
-                      <h3 className="text-lg font-semibold text-white">Access Management</h3>
-                    </div>
-                    <div className="text-sm text-nexa-muted">
-                      {selectedOrganization ? (
-                        <div className="flex items-center gap-2">
-                          <span>Organization:</span>
-                          <span className="text-white font-medium">{selectedOrganization.organization.name}</span>
-                          <button 
-                            onClick={() => setActiveTab('all')}
-                            className="text-blue-400 hover:text-blue-300 text-xs"
-                          >
-                            (switch)
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-yellow-400">Select an organization first</span>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <Shield className="h-6 w-6 text-white" />
+                    <h3 className="text-lg font-semibold text-white">Access Management</h3>
                   </div>
                   
                   {/* Section Navigation */}
@@ -778,22 +795,17 @@ export default function OrganizationsPage() {
                                     </div>
                                     <div>
                                       <div className="text-white text-sm font-medium">{user.name}</div>
-                                      <div className="text-nexa-muted text-xs">{user.email}</div>
                                       <div className="text-nexa-muted text-xs">
-                                        Joined {user.joinedAt} • Last active {user.lastActive}
+                                        {user.email} • Joined {new Date(user.joinedAt).toLocaleDateString()}
                                       </div>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-1">
                                       {user.isOwner && <Crown className="h-3 w-3 text-yellow-400" />}
                                       <span className={`text-sm font-medium ${rolePermissions[user.role as keyof typeof rolePermissions]?.color || 'text-gray-400'}`}>
                                         {rolePermissions[user.role as keyof typeof rolePermissions]?.label || 'Unknown'}
                                       </span>
-                                    </div>
-                                    <div className="text-center">
-                                      <div className="text-white text-sm font-medium">{user.sessionsAccess}</div>
-                                      <div className="text-nexa-muted text-xs">sessions</div>
                                     </div>
                                     <div className="flex items-center justify-center">
                                       <button className="p-1 hover:bg-white/10 rounded text-nexa-muted hover:text-white transition-colors">
@@ -1037,7 +1049,37 @@ export default function OrganizationsPage() {
                       <div className="text-white text-sm font-medium">{member.name}</div>
                       <div className="text-nexa-muted text-xs">{member.email}</div>
                     </div>
-                    {member.isOwner && <Crown className="h-4 w-4 text-yellow-400" />}
+                    <div className="flex items-center gap-2">
+                      {member.isOwner && <Crown className="h-4 w-4 text-yellow-400" />}
+                      <div className="relative role-dropdown-container">
+                        <button 
+                          onClick={() => setRoleChangeDropdownOpen(roleChangeDropdownOpen === member.id ? null : member.id)}
+                          className="p-1 hover:bg-white/10 rounded text-nexa-muted hover:text-white transition-colors"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                        
+                        {roleChangeDropdownOpen === member.id && (
+                          <div className="absolute right-0 top-8 bg-black border border-white/20 rounded-lg shadow-lg z-10 min-w-32">
+                            <div className="p-2">
+                              <div className="text-xs text-nexa-muted mb-2">Change Role</div>
+                              {Object.entries(rolePermissions).map(([roleKey, roleInfo]) => (
+                                <button
+                                  key={roleKey}
+                                  onClick={() => handleRoleChange(member.id, roleKey)}
+                                  className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-white/10 transition-colors ${
+                                    member.role === roleKey ? 'text-white bg-white/5' : 'text-nexa-muted'
+                                  }`}
+                                  disabled={member.role === roleKey}
+                                >
+                                  {roleInfo.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               
@@ -1202,6 +1244,8 @@ export default function OrganizationsPage() {
     </DashboardLayout>
   )
 }
+
+
 
 
 
