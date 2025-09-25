@@ -816,6 +816,8 @@ export default function OrganizationsPage() {
                               </tbody>
                             </table>
                           </div>
+                          {/* Invisible spacer to prevent dropdown overflow scrolling */}
+                          <div className="h-32 w-full"></div>
                         </div>
                       ) : (
                         <div className="backdrop-blur-md bg-black border border-slate-700/50 rounded-xl p-8 text-center">
@@ -1241,6 +1243,9 @@ export default function OrganizationsPage() {
                   <p className="text-nexa-muted">No members with this role</p>
                 </div>
               )}
+              
+              {/* Invisible spacer to prevent dropdown overflow scrolling */}
+              <div className="h-32 w-full"></div>
             </div>
           </div>
         </div>
@@ -1611,12 +1616,12 @@ export default function OrganizationsPage() {
                     </Button>
                     <Button
                       onClick={handlePermissionsSave}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      className="flex-1 bg-white hover:bg-gray-100 text-black border border-gray-300"
                       disabled={permissionsLoading}
                     >
                       {permissionsLoading ? (
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
                           <span>Saving...</span>
                         </div>
                       ) : (

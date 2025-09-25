@@ -204,13 +204,48 @@ export async function PUT(
       }
     }
 
-    // Update the session
-    const updatedSession = await prisma.aIArchitectureSession.update({
+    // Update the session - only update access_permissions field
+    // Log the current session data before update for debugging
+    console.log('🔍 Before update - Current session JSONB fields:', {
+      sessionObjects: !!session.sessionObjects && Object.keys(session.sessionObjects as any).length > 0,
+      diagramTextsJson: !!session.diagramTextsJson && Object.keys(session.diagramTextsJson as any).length > 0,
+      visualAssetsJson: !!session.visualAssetsJson && Object.keys(session.visualAssetsJson as any).length > 0,
+      sowObjects: !!session.sowObjects && Object.keys(session.sowObjects as any).length > 0,
+      loeObjects: !!session.loeObjects && Object.keys(session.loeObjects as any).length > 0,
+    })
+
+    // Use raw SQL to update only the access_permissions column to avoid any Prisma side effects
+    await prisma.$executeRaw`
+      UPDATE ai_architecture_sessions 
+      SET access_permissions = ${JSON.stringify(newAccessPermissions)}::jsonb
+      WHERE uuid = ${sessionId}::uuid
+    `
+    
+    // Fetch the updated session for response
+    const updatedSession = await prisma.aIArchitectureSession.findFirst({
+      where: { uuid: sessionId }
+    })
+
+    // Log after update to see if data was lost
+    const sessionAfterUpdate = await prisma.aIArchitectureSession.findFirst({
       where: { uuid: sessionId },
-      data: {
-        accessPermissions: newAccessPermissions,
-        updatedAt: new Date()
+      select: {
+        sessionObjects: true,
+        diagramTextsJson: true,
+        visualAssetsJson: true,
+        sowObjects: true,
+        loeObjects: true,
+        accessPermissions: true
       }
+    })
+    
+    console.log('🔍 After update - Session JSONB fields:', {
+      sessionObjects: !!sessionAfterUpdate?.sessionObjects && Object.keys(sessionAfterUpdate.sessionObjects as any).length > 0,
+      diagramTextsJson: !!sessionAfterUpdate?.diagramTextsJson && Object.keys(sessionAfterUpdate.diagramTextsJson as any).length > 0,
+      visualAssetsJson: !!sessionAfterUpdate?.visualAssetsJson && Object.keys(sessionAfterUpdate.visualAssetsJson as any).length > 0,
+      sowObjects: !!sessionAfterUpdate?.sowObjects && Object.keys(sessionAfterUpdate.sowObjects as any).length > 0,
+      loeObjects: !!sessionAfterUpdate?.loeObjects && Object.keys(sessionAfterUpdate.loeObjects as any).length > 0,
+      accessPermissions: sessionAfterUpdate?.accessPermissions
     })
 
     // Log audit event
