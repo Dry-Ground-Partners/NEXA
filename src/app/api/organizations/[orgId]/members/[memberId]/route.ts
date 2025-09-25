@@ -14,15 +14,26 @@ export async function PATCH(
 
     const { orgId, memberId } = params
     const body = await request.json()
-    const { role } = body
+    const { action, role, reason } = body
 
-    // Validate role
-    const validRoles = ['owner', 'admin', 'member', 'viewer', 'billing']
-    if (!role || !validRoles.includes(role)) {
+    // Validate action
+    const validActions = ['change_role', 'offboard']
+    if (!action || !validActions.includes(action)) {
       return NextResponse.json(
-        { error: 'Invalid role specified' },
+        { error: 'Invalid action specified. Must be "change_role" or "offboard"' },
         { status: 400 }
       )
+    }
+
+    // Validate role for role changes
+    if (action === 'change_role') {
+      const validRoles = ['owner', 'admin', 'member', 'viewer', 'billing']
+      if (!role || !validRoles.includes(role)) {
+        return NextResponse.json(
+          { error: 'Invalid role specified' },
+          { status: 400 }
+        )
+      }
     }
 
     // Verify user has permission to change roles in this organization
@@ -76,66 +87,163 @@ export async function PATCH(
       )
     }
 
-    // Prevent demoting the last owner
-    if (targetMembership.role === 'owner' && role !== 'owner') {
-      const ownerCount = await prisma.organizationMembership.count({
-        where: {
-          organizationId: orgId,
-          role: 'owner',
-          status: 'active'
+    // Handle different actions
+    if (action === 'change_role') {
+      // Prevent demoting the last owner
+      if (targetMembership.role === 'owner' && role !== 'owner') {
+        const ownerCount = await prisma.organizationMembership.count({
+          where: {
+            organizationId: orgId,
+            role: 'owner',
+            status: 'active'
+          }
+        })
+
+        if (ownerCount <= 1) {
+          return NextResponse.json(
+            { error: 'Cannot demote the last owner of the organization' },
+            { status: 400 }
+          )
         }
-      })
-
-      if (ownerCount <= 1) {
-        return NextResponse.json(
-          { error: 'Cannot demote the last owner of the organization' },
-          { status: 400 }
-        )
       }
-    }
 
-    // Prevent non-owners from changing owner roles or creating new owners
-    if (userMembership.role !== 'owner') {
-      if (targetMembership.role === 'owner' || role === 'owner') {
+      // Prevent non-owners from changing owner roles or creating new owners
+      if (userMembership.role !== 'owner') {
+        if (targetMembership.role === 'owner' || role === 'owner') {
+          return NextResponse.json(
+            { error: 'Only owners can modify owner roles' },
+            { status: 403 }
+          )
+        }
+      }
+    } else if (action === 'offboard') {
+      // Prevent offboarding the last owner
+      if (targetMembership.role === 'owner') {
+        const ownerCount = await prisma.organizationMembership.count({
+          where: {
+            organizationId: orgId,
+            role: 'owner',
+            status: 'active'
+          }
+        })
+
+        if (ownerCount <= 1) {
+          return NextResponse.json(
+            { error: 'Cannot offboard the last owner of the organization' },
+            { status: 400 }
+          )
+        }
+      }
+
+      // Prevent non-owners from offboarding owners
+      if (userMembership.role !== 'owner' && targetMembership.role === 'owner') {
         return NextResponse.json(
-          { error: 'Only owners can modify owner roles' },
+          { error: 'Only owners can offboard other owners' },
           { status: 403 }
         )
       }
     }
 
-    // Update the role
-    const updatedMembership = await prisma.organizationMembership.update({
-      where: { id: memberId },
-      data: { 
-        role,
-        updatedAt: new Date()
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            fullName: true,
-            avatarUrl: true,
-            emailVerifiedAt: true
+    let updatedMembership
+    let auditAction
+    let auditOldValues
+    let auditNewValues
+
+    if (action === 'change_role') {
+      // Update the role
+      updatedMembership = await prisma.organizationMembership.update({
+        where: { id: memberId },
+        data: { 
+          role,
+          updatedAt: new Date()
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              fullName: true,
+              avatarUrl: true,
+              emailVerifiedAt: true
+            }
           }
         }
-      }
-    })
+      })
 
-    // Log the role change in audit log
+      auditAction = 'role_change'
+      auditOldValues = { role: targetMembership.role }
+      auditNewValues = { role }
+
+    } else if (action === 'offboard') {
+      // Get organization info for offboarding data
+      const organization = await prisma.organization.findUnique({
+        where: { id: orgId },
+        select: { name: true }
+      })
+
+      // Create comprehensive offboarding data
+      const offboardingData = {
+        nexa_offboarded: {
+          status: 'offboarded',
+          timestamp: new Date().toISOString(),
+          offboarded_by_user_id: user.id,
+          offboarded_by_name: user.fullName || user.email,
+          reason: reason || 'administrative_action',
+          organization_name: organization?.name || 'Unknown Organization',
+          original_role: targetMembership.role,
+          final_login: null, // Could be enhanced with last login tracking
+          data_retention_period_days: 90
+        }
+      }
+
+      // Update membership to suspended with offboarding data
+      updatedMembership = await prisma.organizationMembership.update({
+        where: { id: memberId },
+        data: { 
+          status: 'suspended',
+          offboardingData: offboardingData,
+          updatedAt: new Date()
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              fullName: true,
+              avatarUrl: true,
+              emailVerifiedAt: true
+            }
+          }
+        }
+      })
+
+      auditAction = 'member_offboarding'
+      auditOldValues = { 
+        status: 'active', 
+        role: targetMembership.role,
+        offboardingData: {}
+      }
+      auditNewValues = { 
+        status: 'suspended',
+        role: targetMembership.role,
+        offboardingData: offboardingData
+      }
+    }
+
+    // Log the action in audit log
     await prisma.auditLog.create({
       data: {
         organizationId: orgId,
         userId: user.id,
-        action: 'role_change',
+        action: auditAction,
         resourceType: 'user',
         resourceId: targetMembership.user.id,
-        oldValues: { role: targetMembership.role },
-        newValues: { role },
+        oldValues: auditOldValues,
+        newValues: auditNewValues,
         ipAddress: '127.0.0.1', // Fixed IP for development
         userAgent: request.headers.get('user-agent') || 'unknown'
       }
@@ -143,6 +251,10 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
+      action: action,
+      message: action === 'change_role' 
+        ? `Role changed to ${role}` 
+        : `Member offboarded successfully`,
       membership: {
         id: updatedMembership.id,
         userId: updatedMembership.user.id,
@@ -152,12 +264,15 @@ export async function PATCH(
         role: updatedMembership.role,
         status: updatedMembership.status,
         joinedAt: updatedMembership.joinedAt,
-        emailVerified: !!updatedMembership.user.emailVerifiedAt
+        emailVerified: !!updatedMembership.user.emailVerifiedAt,
+        ...(action === 'offboard' && { 
+          offboardingData: updatedMembership.offboardingData 
+        })
       }
     })
 
   } catch (error: any) {
-    console.error('Error updating member role:', error)
+    console.error('Error updating member:', error)
     return NextResponse.json(
       { error: `Internal server error: ${error.message}` },
       { status: 500 }

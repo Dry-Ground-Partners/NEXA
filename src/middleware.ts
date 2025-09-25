@@ -130,6 +130,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: 'Organization required' }, { status: 403 })
     }
     
+    // Check if user was recently offboarded (could be enhanced to detect from DB)
+    // For now, redirect to onboarding - the onboarding page will check URL params
     return NextResponse.redirect(new URL('/onboarding', request.url))
   }
 

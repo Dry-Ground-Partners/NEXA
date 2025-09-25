@@ -23,8 +23,22 @@ export default function OnboardingPage() {
     website: '',
     industry: ''
   })
+  
+  // Check for offboarded user context from URL params
+  const [wasOffboarded, setWasOffboarded] = useState(false)
+  const [previousOrgName, setPreviousOrgName] = useState<string | null>(null)
 
   useEffect(() => {
+    // Check URL parameters for offboarding context
+    const urlParams = new URLSearchParams(window.location.search)
+    const offboarded = urlParams.get('offboarded') === 'true'
+    const orgName = urlParams.get('org')
+    
+    if (offboarded) {
+      setWasOffboarded(true)
+      setPreviousOrgName(orgName)
+    }
+
     const fetchUser = async () => {
       try {
         const response = await fetch('/api/auth/me')
@@ -167,6 +181,23 @@ export default function OnboardingPage() {
           </p>
         </div>
 
+        {/* Offboarded User Banner */}
+        {wasOffboarded && (
+          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5">⚠️</div>
+              <div>
+                <div className="text-yellow-200 font-medium mb-1">
+                  You've been removed from {previousOrgName || 'an organization'}
+                </div>
+                <div className="text-yellow-300/80 text-sm">
+                  Don't worry! Your account is safe. Create a personal workspace below to continue using NEXA.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Choice Step */}
         {step === 'choice' && (
           <div className="grid md:grid-cols-2 gap-6">
@@ -180,9 +211,14 @@ export default function OnboardingPage() {
                 <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-500/30 transition-colors">
                   <User className="w-8 h-8 text-blue-400" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Personal Workspace</h3>
+                <h3 className="text-xl font-bold text-white mb-3">
+                  {wasOffboarded ? 'Your Personal Workspace' : 'Personal Workspace'}
+                </h3>
                 <p className="text-nexa-muted mb-6">
-                  Perfect for individual use. We'll create your personal workspace automatically.
+                  {wasOffboarded 
+                    ? 'Continue your work with a private workspace. All your data is safe and ready for you!' 
+                    : 'Perfect for individual use. We\'ll create your personal workspace automatically.'
+                  }
                 </p>
                 <div className="flex items-center justify-center text-blue-400 group-hover:text-blue-300">
                   <span className="mr-2">Get Started</span>

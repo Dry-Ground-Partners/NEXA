@@ -80,6 +80,15 @@ export default function OrganizationsPage() {
   const [roleChangeDropdownOpen, setRoleChangeDropdownOpen] = useState<string | null>(null)
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
+  const [isReInvite, setIsReInvite] = useState(false)
+  const [previousOffboarding, setPreviousOffboarding] = useState<any>(null)
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
+  
+  // Offboard modal states
+  const [offboardModalOpen, setOffboardModalOpen] = useState(false)
+  const [memberToOffboard, setMemberToOffboard] = useState<any>(null)
+  const [offboardLoading, setOffboardLoading] = useState(false)
+  const [offboardReason, setOffboardReason] = useState('administrative_action')
 
   // Session permissions modal states
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
@@ -127,6 +136,9 @@ export default function OrganizationsPage() {
     setInviteModalOpen(false)
     setInviteError(null)
     setInviteLoading(false)
+    setInviteSuccess(null)
+    setIsReInvite(false)
+    setPreviousOffboarding(null)
   }
 
   // Check if current user can invite members (only owners and admins)
@@ -238,7 +250,7 @@ export default function OrganizationsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ role: newRole }),
+        body: JSON.stringify({ action: 'change_role', role: newRole }),
       })
 
       const data = await response.json()
@@ -255,6 +267,55 @@ export default function OrganizationsPage() {
     } catch (error: any) {
       console.error('❌ Failed to update role:', error)
       alert(`Failed to update role: ${error.message}`)
+    }
+  }
+
+  // Handle offboard member
+  const openOffboardModal = (member: any) => {
+    setMemberToOffboard(member)
+    setOffboardModalOpen(true)
+    setRoleChangeDropdownOpen(null) // Close dropdown
+  }
+
+  const closeOffboardModal = () => {
+    setOffboardModalOpen(false)
+    setMemberToOffboard(null)
+    setOffboardReason('administrative_action')
+  }
+
+  const handleOffboardConfirm = async () => {
+    if (!selectedOrganization || !memberToOffboard) return
+
+    setOffboardLoading(true)
+
+    try {
+      const response = await fetch(`/api/organizations/${selectedOrganization.organization.id}/members/${memberToOffboard.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          action: 'offboard', 
+          reason: offboardReason 
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to offboard member')
+      }
+
+      // Refresh organization data to remove offboarded member
+      await loadOrganizationData(selectedOrganization.organization)
+      closeOffboardModal()
+      
+      console.log('✅ Member offboarded successfully:', data.message)
+    } catch (error: any) {
+      console.error('❌ Failed to offboard member:', error)
+      alert(`Failed to offboard member: ${error.message}`)
+    } finally {
+      setOffboardLoading(false)
     }
   }
 
@@ -292,16 +353,27 @@ export default function OrganizationsPage() {
         return
       }
 
-      // Success - close modal and refresh data
-      closeInviteModal()
-      
+      // Handle re-invite information if present
+      if (data.invitation?.isReInvite) {
+        setIsReInvite(true)
+        setPreviousOffboarding(data.invitation.previousOffboarding)
+        setInviteSuccess(`Re-invitation sent successfully! This user was previously removed due to: ${data.invitation.previousOffboarding?.reason || 'unknown reason'}`)
+        console.log('✅ Re-invite successful:', data.invitation.previousOffboarding)
+      } else {
+        setIsReInvite(false)
+        setPreviousOffboarding(null)
+        setInviteSuccess('Invitation sent successfully!')
+      }
+
       // Refresh organization data to show the new pending invitation
       if (selectedOrganization) {
         loadOrganizationData(selectedOrganization.organization)
       }
 
-      // Show success message (you can add a toast notification here)
-      console.log('Invitation sent successfully to', email)
+      // Auto-close modal after showing success message
+      setTimeout(() => {
+        closeInviteModal()
+      }, 3000)
 
     } catch (error) {
       setInviteError('Failed to send invitation')
@@ -719,12 +791,7 @@ export default function OrganizationsPage() {
                           <p className="text-sm text-nexa-muted">Manage access to organization sessions and their collaborators</p>
                         </div>
                         <div className="flex gap-2">
-                          <button className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm rounded-lg transition-all">
-                            Bulk Actions
-                          </button>
-                          <button className="px-3 py-1.5 bg-white text-black hover:bg-gray-100 text-sm font-medium rounded-lg transition-all">
-                            Export Sessions
-                          </button>
+                          {/* Bulk actions and export buttons removed as requested */}
                         </div>
                       </div>
 
@@ -971,10 +1038,48 @@ export default function OrganizationsPage() {
                                         {rolePermissions[user.role as keyof typeof rolePermissions]?.label || 'Unknown'}
                                       </span>
                                     </div>
-                                    <div className="flex items-center justify-center">
-                                      <button className="p-1 hover:bg-white/10 rounded text-nexa-muted hover:text-white transition-colors">
+                                    <div className="flex items-center justify-center relative">
+                                      <button 
+                                        onClick={() => setRoleChangeDropdownOpen(roleChangeDropdownOpen === user.id ? null : user.id)}
+                                        className="p-1 hover:bg-white/10 rounded text-nexa-muted hover:text-white transition-colors"
+                                      >
                                         <MoreHorizontal className="h-4 w-4" />
                                       </button>
+                                      
+                                      {roleChangeDropdownOpen === user.id && (
+                                        <div className="absolute right-0 top-8 bg-black border border-white/20 rounded-lg shadow-lg z-10 min-w-40">
+                                          <div className="p-2">
+                                            <div className="text-xs text-nexa-muted mb-2">Member Actions</div>
+                                            
+                                            {/* Change Role Option */}
+                                            <button
+                                              onClick={() => {
+                                                // Could open a role change sub-menu or modal
+                                                console.log('Change role for:', user.name)
+                                                setRoleChangeDropdownOpen(null)
+                                              }}
+                                              className="w-full text-left px-2 py-1 rounded text-xs hover:bg-white/10 text-nexa-muted transition-colors flex items-center gap-2"
+                                            >
+                                              <Settings className="h-3 w-3" />
+                                              Change Role
+                                            </button>
+                                            
+                                            {/* Offboard option - only show if user has permission */}
+                                            {(user.role !== 'owner' || selectedOrganization?.role === 'owner') && canInviteMembers && (
+                                              <>
+                                                <div className="border-t border-white/10 my-2"></div>
+                                                <button
+                                                  onClick={() => openOffboardModal(user)}
+                                                  className="w-full text-left px-2 py-1 rounded text-xs hover:bg-yellow-400/10 text-yellow-400 transition-colors flex items-center gap-2"
+                                                >
+                                                  <UserMinus className="h-3 w-3" />
+                                                  Offboard Member
+                                                </button>
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -1239,6 +1344,8 @@ export default function OrganizationsPage() {
                                   {roleInfo.label}
                                 </button>
                               ))}
+                              
+                              {/* Remove offboard option from Role Enforcement - will be moved to Member Management */}
                             </div>
                           </div>
                         )}
@@ -1281,6 +1388,45 @@ export default function OrganizationsPage() {
                 <div className="flex items-center gap-2">
                   <X className="w-4 h-4 text-red-400" />
                   <span className="text-red-400 text-sm">{inviteError}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Success Message with Re-invite Info */}
+            {inviteSuccess && (
+              <div className={`rounded-lg p-4 mb-4 ${
+                isReInvite 
+                  ? 'bg-yellow-500/10 border border-yellow-500/20' 
+                  : 'bg-green-500/10 border border-green-500/20'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <div className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                    isReInvite ? 'text-yellow-400' : 'text-green-400'
+                  }`}>
+                    {isReInvite ? '🔄' : '✅'}
+                  </div>
+                  <div>
+                    <div className={`font-medium mb-1 ${
+                      isReInvite ? 'text-yellow-200' : 'text-green-200'
+                    }`}>
+                      {isReInvite ? 'Re-Invitation Sent!' : 'Invitation Sent!'}
+                    </div>
+                    <div className={`text-sm ${
+                      isReInvite ? 'text-yellow-300/80' : 'text-green-300/80'
+                    }`}>
+                      {isReInvite && previousOffboarding ? (
+                        <>
+                          This user was previously removed on {' '}
+                          {new Date(previousOffboarding.timestamp).toLocaleDateString()} {' '}
+                          due to: <span className="font-medium">{previousOffboarding.reason}</span>
+                          <br />
+                          They will regain access to their previous data when they accept.
+                        </>
+                      ) : (
+                        'The invitation has been sent to their email address.'
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1644,6 +1790,114 @@ export default function OrganizationsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Offboard Member Confirmation Modal */}
+        {offboardModalOpen && memberToOffboard && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-black border border-slate-700/50 rounded-xl p-6 w-full max-w-lg mx-4">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                    <UserMinus className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Offboard Member</h3>
+                    <p className="text-sm text-nexa-muted">Remove access to this organization</p>
+                  </div>
+                </div>
+                <button
+                  onClick={closeOffboardModal}
+                  className="text-nexa-muted hover:text-white transition-colors"
+                  disabled={offboardLoading}
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Member Info */}
+                <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                      <span className="text-white text-sm font-medium">
+                        {memberToOffboard.name?.charAt(0) || memberToOffboard.email?.charAt(0) || 'U'}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-white font-medium">{memberToOffboard.name}</div>
+                      <div className="text-nexa-muted text-sm">{memberToOffboard.email}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Warning Message */}
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5">⚠️</div>
+                    <div className="text-sm">
+                      <div className="text-yellow-200 font-medium mb-2">This action will:</div>
+                      <ul className="space-y-1 text-yellow-300/80">
+                        <li>• Remove access to this organization immediately</li>
+                        <li>• Preserve their account and access to other organizations</li>
+                        <li>• Keep complete audit trail for compliance</li>
+                        <li>• Redirect them to create a solo workspace if needed</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reason Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Reason (Optional)
+                  </label>
+                  <select
+                    value={offboardReason}
+                    onChange={(e) => setOffboardReason(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder:text-nexa-muted focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={offboardLoading}
+                  >
+                    <option value="administrative_action">Administrative Action</option>
+                    <option value="voluntary_departure">Voluntary Departure</option>
+                    <option value="role_restructure">Role Restructure</option>
+                    <option value="security_concern">Security Concern</option>
+                    <option value="policy_violation">Policy Violation</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10"
+                    onClick={closeOffboardModal}
+                    disabled={offboardLoading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-medium"
+                    onClick={handleOffboardConfirm}
+                    disabled={offboardLoading}
+                  >
+                    {offboardLoading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                        <span>Offboarding...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <UserMinus className="w-4 h-4" />
+                        <span>Offboard Member</span>
+                      </div>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}

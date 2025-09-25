@@ -51,6 +51,9 @@ export async function POST(
     })
 
     // Check if user is already a member of the organization
+    let isReInvite = false
+    let previousOffboardingData = null
+    
     if (existingUser) {
       const existingMembership = await prisma.organizationMembership.findFirst({
         where: {
@@ -65,6 +68,44 @@ export async function POST(
           { error: 'User is already a member of this organization' },
           { status: 409 }
         )
+      }
+
+      // Check for previously offboarded user (re-invite scenario)
+      const offboardedMembership = await prisma.organizationMembership.findFirst({
+        where: {
+          userId: existingUser.id,
+          organizationId: orgId,
+          status: 'suspended',
+          offboardingData: { 
+            path: ['nexa_offboarded'], 
+            not: {} 
+          }
+        }
+      })
+
+      if (offboardedMembership) {
+        isReInvite = true
+        previousOffboardingData = offboardedMembership.offboardingData as any
+        
+        const reason = previousOffboardingData.nexa_offboarded?.reason
+        
+        // Simple policy: Only owners can re-invite users offboarded for security reasons
+        if (['security_concern', 'policy_violation'].includes(reason) && 
+            membership.role !== 'owner') {
+          return NextResponse.json(
+            { 
+              error: 'Only owners can re-invite users offboarded for security or policy violations',
+              details: { 
+                reason: 'insufficient_permissions',
+                previous_offboard_reason: reason,
+                requires_owner_approval: true
+              }
+            },
+            { status: 403 }
+          )
+        }
+        
+        console.log(`🔄 Re-invite detected for ${email} - Previous reason: ${reason}`)
       }
     }
 
@@ -146,6 +187,32 @@ export async function POST(
       )
     }
 
+    // Add audit logging for invitation (including re-invites)
+    await prisma.auditLog.create({
+      data: {
+        organizationId: orgId,
+        userId: user.id,
+        action: isReInvite ? 'member_reinvite' : 'member_invite',
+        resourceType: 'user',
+        resourceId: existingUser?.id || organizationMembership.userId,
+        oldValues: isReInvite ? { 
+          previous_offboarding: previousOffboardingData 
+        } : {},
+        newValues: { 
+          email,
+          role,
+          invited_by: user.id,
+          invited_by_name: user.fullName || user.email,
+          ...(isReInvite && { 
+            reinvite_reason: 'role_reopened',
+            previous_offboard_reason: previousOffboardingData?.nexa_offboarded?.reason
+          })
+        },
+        ipAddress: '127.0.0.1', // Fixed IP for development
+        userAgent: request.headers.get('user-agent') || 'unknown'
+      }
+    })
+
     // Return success response
     const expiresAt = new Date(organizationMembership.invitedAt)
     expiresAt.setDate(expiresAt.getDate() + 7) // Calculate expiration (7 days from invitation)
@@ -158,7 +225,15 @@ export async function POST(
         role,
         status: 'pending',
         expiresAt,
-        invitationToken
+        invitationToken,
+        isReInvite,
+        ...(isReInvite && {
+          previousOffboarding: {
+            reason: previousOffboardingData?.nexa_offboarded?.reason,
+            timestamp: previousOffboardingData?.nexa_offboarded?.timestamp,
+            offboardedBy: previousOffboardingData?.nexa_offboarded?.offboarded_by_name
+          }
+        })
       }
     })
 
