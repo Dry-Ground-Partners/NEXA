@@ -375,27 +375,27 @@ export default function GridPage() {
     
     // Debug logging for content availability
     console.log(`🏷️ Grid: Checking content for session "${session.title || 'Untitled'}" (${session.sessionType}):`, {
-      structure: session.availableContent.structure,
-      visuals: session.availableContent.visuals,
-      solution: session.availableContent.solution,
-      work: session.availableContent.work,
-      effort: session.availableContent.effort
+      structure: session.hasStructure || session.availableContent?.structure,
+      visuals: session.hasVisuals || session.availableContent?.visuals,
+      solution: session.hasSolution || session.availableContent?.solution,
+      work: session.hasWork || session.availableContent?.work,
+      effort: session.hasEffort || session.availableContent?.effort
     })
     
     // Check each content type and add tag if content exists
-    if (session.availableContent.structure) {
+    if (session.hasStructure || session.availableContent?.structure) {
       availableTags.push('Structure')
     }
-    if (session.availableContent.visuals) {
+    if (session.hasVisuals || session.availableContent?.visuals) {
       availableTags.push('Visuals')
     }
-    if (session.availableContent.solution) {
+    if (session.hasSolution || session.availableContent?.solution) {
       availableTags.push('Solution')
     }
-    if (session.availableContent.work) {
+    if (session.hasWork || session.availableContent?.work) {
       availableTags.push('Work')
     }
-    if (session.availableContent.effort) {
+    if (session.hasEffort || session.availableContent?.effort) {
       availableTags.push('Effort')
     }
     
@@ -780,8 +780,18 @@ export default function GridPage() {
                               key={session.uuid} 
                               className={`group relative backdrop-blur-md bg-gradient-to-br ${gradientColors[gradientIndex]} border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/60 hover:bg-gradient-to-br ${hoverColors[gradientIndex]} transition-all duration-300 cursor-pointer shadow-lg hover:shadow-xl`}
                             >
+                              {/* Access Level Indicator */}
+                              <div className="absolute top-4 right-4 flex items-center gap-2">
+                                {session.isCreator && (
+                                  <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 border border-yellow-400/30 text-yellow-300 text-xs font-medium rounded-full backdrop-blur-sm" title="You created this session">
+                                    <Crown className="h-3 w-3" />
+                                    <span>Creator</span>
+                                  </div>
+                                )}
+                              </div>
+
                               {/* Title & Client */}
-                              <div className="mb-4">
+                              <div className="mb-4 pr-20">
                                 <h5 className="text-white font-semibold text-lg mb-1 line-clamp-1">
                                   {session.title || 'Untitled Session'}
                                 </h5>

@@ -149,7 +149,14 @@ export interface SessionSummary {
   sessionType: string
   createdAt: Date
   updatedAt: Date
-  availableContent: {
+  isCreator?: boolean // Whether current user created this session
+  hasStructure?: boolean // Session has structuring data
+  hasVisuals?: boolean // Session has visuals data  
+  hasSolution?: boolean // Session has solutioning data
+  hasWork?: boolean // Session has SOW data
+  hasEffort?: boolean // Session has LOE data
+  // Legacy field for backwards compatibility
+  availableContent?: {
     structure: boolean
     visuals: boolean
     solution: boolean

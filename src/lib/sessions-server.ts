@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { getCurrentUser } from '@/lib/auth'
+import { sessionAccessControl } from '@/lib/session-access-control'
 import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData, SOWSessionData, LOESessionData, SessionResponse, SessionSummary } from '@/lib/sessions'
 
 const prisma = new PrismaClient()
@@ -69,6 +70,13 @@ export async function updateStructuringSession(
       throw new Error('User not authenticated')
     }
 
+    // Check if user has write access to this session
+    const canWrite = await sessionAccessControl.canWrite(sessionId)
+    if (!canWrite) {
+      console.log('🔒 Write access denied: User lacks write permission for session:', sessionId)
+      return false
+    }
+
     // Update version number
     const updatedData = {
       ...data,
@@ -79,7 +87,7 @@ export async function updateStructuringSession(
     await prisma.aIArchitectureSession.update({
       where: {
         uuid: sessionId,
-        userId: user.id // Ensure user can only update their own sessions
+        deletedAt: null
       },
       data: {
         title: updatedData.basic.title || null,
@@ -159,6 +167,13 @@ export async function updateVisualsSession(
       throw new Error('User not authenticated')
     }
 
+    // Check if user has write access to this session
+    const canWrite = await sessionAccessControl.canWrite(sessionId)
+    if (!canWrite) {
+      console.log('🔒 Write access denied: User lacks write permission for session:', sessionId)
+      return false
+    }
+
     // Update version number
     const updatedData = {
       ...data,
@@ -169,7 +184,7 @@ export async function updateVisualsSession(
     await prisma.aIArchitectureSession.update({
       where: {
         uuid: sessionId,
-        userId: user.id // Ensure user can only update their own sessions
+        deletedAt: null
       },
       data: {
         title: updatedData.basic.title || null,
@@ -266,9 +281,18 @@ export async function getUserStructuringSessions(): Promise<SessionSummary[]> {
       return []
     }
 
-    const sessions = await prisma.aIArchitectureSession.findMany({
+    // Get user's organization memberships to filter sessions by organization
+    const userMemberships = user.organizationMemberships?.map(m => m.organization.id) || []
+    
+    if (userMemberships.length === 0) {
+      console.log('⚠️  User has no organization memberships, returning empty sessions')
+      return []
+    }
+
+    // Get all sessions from user's organizations (not just user's own sessions)
+    const allSessions = await prisma.aIArchitectureSession.findMany({
       where: {
-        userId: user.id,
+        organizationId: { in: userMemberships },
         deletedAt: null
       },
       orderBy: {
@@ -280,6 +304,8 @@ export async function getUserStructuringSessions(): Promise<SessionSummary[]> {
         title: true,
         client: true,
         sessionType: true,
+        userId: true, // Include creator info for access control
+        organizationId: true,
         createdAt: true,
         updatedAt: true,
         diagramTextsJson: true,    // For Structure tag
@@ -290,29 +316,40 @@ export async function getUserStructuringSessions(): Promise<SessionSummary[]> {
       }
     })
 
-    return sessions.map(session => {
-      const contentFlags = {
-        structure: isValidContent(session.diagramTextsJson),
-        visuals: isValidContent(session.visualAssetsJson),
-        solution: isValidContent(session.sessionObjects),
-        work: isValidContent(session.sowObjects),
-        effort: isValidContent(session.loeObjects)
+    console.log(`🔍 Found ${allSessions.length} total sessions in user's organizations`)
+
+    // Filter sessions based on access control
+    const accessibleSessions: SessionSummary[] = []
+    
+    for (const session of allSessions) {
+      try {
+        const canRead = await sessionAccessControl.canRead(session.uuid)
+        if (canRead) {
+          accessibleSessions.push({
+            id: session.id.toString(),
+            uuid: session.uuid,
+            title: session.title,
+            client: session.client,
+            sessionType: session.sessionType,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt,
+            isCreator: session.userId === user.id, // Add creator flag
+            hasStructure: isValidContent(session.diagramTextsJson),
+            hasVisuals: isValidContent(session.visualAssetsJson),
+            hasSolution: isValidContent(session.sessionObjects),
+            hasWork: isValidContent(session.sowObjects),
+            hasEffort: isValidContent(session.loeObjects)
+          })
+        }
+      } catch (error) {
+        console.error(`❌ Error checking access for session ${session.uuid}:`, error)
+        // Skip this session if access check fails
       }
-      
-      console.log(`🗄️ DB: Session "${session.title || 'Untitled'}" (${session.sessionType}) content availability:`, contentFlags)
-      
-      return {
-        id: session.id.toString(),
-        uuid: session.uuid,
-        title: session.title,
-        client: session.client,
-        sessionType: session.sessionType,
-        createdAt: session.createdAt,
-        updatedAt: session.updatedAt,
-        // Add content availability flags
-        availableContent: contentFlags
-      }
-    })
+    }
+
+    console.log(`✅ User has access to ${accessibleSessions.length} of ${allSessions.length} sessions`)
+    return accessibleSessions
+    
   } catch (error) {
     console.error('Error getting user sessions:', error)
     return []
@@ -416,6 +453,13 @@ export async function updateSolutioningSession(
       throw new Error('User not authenticated')
     }
 
+    // Check if user has write access to this session
+    const canWrite = await sessionAccessControl.canWrite(uuid)
+    if (!canWrite) {
+      console.log('🔒 Write access denied: User lacks write permission for session:', uuid)
+      return false
+    }
+
     // Increment version for conflict detection
     const updatedData = {
       ...data,
@@ -426,7 +470,7 @@ export async function updateSolutioningSession(
     await prisma.aIArchitectureSession.update({
       where: { 
         uuid: uuid,
-        userId: user.id // Ensure user can only update their own sessions
+        deletedAt: null
       },
       data: {
         title: updatedData.basic.title || null,
@@ -510,6 +554,13 @@ export async function updateSOWSession(
       throw new Error('User not authenticated')
     }
 
+    // Check if user has write access to this session
+    const canWrite = await sessionAccessControl.canWrite(uuid)
+    if (!canWrite) {
+      console.log('🔒 Write access denied: User lacks write permission for session:', uuid)
+      return false
+    }
+
     // Increment version for conflict detection
     const updatedData = {
       ...data,
@@ -520,7 +571,7 @@ export async function updateSOWSession(
     await prisma.aIArchitectureSession.update({
       where: { 
         uuid: uuid,
-        userId: user.id // Ensure user can only update their own sessions
+        deletedAt: null
       },
       data: {
         title: updatedData.basic.title || null,
@@ -600,6 +651,13 @@ export async function updateLOESession(
       throw new Error('User not authenticated')
     }
 
+    // Check if user has write access to this session
+    const canWrite = await sessionAccessControl.canWrite(uuid)
+    if (!canWrite) {
+      console.log('🔒 Write access denied: User lacks write permission for session:', uuid)
+      return false
+    }
+
     // Update version number
     const updatedData = {
       ...data,
@@ -610,7 +668,7 @@ export async function updateLOESession(
     await prisma.aIArchitectureSession.update({
       where: {
         uuid: uuid,
-        userId: user.id
+        deletedAt: null
       },
       data: {
         title: updatedData.info.project || null,
@@ -643,10 +701,16 @@ export async function getSession(
       throw new Error('User not authenticated')
     }
 
+    // Check if user has read access to this session
+    const canRead = await sessionAccessControl.canRead(sessionId)
+    if (!canRead) {
+      console.log('🔒 Access denied: User lacks read permission for session:', sessionId)
+      return null
+    }
+
     const session = await prisma.aIArchitectureSession.findFirst({
       where: {
         uuid: sessionId,
-        userId: user.id,
         deletedAt: null
       }
     })
@@ -763,6 +827,13 @@ export async function updateSessionWithVisuals(
       throw new Error('User not authenticated')
     }
 
+    // Check if user has write access to this session
+    const canWrite = await sessionAccessControl.canWrite(sessionId)
+    if (!canWrite) {
+      console.log('🔒 Write access denied: User lacks write permission for session:', sessionId)
+      return false
+    }
+
     console.log(`🎨 Adding visuals data to session: ${sessionId}`)
     console.log(`   - Diagram sets: ${visualsData.diagramSets?.length || 0}`)
     console.log(`   - Basic info: ${visualsData.basic?.title || 'N/A'}`)
@@ -770,7 +841,7 @@ export async function updateSessionWithVisuals(
     await prisma.aIArchitectureSession.update({
       where: {
         uuid: sessionId,
-        userId: user.id
+        deletedAt: null
       },
       data: {
         visualAssetsJson: visualsData as any, // Add to visual_assets_json column
@@ -799,6 +870,13 @@ export async function updateSessionWithSolutioning(
       throw new Error('User not authenticated')
     }
 
+    // Check if user has write access to this session
+    const canWrite = await sessionAccessControl.canWrite(sessionId)
+    if (!canWrite) {
+      console.log('🔒 Write access denied: User lacks write permission for session:', sessionId)
+      return false
+    }
+
     console.log(`🏗️ Adding solutioning data to session: ${sessionId}`)
     console.log(`   - Solutions: ${Object.keys(solutioningData.solutions).length}`)
     console.log(`   - Basic info: ${solutioningData.basic?.title || 'N/A'}`)
@@ -806,7 +884,7 @@ export async function updateSessionWithSolutioning(
     await prisma.aIArchitectureSession.update({
       where: {
         uuid: sessionId,
-        userId: user.id
+        deletedAt: null
       },
       data: {
         sessionObjects: solutioningData as any, // Add to session_objects column
@@ -835,6 +913,13 @@ export async function updateSessionWithSOW(
       throw new Error('User not authenticated')
     }
 
+    // Check if user has write access to this session
+    const canWrite = await sessionAccessControl.canWrite(sessionId)
+    if (!canWrite) {
+      console.log('🔒 Write access denied: User lacks write permission for session:', sessionId)
+      return false
+    }
+
     console.log(`📋 Adding SOW data to session: ${sessionId}`)
     console.log(`   - Project: ${sowData.basic?.title || 'N/A'}`)
     console.log(`   - Client: ${sowData.basic?.client || 'N/A'}`)
@@ -844,7 +929,7 @@ export async function updateSessionWithSOW(
     await prisma.aIArchitectureSession.update({
       where: {
         uuid: sessionId,
-        userId: user.id
+        deletedAt: null
       },
       data: {
         sowObjects: sowData as any, // Add to sow_objects column
@@ -873,6 +958,13 @@ export async function updateSessionWithLOE(
       throw new Error('User not authenticated')
     }
 
+    // Check if user has write access to this session
+    const canWrite = await sessionAccessControl.canWrite(sessionId)
+    if (!canWrite) {
+      console.log('🔒 Write access denied: User lacks write permission for session:', sessionId)
+      return false
+    }
+
     console.log(`📊 Adding LOE data to session: ${sessionId}`)
     console.log(`   - Project: ${loeData.info?.project || 'N/A'}`)
     console.log(`   - Client: ${loeData.info?.client || 'N/A'}`)
@@ -882,7 +974,7 @@ export async function updateSessionWithLOE(
     await prisma.aIArchitectureSession.update({
       where: {
         uuid: sessionId,
-        userId: user.id
+        deletedAt: null
       },
       data: {
         loeObjects: loeData as any, // Add to loe_objects column

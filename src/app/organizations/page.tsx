@@ -81,6 +81,19 @@ export default function OrganizationsPage() {
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
 
+  // Session permissions modal states
+  const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
+  const [selectedSession, setSelectedSession] = useState<any>(null)
+  const [permissionsLoading, setPermissionsLoading] = useState(false)
+  const [permissionsError, setPermissionsError] = useState<string | null>(null)
+  const [sessionDropdownOpen, setSessionDropdownOpen] = useState<string | null>(null)
+  
+  // Session permissions form state
+  const [accessMode, setAccessMode] = useState<'organization' | 'per_role' | 'per_user'>('organization')
+  const [sessionRolePermissions, setSessionRolePermissions] = useState<{[key: string]: string}>({})
+  const [userPermissions, setUserPermissions] = useState<Array<{user_id: string, permission: string}>>([])
+  const [availableMembers, setAvailableMembers] = useState<any[]>([])
+
   // Helper function to format timestamps
   const formatTimestamp = (timestamp: string | Date) => {
     const date = new Date(timestamp)
@@ -118,6 +131,102 @@ export default function OrganizationsPage() {
 
   // Check if current user can invite members (only owners and admins)
   const canInviteMembers = selectedOrganization && ['owner', 'admin'].includes(selectedOrganization.role)
+
+  // Session permissions modal handlers
+  const openPermissionsModal = async (session: any) => {
+    setSelectedSession(session)
+    setPermissionsModalOpen(true)
+    setPermissionsLoading(true)
+    setPermissionsError(null)
+
+    try {
+      // Load current permissions
+      const [permissionsResponse, membersResponse] = await Promise.all([
+        fetch(`/api/sessions/${session.uuid}/permissions`),
+        fetch(`/api/organizations/${selectedOrganization?.organization.id}/members-for-permissions`)
+      ])
+
+      const permissionsData = await permissionsResponse.json()
+      const membersData = await membersResponse.json()
+
+      if (permissionsData.success) {
+        const { permissions } = permissionsData
+        setAccessMode(permissions.accessMode || 'organization')
+        
+        if (permissions.configuration?.role_permissions) {
+          setSessionRolePermissions(permissions.configuration.role_permissions)
+        } else {
+          setSessionRolePermissions({})
+        }
+
+        if (permissions.configuration?.user_permissions) {
+          setUserPermissions(permissions.configuration.user_permissions.map((up: any) => ({
+            user_id: up.user_id,
+            permission: up.permission
+          })))
+        } else {
+          setUserPermissions([])
+        }
+      }
+
+      if (membersData.success) {
+        setAvailableMembers(membersData.members)
+      }
+
+    } catch (error) {
+      console.error('❌ Error loading session permissions:', error)
+      setPermissionsError('Failed to load session permissions')
+    } finally {
+      setPermissionsLoading(false)
+    }
+  }
+
+  const closePermissionsModal = () => {
+    setPermissionsModalOpen(false)
+    setSelectedSession(null)
+    setPermissionsError(null)
+    setAccessMode('organization')
+    setSessionRolePermissions({})
+    setUserPermissions([])
+    setAvailableMembers([])
+  }
+
+  const handlePermissionsSave = async () => {
+    if (!selectedSession || !selectedOrganization) return
+
+    setPermissionsLoading(true)
+    setPermissionsError(null)
+
+    try {
+      const response = await fetch(`/api/sessions/${selectedSession.uuid}/permissions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessMode,
+          rolePermissions: accessMode === 'per_role' ? sessionRolePermissions : null,
+          userPermissions: accessMode === 'per_user' ? userPermissions : null
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update permissions')
+      }
+
+      console.log('✅ Session permissions updated successfully')
+      closePermissionsModal()
+      
+      // Refresh organization data to show updated permissions
+      await loadOrganizationData(selectedOrganization.organization)
+
+    } catch (error: any) {
+      console.error('❌ Error updating session permissions:', error)
+      setPermissionsError(error.message || 'Failed to update permissions')
+    } finally {
+      setPermissionsLoading(false)
+    }
+  }
 
   // Handle role change
   const handleRoleChange = async (memberId: string, newRole: string) => {
@@ -325,14 +434,17 @@ export default function OrganizationsPage() {
     }
   }, [selectedOrganization, loadOrganizationData])
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (roleChangeDropdownOpen) {
-        const target = event.target as Element
-        if (!target.closest('.role-dropdown-container')) {
-          setRoleChangeDropdownOpen(null)
-        }
+      const target = event.target as Element
+      
+      if (roleChangeDropdownOpen && !target.closest('.role-dropdown-container')) {
+        setRoleChangeDropdownOpen(null)
+      }
+      
+      if (sessionDropdownOpen && !target.closest('.session-dropdown-container')) {
+        setSessionDropdownOpen(null)
       }
     }
 
@@ -340,7 +452,7 @@ export default function OrganizationsPage() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [roleChangeDropdownOpen])
+  }, [roleChangeDropdownOpen, sessionDropdownOpen])
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -658,10 +770,45 @@ export default function OrganizationsPage() {
                                       <div className="text-white text-sm">{formatTimestamp(session.lastModified || session.updatedAt || session.createdAt)}</div>
                                     </td>
                                     <td className="p-4">
-                                      <div className="flex items-center justify-center">
-                                        <button className="p-1 hover:bg-white/10 rounded text-nexa-muted hover:text-white transition-colors">
-                                          <MoreHorizontal className="h-4 w-4" />
-                                        </button>
+                                      <div className="flex items-center justify-center relative session-dropdown-container">
+                                        {canInviteMembers && (
+                                          <>
+                                            <button 
+                                              onClick={() => setSessionDropdownOpen(sessionDropdownOpen === session.uuid ? null : session.uuid)}
+                                              className="p-1 hover:bg-white/10 rounded text-nexa-muted hover:text-white transition-colors"
+                                            >
+                                              <MoreHorizontal className="h-4 w-4" />
+                                            </button>
+                                            
+                                            {sessionDropdownOpen === session.uuid && (
+                                              <div className="absolute right-0 top-8 bg-black border border-white/20 rounded-lg shadow-lg z-10 min-w-48">
+                                                <div className="p-2">
+                                                  <div className="text-xs text-nexa-muted mb-2">Session Actions</div>
+                                                  <button
+                                                    onClick={() => {
+                                                      openPermissionsModal(session)
+                                                      setSessionDropdownOpen(null)
+                                                    }}
+                                                    className="w-full text-left px-3 py-2 rounded text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                                                  >
+                                                    <Lock className="h-4 w-4" />
+                                                    Configure Access
+                                                  </button>
+                                                  <button
+                                                    onClick={() => {
+                                                      window.open(`/structuring?session=${session.uuid}`, '_blank')
+                                                      setSessionDropdownOpen(null)
+                                                    }}
+                                                    className="w-full text-left px-3 py-2 rounded text-sm text-nexa-muted hover:text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                                                  >
+                                                    <Settings className="h-4 w-4" />
+                                                    View Session
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </>
+                                        )}
                                       </div>
                                     </td>
                                   </tr>
@@ -1236,6 +1383,255 @@ export default function OrganizationsPage() {
           </div>
           </div>
           )}
+
+        {/* Session Permissions Modal */}
+        {permissionsModalOpen && selectedSession && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-black border border-slate-700/50 rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Configure Session Access</h3>
+                  <p className="text-sm text-nexa-muted mt-1">
+                    {selectedSession.title || 'Untitled Session'}
+                  </p>
+                </div>
+                <button
+                  onClick={closePermissionsModal}
+                  className="text-nexa-muted hover:text-white transition-colors"
+                  disabled={permissionsLoading}
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {permissionsError && (
+                <div className="mb-4 p-3 bg-red-900/20 border border-red-500/50 rounded-lg text-red-200 text-sm">
+                  {permissionsError}
+                </div>
+              )}
+
+              {permissionsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center gap-3 text-nexa-muted">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Loading permissions...</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Access Mode Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-3">
+                      Access Control Mode
+                    </label>
+                    <div className="grid grid-cols-1 gap-3">
+                      <label className="flex items-start gap-3 p-4 border border-white/20 rounded-lg cursor-pointer hover:border-white/30 transition-colors">
+                        <input
+                          type="radio"
+                          name="accessMode"
+                          value="organization"
+                          checked={accessMode === 'organization'}
+                          onChange={(e) => setAccessMode(e.target.value as any)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <div className="text-white font-medium">Organization-wide Access (Default)</div>
+                          <div className="text-sm text-nexa-muted">All organization members have access based on their role (Owner/Admin: Full, Member: Read/Write, Viewer: Read)</div>
+                        </div>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 p-4 border border-white/20 rounded-lg cursor-pointer hover:border-white/30 transition-colors">
+                        <input
+                          type="radio"
+                          name="accessMode"
+                          value="per_role"
+                          checked={accessMode === 'per_role'}
+                          onChange={(e) => setAccessMode(e.target.value as any)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <div className="text-white font-medium">Per-Role Permissions</div>
+                          <div className="text-sm text-nexa-muted">Configure custom permissions for each role in this session</div>
+                        </div>
+                      </label>
+                      
+                      <label className="flex items-start gap-3 p-4 border border-white/20 rounded-lg cursor-pointer hover:border-white/30 transition-colors">
+                        <input
+                          type="radio"
+                          name="accessMode"
+                          value="per_user"
+                          checked={accessMode === 'per_user'}
+                          onChange={(e) => setAccessMode(e.target.value as any)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <div className="text-white font-medium">Per-User Permissions</div>
+                          <div className="text-sm text-nexa-muted">Grant specific permissions to individual users. Only selected users will have access.</div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Per-Role Configuration */}
+                  {accessMode === 'per_role' && (
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-3">
+                        Role Permissions
+                      </label>
+                      <div className="space-y-3">
+                        {['owner', 'admin', 'member', 'viewer', 'billing'].map((roleKey) => {
+                          const roleLabels: {[key: string]: string} = {
+                            owner: 'Owner',
+                            admin: 'Admin', 
+                            member: 'Member',
+                            viewer: 'Viewer',
+                            billing: 'Billing'
+                          }
+                          
+                          return (
+                            <div key={roleKey} className="flex items-center justify-between p-3 border border-white/20 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-3 h-3 rounded-full ${
+                                  roleKey === 'owner' ? 'bg-yellow-400' :
+                                  roleKey === 'admin' ? 'bg-blue-400' :
+                                  roleKey === 'member' ? 'bg-green-400' :
+                                  'bg-gray-400'
+                                }`} />
+                                <span className="text-white font-medium">{roleLabels[roleKey]}</span>
+                              </div>
+                              <select
+                                value={sessionRolePermissions[roleKey] || 'none'}
+                                onChange={(e) => setSessionRolePermissions(prev => ({
+                                  ...prev,
+                                  [roleKey]: e.target.value
+                                }))}
+                                className="bg-black border border-white/20 rounded px-3 py-1 text-white text-sm"
+                              >
+                                <option value="none">No Access</option>
+                                <option value="read">Read Only</option>
+                                <option value="write">Read & Write</option>
+                                <option value="delete">Full Access</option>
+                              </select>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Per-User Configuration */}
+                  {accessMode === 'per_user' && (
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-3">
+                        User Permissions
+                      </label>
+                      <div className="space-y-3">
+                        {availableMembers.map((member) => {
+                          const userPerm = userPermissions.find(up => up.user_id === member.id)
+                          const hasPermission = !!userPerm
+                          
+                          return (
+                            <div key={member.id} className="flex items-center justify-between p-3 border border-white/20 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={hasPermission}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setUserPermissions(prev => [...prev, { user_id: member.id, permission: 'read' }])
+                                    } else {
+                                      setUserPermissions(prev => prev.filter(up => up.user_id !== member.id))
+                                    }
+                                  }}
+                                  className="rounded"
+                                />
+                                <div>
+                                  <div className="text-white font-medium">{member.fullName}</div>
+                                  <div className="text-sm text-nexa-muted">{member.email}</div>
+                                </div>
+                              </div>
+                              {hasPermission && (
+                                <select
+                                  value={userPerm.permission}
+                                  onChange={(e) => setUserPermissions(prev => 
+                                    prev.map(up => up.user_id === member.id 
+                                      ? { ...up, permission: e.target.value }
+                                      : up
+                                    )
+                                  )}
+                                  className="bg-black border border-white/20 rounded px-3 py-1 text-white text-sm"
+                                >
+                                  <option value="read">Read Only</option>
+                                  <option value="write">Read & Write</option>
+                                  <option value="delete">Full Access</option>
+                                </select>
+                              )}
+                            </div>
+                          )
+                        })}
+                        
+                        {availableMembers.length === 0 && (
+                          <div className="text-center py-4 text-nexa-muted">
+                            No organization members found
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Permission Notes */}
+                  <div className="p-4 bg-blue-900/20 border border-blue-500/50 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <div className="w-2 h-2 bg-white rounded-full" />
+                      </div>
+                      <div className="text-sm text-blue-200">
+                        <div className="font-medium mb-2">Permission Notes:</div>
+                        <ul className="space-y-1 text-blue-300/80">
+                          <li>• Session creator always has full access regardless of these settings</li>
+                          <li>• Full Access includes delete permissions (write + delete)</li>
+                          <li>• Read & Write allows viewing and editing (read + write)</li>
+                          <li>• Read Only allows viewing but no changes (read only)</li>
+                          <li>• In per-user mode, only selected users will have any access</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-3 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={closePermissionsModal}
+                      className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10"
+                      disabled={permissionsLoading}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handlePermissionsSave}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                      disabled={permissionsLoading}
+                    >
+                      {permissionsLoading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Saving...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4" />
+                          <span>Save Permissions</span>
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         </div>
       </div>

@@ -212,6 +212,9 @@ model AIArchitectureSession {
   diagramTextsJson      Json?     @default("{}") @map("diagram_texts_json")
   visualAssetsJson      Json?     @default("{}") @map("visual_assets_json")
   
+  // Access Control
+  accessPermissions     Json      @default("{}") @map("access_permissions")
+  
   // Metadata
   sessionType           String    @default("solution") @map("session_type") @db.VarChar(50)
   isTemplate            Boolean   @default(false) @map("is_template")

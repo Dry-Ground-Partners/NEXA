@@ -129,6 +129,7 @@ This is a **well-architected, enterprise-grade database schema** designed for a 
 - loe_objects: jsonb            -- 🎯 /loe data
 - diagram_texts_json: jsonb     -- 🎯 /visuals text data
 - visual_assets_json: jsonb     -- 🎯 /visuals asset data
+- access_permissions: jsonb     -- 🎯 Granular access control
 - session_type: varchar(50)     -- solution|template|etc
 - is_template: boolean
 - tags: jsonb array
