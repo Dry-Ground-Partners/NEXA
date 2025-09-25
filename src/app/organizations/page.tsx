@@ -116,6 +116,9 @@ export default function OrganizationsPage() {
     setInviteLoading(false)
   }
 
+  // Check if current user can invite members (only owners and admins)
+  const canInviteMembers = selectedOrganization && ['owner', 'admin'].includes(selectedOrganization.role)
+
   // Handle role change
   const handleRoleChange = async (memberId: string, newRole: string) => {
     if (!selectedOrganization) return
@@ -159,7 +162,7 @@ export default function OrganizationsPage() {
       const role = formData.get('role') as string
       const personalMessage = formData.get('personalMessage') as string
 
-      const response = await fetch(`/api/organizations/${selectedOrganization.id}/invitations`, {
+      const response = await fetch(`/api/organizations/${selectedOrganization.organization.id}/invitations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -770,13 +773,15 @@ export default function OrganizationsPage() {
                           <h4 className="text-lg font-medium text-white">Member Management</h4>
                           <p className="text-sm text-nexa-muted">Add, remove, and manage organization members</p>
                         </div>
-                        <Button 
-                          className="flex items-center gap-2 bg-white hover:bg-gray-100 text-black border border-gray-300"
-                          onClick={openInviteModal}
-                        >
-                          <UserPlus className="w-4 h-4" />
-                          Invite Member
-                        </Button>
+                        {canInviteMembers && (
+                          <Button 
+                            className="flex items-center gap-2 bg-white hover:bg-gray-100 text-black border border-gray-300"
+                            onClick={openInviteModal}
+                          >
+                            <UserPlus className="w-4 h-4" />
+                            Invite Member
+                          </Button>
+                        )}
                       </div>
                       
                       {/* Member List */}
@@ -830,7 +835,7 @@ export default function OrganizationsPage() {
                               : 'Please select an organization from the "All" tab to view and manage members.'
                             }
                           </p>
-                          {selectedOrganization && (
+                          {selectedOrganization && canInviteMembers && (
                             <Button 
                               className="mt-4 bg-white hover:bg-gray-100 text-black border border-gray-300"
                               onClick={openInviteModal}
