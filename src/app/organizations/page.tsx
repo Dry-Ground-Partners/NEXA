@@ -1038,7 +1038,7 @@ export default function OrganizationsPage() {
                                         {rolePermissions[user.role as keyof typeof rolePermissions]?.label || 'Unknown'}
                                       </span>
                                     </div>
-                                    <div className="flex items-center justify-center relative">
+                                    <div className="flex items-center justify-center relative role-dropdown-container">
                                       <button 
                                         onClick={() => setRoleChangeDropdownOpen(roleChangeDropdownOpen === user.id ? null : user.id)}
                                         className="p-1 hover:bg-white/10 rounded text-nexa-muted hover:text-white transition-colors"
@@ -1053,7 +1053,9 @@ export default function OrganizationsPage() {
                                             
                                             {/* Change Role Option */}
                                             <button
-                                              onClick={() => {
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
                                                 // Could open a role change sub-menu or modal
                                                 console.log('Change role for:', user.name)
                                                 setRoleChangeDropdownOpen(null)
@@ -1069,7 +1071,11 @@ export default function OrganizationsPage() {
                                               <>
                                                 <div className="border-t border-white/10 my-2"></div>
                                                 <button
-                                                  onClick={() => openOffboardModal(user)}
+                                                  onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    openOffboardModal(user);
+                                                  }}
                                                   className="w-full text-left px-2 py-1 rounded text-xs hover:bg-yellow-400/10 text-yellow-400 transition-colors flex items-center gap-2"
                                                 >
                                                   <UserMinus className="h-3 w-3" />
@@ -1085,6 +1091,9 @@ export default function OrganizationsPage() {
                                 </div>
                               ))}
                             </div>
+                            
+                            {/* Invisible spacer to prevent dropdown overflow scrolling */}
+                            <div className="h-48 w-full"></div>
                           </div>
                         </div>
                       ) : (

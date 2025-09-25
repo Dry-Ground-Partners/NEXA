@@ -1,12 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  User,
-  LogOut,
-} from "lucide-react";
 
 interface HeaderProps {
   user?: {
@@ -27,8 +21,6 @@ interface HeaderProps {
 }
 
 export function Header({ user, selectedOrganization, currentPage = "Dashboard", onSidebarToggle, isSidebarOpen = false }: HeaderProps) {
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
   // Determine what to display in the header - prioritize organization name
   const getDisplayName = () => {
     if (selectedOrganization?.organization?.name) {
@@ -37,29 +29,15 @@ export function Header({ user, selectedOrganization, currentPage = "Dashboard", 
     return currentPage;
   };
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // Redirect to login page
-        window.location.href = "/auth/login";
-      } else {
-        console.error("Logout failed:", data.message);
-      }
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      setIsLoggingOut(false);
+  // Generate user initials for avatar
+  const getUserInitials = () => {
+    if (user?.fullName) {
+      return user.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
     }
+    if (user?.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    return 'U';
   };
 
   return (
@@ -94,35 +72,17 @@ export function Header({ user, selectedOrganization, currentPage = "Dashboard", 
             </div>
           </div>
 
-          {/* Right: User actions */}
+          {/* Right: User info with avatar */}
           <div className="flex items-center gap-3">
             {user && (
-              <>
-                <span className="text-nexa-muted text-sm hidden sm:block">
+              <div className="flex items-center gap-3">
+                <span className="text-white text-sm hidden sm:block">
                   {user.fullName || user.email}
                 </span>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="border-nexa-border text-white hover:bg-white/10"
-                >
-                  <Link href="/profile">
-                    <User className="h-4 w-4 mr-2" />
-                    Profile
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-nexa-border text-white hover:bg-white/10"
-                  onClick={handleLogout}
-                  disabled={isLoggingOut}
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  {isLoggingOut ? "Logging out..." : "Logout"}
-                </Button>
-              </>
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-black text-sm font-medium">
+                  {getUserInitials()}
+                </div>
+              </div>
             )}
           </div>
         </div>

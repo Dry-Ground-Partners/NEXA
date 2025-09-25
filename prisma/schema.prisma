@@ -150,6 +150,7 @@ model OrganizationMembership {
   // Role & permissions
   role                  MembershipRole @default(member)
   permissions           Json      @default("{}")
+  offboardingData       Json      @default("{}") @map("offboarding_data")
   
   // Invitation tracking
   invitedBy             String?   @map("invited_by") @db.Uuid

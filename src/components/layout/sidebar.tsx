@@ -15,7 +15,8 @@ import {
   Home,
   Settings,
   Users,
-  HelpCircle
+  HelpCircle,
+  LogOut
 } from "lucide-react";
 
 interface SidebarProps {
@@ -26,6 +27,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -33,6 +35,30 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Don't render on server to avoid hydration mismatch
   if (!mounted) return null;
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        window.location.href = "/auth/login";
+      } else {
+        console.error("Logout failed:", data.message);
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const mainNavItems = [
     {
@@ -236,8 +262,24 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </nav>
           </div>
 
-          {/* Footer */}
+          {/* Logout Button */}
           <div className="mt-auto p-6 border-t border-nexa-border">
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="w-full group flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 text-nexa-muted hover:text-white hover:bg-white/5 mb-4"
+            >
+              <LogOut className="h-5 w-5 flex-shrink-0 text-nexa-muted group-hover:text-white" />
+              <div className="flex-1 min-w-0 text-left">
+                <div className="text-sm font-medium">
+                  {isLoggingOut ? "Logging out..." : "Logout"}
+                </div>
+                <div className="text-xs text-nexa-muted/70 line-clamp-1">
+                  Sign out of your account
+                </div>
+              </div>
+            </button>
+            
             <div className="text-xs text-nexa-muted/60 text-center">
               <div>NEXA Platform</div>
               <div className="mt-1">v0.1.0</div>
