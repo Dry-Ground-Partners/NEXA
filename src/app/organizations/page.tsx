@@ -815,9 +815,9 @@ export default function OrganizationsPage() {
                                 ))}
                               </tbody>
                             </table>
+                            {/* Invisible spacer to prevent dropdown overflow scrolling */}
+                            <div className="h-32 w-full"></div>
                           </div>
-                          {/* Invisible spacer to prevent dropdown overflow scrolling */}
-                          <div className="h-32 w-full"></div>
                         </div>
                       ) : (
                         <div className="backdrop-blur-md bg-black border border-slate-700/50 rounded-xl p-8 text-center">

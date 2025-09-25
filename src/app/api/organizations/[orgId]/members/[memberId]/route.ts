@@ -138,7 +138,7 @@ export async function PATCH(
         newValues: { role },
         ipAddress: request.headers.get('x-forwarded-for') || 
                    request.headers.get('x-real-ip') || 
-                   'unknown',
+                   '127.0.0.1',
         userAgent: request.headers.get('user-agent') || 'unknown'
       }
     })
@@ -296,7 +296,7 @@ export async function DELETE(
         newValues: { status: 'suspended' },
         ipAddress: request.headers.get('x-forwarded-for') || 
                    request.headers.get('x-real-ip') || 
-                   'unknown',
+                   '127.0.0.1',
         userAgent: request.headers.get('user-agent') || 'unknown'
       }
     })

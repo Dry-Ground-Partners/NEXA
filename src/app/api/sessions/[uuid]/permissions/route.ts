@@ -258,7 +258,9 @@ export async function PUT(
         resourceId: session.uuid,
         oldValues: { accessPermissions: session.accessPermissions },
         newValues: { accessPermissions: newAccessPermissions },
-        ipAddress: request.ip,
+        ipAddress: request.headers.get('x-forwarded-for') || 
+                   request.headers.get('x-real-ip') || 
+                   '127.0.0.1',
         userAgent: request.headers.get('user-agent')
       }
     })
