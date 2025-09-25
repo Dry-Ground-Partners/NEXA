@@ -136,9 +136,7 @@ export async function PATCH(
         resourceId: targetMembership.user.id,
         oldValues: { role: targetMembership.role },
         newValues: { role },
-        ipAddress: request.headers.get('x-forwarded-for') || 
-                   request.headers.get('x-real-ip') || 
-                   '127.0.0.1',
+        ipAddress: '127.0.0.1', // Fixed IP for development
         userAgent: request.headers.get('user-agent') || 'unknown'
       }
     })
@@ -294,9 +292,7 @@ export async function DELETE(
         resourceId: targetMembership.user.id,
         oldValues: { status: 'active', role: targetMembership.role },
         newValues: { status: 'suspended' },
-        ipAddress: request.headers.get('x-forwarded-for') || 
-                   request.headers.get('x-real-ip') || 
-                   '127.0.0.1',
+        ipAddress: '127.0.0.1', // Fixed IP for development
         userAgent: request.headers.get('user-agent') || 'unknown'
       }
     })
