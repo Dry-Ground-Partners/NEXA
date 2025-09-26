@@ -159,3 +159,5 @@ if [ "$1" = "--cleanup" ]; then
     rm -rf .next
     print_success "✓ Cleanup completed"
 fi
+
+

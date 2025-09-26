@@ -281,3 +281,5 @@ if (require.main === module) {
 }
 
 export { runRBACTests, printTestSummary, printAPIProtectionSummary }
+
+

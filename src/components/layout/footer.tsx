@@ -56,7 +56,7 @@ export function Footer() {
           {/* Copyright */}
           <div className="text-center">
             <p className="text-nexa-muted text-sm">
-              &copy; 2024 Dry Ground AI. All rights reserved.
+              &copy; {new Date().getFullYear()} Dry Ground AI. All rights reserved.
             </p>
           </div>
         </div>

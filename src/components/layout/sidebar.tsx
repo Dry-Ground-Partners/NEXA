@@ -280,6 +280,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
             </button>
             
+            {/* Divisor */}
+            <div className="my-4">
+              <div className="h-px bg-gradient-to-r from-transparent via-nexa-border to-transparent" />
+            </div>
+            
             <div className="text-xs text-nexa-muted/60 text-center">
               <div>NEXA Studio</div>
               <div className="mt-1">v0.1.0</div>

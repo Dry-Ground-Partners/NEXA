@@ -144,3 +144,5 @@ export const requireMemberManagement = requirePermission(canSeeMemberManagement)
 export async function disconnectRbacDatabase() {
   await prisma.$disconnect()
 }
+
+
