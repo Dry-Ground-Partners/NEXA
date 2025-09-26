@@ -1852,7 +1852,6 @@ export default function OrganizationsPage() {
                         <li>• Remove access to this organization immediately</li>
                         <li>• Preserve their account and access to other organizations</li>
                         <li>• Keep complete audit trail for compliance</li>
-                        <li>• Redirect them to create a solo workspace if needed</li>
                       </ul>
                     </div>
                   </div>

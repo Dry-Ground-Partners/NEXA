@@ -218,10 +218,6 @@ export default function ProfilePage() {
                   <Building className="w-4 h-4" />
                   Organizations
                 </TabsTrigger>
-                <TabsTrigger value="billing" className="flex items-center gap-2">
-                  <CreditCard className="w-4 h-4" />
-                  Billing
-                </TabsTrigger>
                 <TabsTrigger value="settings" className="flex items-center gap-2">
                   <Settings className="w-4 h-4" />
                   Settings
@@ -495,20 +491,6 @@ export default function ProfilePage() {
                             </span>
                           </div>
 
-                          <div className="flex justify-between py-3 border-b border-nexa-border/30">
-                            <span className="text-nexa-muted">Total Logins</span>
-                            <span className="text-white">{user.loginCount || 0} logins</span>
-                          </div>
-
-                          <div className="flex justify-between py-3 border-b border-nexa-border/30">
-                            <span className="text-nexa-muted">Current Timezone</span>
-                            <span className="text-white">{user.timezone || 'UTC'}</span>
-                          </div>
-
-                          <div className="flex justify-between py-3">
-                            <span className="text-nexa-muted">Current Language</span>
-                            <span className="text-white">{user.locale === 'en' ? 'English (US)' : user.locale}</span>
-                          </div>
                         </div>
                       </div>
                     )}
@@ -538,51 +520,6 @@ export default function ProfilePage() {
                     {expandedSections.preferences && (
                       <div className="px-6 pb-6 border-t border-nexa-border">
                         <div className="space-y-4 mt-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="timezone" className="text-nexa-muted">Timezone</Label>
-                              <select
-                                id="timezone"
-                                value={formData.timezone}
-                                onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                                className="w-full mt-1 px-3 py-2 bg-nexa-input border border-nexa-border rounded-lg text-white"
-                              >
-                                <option value="UTC">UTC (Coordinated Universal Time)</option>
-                                <option value="America/New_York">Eastern Time (ET)</option>
-                                <option value="America/Chicago">Central Time (CT)</option>
-                                <option value="America/Denver">Mountain Time (MT)</option>
-                                <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                                <option value="Europe/London">London (GMT)</option>
-                                <option value="Europe/Paris">Paris (CET)</option>
-                                <option value="Asia/Tokyo">Tokyo (JST)</option>
-                              </select>
-                            </div>
-                            
-                            <div>
-                              <Label htmlFor="locale" className="text-nexa-muted">Language</Label>
-                              <select
-                                id="locale"
-                                value={formData.locale}
-                                onChange={(e) => setFormData({ ...formData, locale: e.target.value })}
-                                className="w-full mt-1 px-3 py-2 bg-nexa-input border border-nexa-border rounded-lg text-white"
-                              >
-                                <option value="en">English (US)</option>
-                                <option value="en-GB">English (UK)</option>
-                                <option value="es">Spanish</option>
-                                <option value="fr">French</option>
-                                <option value="de">German</option>
-                                <option value="ja">Japanese</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center py-3 border-b border-nexa-border/30">
-                            <div>
-                              <div className="text-white font-medium">Date Format</div>
-                              <div className="text-nexa-muted text-sm">MM/DD/YYYY (US Format)</div>
-                            </div>
-                            <Button variant="outline" size="sm" disabled>Change Format</Button>
-                          </div>
 
                           <div className="flex justify-between items-center py-3 border-b border-nexa-border/30">
                             <div>
@@ -602,172 +539,6 @@ export default function ProfilePage() {
                 </div>
               </TabsContent>
 
-              {/* Billing Tab */}
-              <TabsContent value="billing" className="mt-0">
-                <div className="space-y-6">
-                  {/* Current Plan */}
-                  <Card variant="nexa" className="p-6">
-                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <CreditCard className="w-5 h-5" />
-                      Current Plan
-                    </h4>
-                    
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h5 className="text-xl font-bold text-white mb-2">Professional Plan</h5>
-                        <p className="text-nexa-muted">Perfect for growing teams and advanced projects</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-white">$29<span className="text-sm text-nexa-muted">/month</span></div>
-                        <div className="text-xs text-nexa-muted">Billed monthly</div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-nexa-muted">Billing Cycle</span>
-                        <span className="text-white">Monthly</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-nexa-muted">Next Billing Date</span>
-                        <span className="text-white">March 15, 2024</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-nexa-muted">Payment Method</span>
-                        <span className="text-white">•••• 4242</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-nexa-muted">Status</span>
-                        <span className="text-green-400">Active</span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <Button variant="outline" disabled>Change Plan</Button>
-                      <Button variant="outline" disabled>Update Payment</Button>
-                      <Button variant="outline" disabled>Cancel Subscription</Button>
-                    </div>
-                  </Card>
-
-                  {/* Usage & Limits */}
-                  <Card variant="nexa" className="p-6">
-                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-yellow-400" />
-                      Usage & Limits
-                    </h4>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-nexa-muted">AI Credits</span>
-                          <span className="text-white">2,847 / 5,000</span>
-                        </div>
-                        <div className="w-full bg-nexa-border rounded-full h-2">
-                          <div className="bg-blue-400 h-2 rounded-full" style={{width: '57%'}}></div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-nexa-muted">Storage</span>
-                          <span className="text-white">1.2 GB / 10 GB</span>
-                        </div>
-                        <div className="w-full bg-nexa-border rounded-full h-2">
-                          <div className="bg-green-400 h-2 rounded-full" style={{width: '12%'}}></div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-nexa-muted">Team Members</span>
-                          <span className="text-white">3 / 10</span>
-                        </div>
-                        <div className="w-full bg-nexa-border rounded-full h-2">
-                          <div className="bg-purple-400 h-2 rounded-full" style={{width: '30%'}}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Billing History */}
-                  <Card variant="nexa" className="p-6">
-                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <DollarSign className="w-5 h-5 text-green-400" />
-                      Billing History
-                    </h4>
-                    
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center py-3 border-b border-nexa-border/30">
-                        <div>
-                          <div className="text-white font-medium">Professional Plan</div>
-                          <div className="text-nexa-muted text-sm">February 15, 2024</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-white">$29.00</div>
-                          <div className="text-green-400 text-sm">Paid</div>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between items-center py-3 border-b border-nexa-border/30">
-                        <div>
-                          <div className="text-white font-medium">Professional Plan</div>
-                          <div className="text-nexa-muted text-sm">January 15, 2024</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-white">$29.00</div>
-                          <div className="text-green-400 text-sm">Paid</div>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between items-center py-3 border-b border-nexa-border/30">
-                        <div>
-                          <div className="text-white font-medium">Professional Plan</div>
-                          <div className="text-nexa-muted text-sm">December 15, 2023</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-white">$29.00</div>
-                          <div className="text-green-400 text-sm">Paid</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button variant="outline" className="w-full mt-4" disabled>
-                      View All Invoices
-                    </Button>
-                  </Card>
-
-                  {/* Tax Information */}
-                  <Card variant="nexa" className="p-6">
-                    <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      <Building className="w-5 h-5" />
-                      Tax Information
-                    </h4>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-nexa-muted">Tax ID</span>
-                        <span className="text-white">Not provided</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-nexa-muted">Billing Address</span>
-                        <span className="text-white">San Francisco, CA</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-nexa-muted">Tax Rate</span>
-                        <span className="text-white">8.75%</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-nexa-muted">Currency</span>
-                        <span className="text-white">USD</span>
-                      </div>
-                    </div>
-
-                    <Button variant="outline" className="w-full mt-4" disabled>
-                      Update Tax Information
-                    </Button>
-                  </Card>
-                </div>
-              </TabsContent>
 
               {/* Organizations Tab */}
               <TabsContent value="organizations" className="mt-0">

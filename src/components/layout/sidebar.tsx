@@ -281,7 +281,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </button>
             
             <div className="text-xs text-nexa-muted/60 text-center">
-              <div>NEXA Platform</div>
+              <div>NEXA Studio</div>
               <div className="mt-1">v0.1.0</div>
             </div>
           </div>
