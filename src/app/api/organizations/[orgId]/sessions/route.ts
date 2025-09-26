@@ -1,34 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAuth } from '@/lib/auth'
+import { requireAccessManagement } from '@/lib/api-rbac'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { orgId: string } }
 ) {
   try {
-    const user = await verifyAuth(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { orgId } = params
 
-    // Verify user has access to this organization
-    const userMembership = await prisma.organizationMembership.findFirst({
-      where: {
-        userId: user.id,
-        organizationId: orgId,
-        status: 'active'
-      }
-    })
-
-    if (!userMembership) {
+    // RBAC: Require Access Management permission (excludes Billing users)
+    const roleInfo = await requireAccessManagement(request, orgId)
+    if (!roleInfo) {
       return NextResponse.json(
-        { error: 'Access denied to this organization' },
+        { error: 'Access denied - Access management permission required' },
         { status: 403 }
       )
     }
+
+    const { user } = roleInfo
 
     // Get all sessions for this organization (simplified query first)
     const sessions = await prisma.aIArchitectureSession.findMany({

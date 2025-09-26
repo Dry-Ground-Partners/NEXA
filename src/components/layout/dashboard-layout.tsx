@@ -5,6 +5,7 @@ import { Header } from './header'
 import { Footer } from './footer'
 import { Sidebar } from './sidebar'
 import { useUser } from '@/contexts/user-context'
+import { RoleDebugPanel } from '@/components/rbac/RoleDebugPanel'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -100,6 +101,9 @@ function DashboardLayoutInner({
         
         <Footer />
       </div>
+      
+      {/* RBAC Debug Panel - Development Only */}
+      <RoleDebugPanel />
     </div>
   )
 }

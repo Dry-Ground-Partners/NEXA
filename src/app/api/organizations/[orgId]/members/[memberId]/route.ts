@@ -1,20 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAuth } from '@/lib/auth'
+import { requireMemberManagement } from '@/lib/api-rbac'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { orgId: string; memberId: string } }
 ) {
   try {
-    const user = await verifyAuth(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { orgId, memberId } = params
     const body = await request.json()
     const { action, role, reason } = body
+
+    // RBAC: Only Owners can manage members and roles
+    const roleInfo = await requireMemberManagement(request, orgId)
+    if (!roleInfo) {
+      return NextResponse.json(
+        { error: 'Access denied - Owner permission required for member management' },
+        { status: 403 }
+      )
+    }
+
+    const { user, role: userRole } = roleInfo
 
     // Validate action
     const validActions = ['change_role', 'offboard']
@@ -34,30 +41,6 @@ export async function PATCH(
           { status: 400 }
         )
       }
-    }
-
-    // Verify user has permission to change roles in this organization
-    const userMembership = await prisma.organizationMembership.findFirst({
-      where: {
-        userId: user.id,
-        organizationId: orgId,
-        status: 'active'
-      }
-    })
-
-    if (!userMembership) {
-      return NextResponse.json(
-        { error: 'Access denied to this organization' },
-        { status: 403 }
-      )
-    }
-
-    // Only owners and admins can change roles
-    if (!['owner', 'admin'].includes(userMembership.role)) {
-      return NextResponse.json(
-        { error: 'Insufficient permissions to change roles' },
-        { status: 403 }
-      )
     }
 
     // Get the target membership
@@ -108,7 +91,7 @@ export async function PATCH(
       }
 
       // Prevent non-owners from changing owner roles or creating new owners
-      if (userMembership.role !== 'owner') {
+      if (userRole !== 'owner') {
         if (targetMembership.role === 'owner' || role === 'owner') {
           return NextResponse.json(
             { error: 'Only owners can modify owner roles' },
@@ -136,7 +119,7 @@ export async function PATCH(
       }
 
       // Prevent non-owners from offboarding owners
-      if (userMembership.role !== 'owner' && targetMembership.role === 'owner') {
+      if (userRole !== 'owner' && targetMembership.role === 'owner') {
         return NextResponse.json(
           { error: 'Only owners can offboard other owners' },
           { status: 403 }
@@ -188,8 +171,8 @@ export async function PATCH(
         nexa_offboarded: {
           status: 'offboarded',
           timestamp: new Date().toISOString(),
-          offboarded_by_user_id: user.id,
-          offboarded_by_name: user.fullName || user.email,
+        offboarded_by_user_id: user!.id,
+        offboarded_by_name: user!.fullName || user!.email,
           reason: reason || 'administrative_action',
           organization_name: organization?.name || 'Unknown Organization',
           original_role: targetMembership.role,
@@ -238,8 +221,8 @@ export async function PATCH(
     await prisma.auditLog.create({
       data: {
         organizationId: orgId,
-        userId: user.id,
-        action: auditAction,
+        userId: user!.id,
+        action: auditAction!,
         resourceType: 'user',
         resourceId: targetMembership.user.id,
         oldValues: auditOldValues,
@@ -256,17 +239,17 @@ export async function PATCH(
         ? `Role changed to ${role}` 
         : `Member offboarded successfully`,
       membership: {
-        id: updatedMembership.id,
-        userId: updatedMembership.user.id,
-        email: updatedMembership.user.email,
-        name: updatedMembership.user.fullName || `${updatedMembership.user.firstName} ${updatedMembership.user.lastName}`,
-        avatarUrl: updatedMembership.user.avatarUrl,
-        role: updatedMembership.role,
-        status: updatedMembership.status,
-        joinedAt: updatedMembership.joinedAt,
-        emailVerified: !!updatedMembership.user.emailVerifiedAt,
+        id: updatedMembership!.id,
+        userId: updatedMembership!.user.id,
+        email: updatedMembership!.user.email,
+        name: updatedMembership!.user.fullName || `${updatedMembership!.user.firstName} ${updatedMembership!.user.lastName}`,
+        avatarUrl: updatedMembership!.user.avatarUrl,
+        role: updatedMembership!.role,
+        status: updatedMembership!.status,
+        joinedAt: updatedMembership!.joinedAt,
+        emailVerified: !!updatedMembership!.user.emailVerifiedAt,
         ...(action === 'offboard' && { 
-          offboardingData: updatedMembership.offboardingData 
+          offboardingData: updatedMembership!.offboardingData 
         })
       }
     })
@@ -285,36 +268,18 @@ export async function DELETE(
   { params }: { params: { orgId: string; memberId: string } }
 ) {
   try {
-    const user = await verifyAuth(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { orgId, memberId } = params
 
-    // Verify user has permission to remove members from this organization
-    const userMembership = await prisma.organizationMembership.findFirst({
-      where: {
-        userId: user.id,
-        organizationId: orgId,
-        status: 'active'
-      }
-    })
-
-    if (!userMembership) {
+    // RBAC: Only Owners can remove members
+    const roleInfo = await requireMemberManagement(request, orgId)
+    if (!roleInfo) {
       return NextResponse.json(
-        { error: 'Access denied to this organization' },
+        { error: 'Access denied - Owner permission required for member removal' },
         { status: 403 }
       )
     }
 
-    // Only owners and admins can remove members
-    if (!['owner', 'admin'].includes(userMembership.role)) {
-      return NextResponse.json(
-        { error: 'Insufficient permissions to remove members' },
-        { status: 403 }
-      )
-    }
+    const { user, role: userRole } = roleInfo
 
     // Get the target membership
     const targetMembership = await prisma.organizationMembership.findFirst({
@@ -362,7 +327,7 @@ export async function DELETE(
     }
 
     // Prevent non-owners from removing owners
-    if (userMembership.role !== 'owner' && targetMembership.role === 'owner') {
+    if (userRole !== 'owner' && targetMembership.role === 'owner') {
       return NextResponse.json(
         { error: 'Only owners can remove other owners' },
         { status: 403 }
@@ -370,7 +335,7 @@ export async function DELETE(
     }
 
     // Prevent users from removing themselves if they're the last admin/owner
-    if (targetMembership.userId === user.id) {
+    if (targetMembership.userId === user!.id) {
       if (targetMembership.role === 'owner') {
         const ownerCount = await prisma.organizationMembership.count({
           where: {
@@ -401,7 +366,7 @@ export async function DELETE(
     await prisma.auditLog.create({
       data: {
         organizationId: orgId,
-        userId: user.id,
+        userId: user!.id,
         action: 'member_removal',
         resourceType: 'user',
         resourceId: targetMembership.user.id,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { requireMemberManagement } from '@/lib/api-rbac'
 
 /**
  * GET /api/organizations/[orgId]/members-for-permissions
@@ -11,32 +12,18 @@ export async function GET(
   { params }: { params: { orgId: string } }
 ) {
   try {
-    const user = await getCurrentUser()
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-
     const { orgId } = params
 
-    // Verify user has permission to view members
-    const membership = await prisma.organizationMembership.findFirst({
-      where: {
-        userId: user.id,
-        organizationId: orgId,
-        status: 'active',
-        role: { in: ['owner', 'admin'] } // Only owners and admins can assign permissions
-      }
-    })
-
-    if (!membership) {
+    // RBAC: Only Owners can assign permissions
+    const roleInfo = await requireMemberManagement(request, orgId)
+    if (!roleInfo) {
       return NextResponse.json(
-        { success: false, error: 'Insufficient permissions' },
+        { success: false, error: 'Access denied - Owner permission required for permission management' },
         { status: 403 }
       )
     }
+
+    const { user } = roleInfo
 
     // Get all active members
     const members = await prisma.organizationMembership.findMany({
@@ -90,5 +77,6 @@ export async function GET(
     )
   }
 }
+
 
 

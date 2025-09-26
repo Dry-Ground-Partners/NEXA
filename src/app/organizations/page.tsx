@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import type { AuthUser } from '@/types'
+import { useUserRole } from '@/hooks/useUserRole'
 
 interface Organization {
   id: string
@@ -60,8 +61,17 @@ interface User extends AuthUser {
 export default function OrganizationsPage() {
   const router = useRouter()
   const { user, loading, error, selectedOrganization, setSelectedOrganization, refreshUser } = useUser()
+  const { role, canAccessOrganizations, canSeeBilling, canSeeAccess, canSeeRoleManagement, canSeeMemberManagement } = useUserRole()
   const [activeTab, setActiveTab] = useState('all')
   const [accessActiveSection, setAccessActiveSection] = useState('sessions')
+
+  // RBAC: Redirect Member/Viewer users to profile page
+  useEffect(() => {
+    if (!loading && role && !canAccessOrganizations) {
+      console.log(`🔒 RBAC: Role "${role}" cannot access /organizations, redirecting to /profile`)
+      router.push('/profile?tab=organizations&redirected=true')
+    }
+  }, [role, canAccessOrganizations, loading, router])
   
   // Organization data state (local to this page)
   const [organizationData, setOrganizationData] = useState<any>({
@@ -606,14 +616,23 @@ export default function OrganizationsPage() {
                     <Building className="w-4 h-4 mr-2" />
                     All
                   </TabsTrigger>
-                  <TabsTrigger value="access">
-                    <Users className="w-4 h-4 mr-2" />
-                    Access
-                  </TabsTrigger>
-                  <TabsTrigger value="billing">
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Billing
-                  </TabsTrigger>
+                  
+                  {/* RBAC: Hide Access tab for Billing role */}
+                  {canSeeAccess && (
+                    <TabsTrigger value="access">
+                      <Users className="w-4 h-4 mr-2" />
+                      Access
+                    </TabsTrigger>
+                  )}
+                  
+                  {/* RBAC: Hide Billing tab for Admin role */}
+                  {canSeeBilling && (
+                    <TabsTrigger value="billing">
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Billing
+                    </TabsTrigger>
+                  )}
+                  
                   <TabsTrigger value="history">
                     <History className="w-4 h-4 mr-2" />
                     History
@@ -749,7 +768,8 @@ export default function OrganizationsPage() {
               </TabsContent>
 
               {/* Access Management Tab Content */}
-              <TabsContent value="access" className="mt-0">
+              {canSeeAccess && (
+                <TabsContent value="access" className="mt-0">
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
                     <Shield className="h-6 w-6 text-white" />
@@ -759,10 +779,10 @@ export default function OrganizationsPage() {
                   {/* Section Navigation */}
                   <div className="flex items-center gap-2 bg-white/5 p-2 rounded-lg border border-white/10">
                     {[
-                      { id: 'sessions', label: 'Session Controls', icon: Lock },
-                      { id: 'roles', label: 'Role Enforcement', icon: Key },
-                      { id: 'members', label: 'Member Management', icon: Users }
-                    ].map(section => {
+                      { id: 'sessions', label: 'Session Controls', icon: Lock, show: true },
+                      { id: 'roles', label: 'Role Enforcement', icon: Key, show: canSeeRoleManagement },
+                      { id: 'members', label: 'Member Management', icon: Users, show: canSeeMemberManagement }
+                    ].filter(section => section.show).map(section => {
                       const Icon = section.icon
                       const isActive = accessActiveSection === section.id
                       return (
@@ -904,7 +924,7 @@ export default function OrganizationsPage() {
                   )}
 
                   {/* Role Enforcement Section */}
-                  {accessActiveSection === 'roles' && (
+                  {accessActiveSection === 'roles' && canSeeRoleManagement && (
                     <div className="space-y-6">
                       <div>
                         <h4 className="text-lg font-medium text-white">Role Distribution & Management</h4>
@@ -992,7 +1012,7 @@ export default function OrganizationsPage() {
                   )}
 
                   {/* Member Management Section */}
-                  {accessActiveSection === 'members' && (
+                  {accessActiveSection === 'members' && canSeeMemberManagement && (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div>
@@ -1123,9 +1143,11 @@ export default function OrganizationsPage() {
                   )}
                 </div>
               </TabsContent>
+              )}
 
               {/* Billing Tab Content */}
-              <TabsContent value="billing" className="mt-0">
+              {canSeeBilling && (
+                <TabsContent value="billing" className="mt-0">
                 <div className="space-y-6">
                   {/* Current Plan */}
                   <Card className="backdrop-blur-md bg-black border border-slate-700/50 p-6">
@@ -1259,6 +1281,7 @@ export default function OrganizationsPage() {
                   </Card>
                 </div>
               </TabsContent>
+              )}
 
               {/* History Tab Content */}
               <TabsContent value="history" className="mt-0">

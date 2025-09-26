@@ -2,20 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAuth } from '@/lib/auth'
 import { v4 as uuidv4 } from 'uuid'
+import { requireMemberManagement } from '@/lib/api-rbac'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { orgId: string } }
 ) {
   try {
-    const user = await verifyAuth(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { orgId } = params
     const body = await request.json()
     const { email, firstName, lastName, role, personalMessage } = body
+
+    // RBAC: Only Owners can invite members
+    const roleInfo = await requireMemberManagement(request, orgId)
+    if (!roleInfo) {
+      return NextResponse.json(
+        { error: 'Access denied - Owner permission required to invite members' },
+        { status: 403 }
+      )
+    }
+
+    const { user } = roleInfo
 
     // Validate required fields
     if (!email || !firstName || !lastName || !role) {
@@ -25,23 +32,16 @@ export async function POST(
       )
     }
 
-    // Verify user has permission to invite to this organization
-    const membership = await prisma.organizationMembership.findFirst({
-      where: {
-        userId: user.id,
-        organizationId: orgId,
-        status: 'active',
-        role: { in: ['owner', 'admin'] } // Only owners and admins can invite
-      },
-      include: {
-        organization: true
-      }
+    // Get organization info (we know user has access from RBAC check)
+    const organization = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { name: true }
     })
 
-    if (!membership) {
+    if (!organization) {
       return NextResponse.json(
-        { error: 'Insufficient permissions to invite users to this organization' },
-        { status: 403 }
+        { error: 'Organization not found' },
+        { status: 404 }
       )
     }
 
@@ -91,7 +91,7 @@ export async function POST(
         
         // Simple policy: Only owners can re-invite users offboarded for security reasons
         if (['security_concern', 'policy_violation'].includes(reason) && 
-            membership.role !== 'owner') {
+            roleInfo.role !== 'owner') {
           return NextResponse.json(
             { 
               error: 'Only owners can re-invite users offboarded for security or policy violations',
@@ -135,7 +135,7 @@ export async function POST(
         role,
         status: 'pending',
         invitationToken,
-        invitedBy: user.id,
+        invitedBy: user!.id,
         invitedAt: new Date(),
       }
     })
@@ -148,9 +148,9 @@ export async function POST(
       verification_code: invitationToken,
       verification_url: verificationUrl,
       user_name: `${firstName} ${lastName}`.trim(),
-      organization_name: membership.organization.name,
+      organization_name: organization.name,
       email_type: 'organization_invitation',
-      subject: `You're invited to join ${membership.organization.name} on NEXA`
+      subject: `You're invited to join ${organization.name} on NEXA`
     }
 
     // Send email via external service
@@ -191,7 +191,7 @@ export async function POST(
     await prisma.auditLog.create({
       data: {
         organizationId: orgId,
-        userId: user.id,
+        userId: user!.id,
         action: isReInvite ? 'member_reinvite' : 'member_invite',
         resourceType: 'user',
         resourceId: existingUser?.id || organizationMembership.userId,
@@ -201,8 +201,8 @@ export async function POST(
         newValues: { 
           email,
           role,
-          invited_by: user.id,
-          invited_by_name: user.fullName || user.email,
+          invited_by: user!.id,
+          invited_by_name: user!.fullName || user!.email,
           ...(isReInvite && { 
             reinvite_reason: 'role_reopened',
             previous_offboard_reason: previousOffboardingData?.nexa_offboarded?.reason
@@ -214,7 +214,7 @@ export async function POST(
     })
 
     // Return success response
-    const expiresAt = new Date(organizationMembership.invitedAt)
+    const expiresAt = new Date(organizationMembership.invitedAt!)
     expiresAt.setDate(expiresAt.getDate() + 7) // Calculate expiration (7 days from invitation)
     
     return NextResponse.json({
@@ -251,29 +251,18 @@ export async function GET(
   { params }: { params: { orgId: string } }
 ) {
   try {
-    const user = await verifyAuth(request)
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { orgId } = params
 
-    // Verify user has permission to view invitations
-    const membership = await prisma.organizationMembership.findFirst({
-      where: {
-        userId: user.id,
-        organizationId: orgId,
-        status: 'active',
-        role: { in: ['owner', 'admin'] }
-      }
-    })
-
-    if (!membership) {
+    // RBAC: Only Owners can view invitations
+    const roleInfo = await requireMemberManagement(request, orgId)
+    if (!roleInfo) {
       return NextResponse.json(
-        { error: 'Insufficient permissions' },
+        { error: 'Access denied - Owner permission required to view invitations' },
         { status: 403 }
       )
     }
+
+    const { user } = roleInfo
 
     // Get all pending invitations for the organization (filter expired ones after fetch)
     const sevenDaysAgo = new Date()
@@ -311,7 +300,7 @@ export async function GET(
 
     return NextResponse.json({
       invitations: invitations.map(inv => {
-        const expiresAt = new Date(inv.invitedAt)
+        const expiresAt = new Date(inv.invitedAt!)
         expiresAt.setDate(expiresAt.getDate() + 7) // Calculate expiration (7 days from invitation)
         
         return {

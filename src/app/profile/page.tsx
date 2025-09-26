@@ -11,6 +11,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ArrowLeft, User, Calendar, Shield, Building, Plus, Settings, Users, Crown, Mail, Globe, ChevronRight, Lightbulb, ChevronDown, CreditCard, DollarSign, Zap, Mic, Palette, Sliders } from 'lucide-react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import type { OrganizationMembership, Organization } from '@/types'
+import { useUserRole } from '@/hooks/useUserRole'
+import { useUser } from '@/contexts/user-context'
 
 interface User {
   id: string
@@ -31,11 +33,37 @@ interface User {
   updatedAt: string
 }
 
+// Helper functions for role display
+const getRoleColor = (role: string) => {
+  switch (role) {
+    case 'owner': return 'text-yellow-400'
+    case 'admin': return 'text-blue-400'  
+    case 'member': return 'text-green-400'
+    case 'viewer': return 'text-gray-400'
+    case 'billing': return 'text-purple-400'
+    default: return 'text-gray-400'
+  }
+}
+
+const getRoleIcon = (role: string) => {
+  switch (role) {
+    case 'owner': return <Crown className="w-4 h-4" />
+    case 'admin': return <Shield className="w-4 h-4" />
+    case 'member': return <User className="w-4 h-4" />
+    case 'viewer': return <User className="w-4 h-4" />
+    case 'billing': return <CreditCard className="w-4 h-4" />
+    default: return <User className="w-4 h-4" />
+  }
+}
+
 export default function ProfilePage() {
+  const { canAccessOrganizations } = useUserRole()
+  const { user: contextUser, selectedOrganization, setSelectedOrganization } = useUser()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [activeTab, setActiveTab] = useState('profile')
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -214,10 +242,13 @@ export default function ProfilePage() {
                   <User className="w-4 h-4" />
                   Profile
                 </TabsTrigger>
-                <TabsTrigger value="organizations" className="flex items-center gap-2">
-                  <Building className="w-4 h-4" />
-                  Organizations
-                </TabsTrigger>
+                {/* RBAC: Only show Organizations tab for Member/Viewer who can't access /organizations */}
+                {!canAccessOrganizations && (
+                  <TabsTrigger value="organizations" className="flex items-center gap-2">
+                    <Building className="w-4 h-4" />
+                    Organizations
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="settings" className="flex items-center gap-2">
                   <Settings className="w-4 h-4" />
                   Settings
@@ -540,105 +571,134 @@ export default function ProfilePage() {
               </TabsContent>
 
 
-              {/* Organizations Tab */}
-              <TabsContent value="organizations" className="mt-0">
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-xl font-semibold text-white mb-2">Your Organizations</h3>
-                      <p className="text-nexa-muted">Manage your organization memberships and create new organizations</p>
+              {/* Organizations Tab - Only for Member/Viewer */}
+              {!canAccessOrganizations && (
+                <TabsContent value="organizations" className="mt-0">
+                  <div className="space-y-6">
+                    {/* Header with Read-Only Badge */}
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-xl font-semibold text-white mb-2">Your Organizations</h3>
+                        <p className="text-nexa-muted">Switch between organizations and view read-only information</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 bg-gray-500/20 text-gray-400 text-xs font-medium rounded-full border border-gray-500/30">
+                          Read Only Access
+                        </span>
+                      </div>
                     </div>
-                    <Link href="/organizations/create">
-                      <Button className="flex items-center gap-2">
-                        <Plus className="w-4 h-4" />
-                        Create Organization
-                      </Button>
-                    </Link>
-                  </div>
 
-                  {user.organizationMemberships && user.organizationMemberships.length > 0 ? (
-                    <div className="grid gap-4">
-                      {user.organizationMemberships.map((membership) => (
-                        <Card key={membership.id} className="backdrop-blur-md bg-black border border-slate-700/50 p-6 hover:border-slate-600/50 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                                {membership.organization?.name?.charAt(0).toUpperCase() || 'O'}
+                    {/* Organization Switcher */}
+                    <Card variant="nexa" className="p-6">
+                      <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <Building className="w-5 h-5" />
+                        Switch Organization
+                      </h4>
+                      <div className="grid gap-3">
+                        {contextUser?.organizationMemberships?.map((membership) => (
+                          <div key={membership.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
+                                {membership.organization.name.charAt(0)}
                               </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-1">
-                                  <h4 className="text-lg font-semibold text-white">
-                                    {membership.organization?.name || 'Unknown Organization'}
-                                  </h4>
-                                  {membership.organization?.planType && (
-                                    <span className="px-2 py-1 bg-blue-600/20 text-blue-400 text-xs font-medium rounded-full border border-blue-500/30">
-                                      {membership.organization.planType.charAt(0).toUpperCase() + membership.organization.planType.slice(1)}
-                                    </span>
-                                  )}
-                                </div>
+                              <div>
+                                <div className="text-white font-medium">{membership.organization.name}</div>
                                 <div className="flex items-center gap-2 text-sm">
                                   <span className={`flex items-center gap-1 ${getRoleColor(membership.role)}`}>
                                     {getRoleIcon(membership.role)}
-                                    {membership.role.charAt(0).toUpperCase() + membership.role.slice(1)}
+                                    {membership.role}
                                   </span>
                                   <span className="text-nexa-muted">•</span>
-                                  <span className="text-nexa-muted">
-                                    Joined {membership.joinedAt ? new Date(membership.joinedAt).toLocaleDateString() : 'Unknown'}
+                                  <span className={`text-xs ${
+                                    membership.organization.status === 'active' ? 'text-green-400' : 'text-yellow-400'
+                                  }`}>
+                                    {membership.organization.status}
                                   </span>
-                                  {membership.organization?.status && (
-                                    <>
-                                      <span className="text-nexa-muted">•</span>
-                                      <span className={`text-xs font-medium ${
-                                        membership.organization.status === 'active' ? 'text-green-400' : 'text-yellow-400'
-                                      }`}>
-                                        {membership.organization.status.charAt(0).toUpperCase() + membership.organization.status.slice(1)}
-                                      </span>
-                                    </>
-                                  )}
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                className="bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30"
-                              >
-                                <Settings className="w-4 h-4" />
-                              </Button>
-                              <ChevronRight className="w-5 h-5 text-nexa-muted" />
-                            </div>
+                            <Button 
+                              onClick={() => setSelectedOrganization(membership)}
+                              variant={selectedOrganization?.id === membership.id ? "default" : "outline"}
+                              size="sm"
+                            >
+                              {selectedOrganization?.id === membership.id ? 'Current' : 'Switch'}
+                            </Button>
                           </div>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : (
-                    <Card className="backdrop-blur-md bg-black border border-slate-700/50 p-8 text-center">
-                      <Building className="w-16 h-16 text-nexa-muted mx-auto mb-4" />
-                      <h4 className="text-lg font-semibold text-white mb-2">No Organizations</h4>
-                      <p className="text-nexa-muted mb-6">
-                        You're currently not a member of any organizations. Create one to collaborate with your team or join an existing organization.
-                      </p>
-                      <div className="flex justify-center gap-3">
-                        <Link href="/organizations/create">
-                          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Organization
-                          </Button>
-                        </Link>
-                        <Button 
-                          variant="outline" 
-                          disabled
-                          className="bg-white/5 border-white/20 text-white"
-                        >
-                          <Mail className="w-4 h-4 mr-2" />
-                          Join Organization
-                        </Button>
+                        ))}
                       </div>
                     </Card>
-                  )}
-                </div>
+
+                    {/* Organization Overview - Copy of All tab content */}
+                    {selectedOrganization && (
+                      <Card variant="nexa" className="p-6">
+                        <div className="flex items-center justify-between mb-6">
+                          <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <Building className="w-5 h-5" />
+                            Organization Overview
+                          </h4>
+                          <span className="px-2 py-1 bg-gray-500/20 text-gray-400 text-xs rounded-full">Read Only</span>
+                        </div>
+                        
+                        {/* Organization Basic Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                          <div className="space-y-3">
+                            <h5 className="text-md font-medium text-white">Organization Details</h5>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-nexa-muted">Name:</span>
+                                <span className="text-white">{selectedOrganization.organization.name}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-nexa-muted">Plan:</span>
+                                <span className="text-white capitalize">{selectedOrganization.organization.planType}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-nexa-muted">Status:</span>
+                                <span className={`${selectedOrganization.organization.status === 'active' ? 'text-green-400' : 'text-yellow-400'}`}>
+                                  {selectedOrganization.organization.status}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-3">
+                            <h5 className="text-md font-medium text-white">Your Role</h5>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-nexa-muted">Role:</span>
+                                <span className={`flex items-center gap-1 ${getRoleColor(selectedOrganization.role)}`}>
+                                  {getRoleIcon(selectedOrganization.role)}
+                                  {selectedOrganization.role}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-nexa-muted">Joined:</span>
+                                <span className="text-white">
+                                  {selectedOrganization.joinedAt ? new Date(selectedOrganization.joinedAt).toLocaleDateString() : 'Unknown'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Note about limited access */}
+                        <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                            <div className="text-sm">
+                              <div className="text-blue-200 font-medium mb-1">Limited Access</div>
+                              <div className="text-blue-300/80">
+                                As a {selectedOrganization.role}, you have read-only access to organization information. 
+                                For full organization management, contact an administrator.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+                  </div>
               </TabsContent>
+              )}
 
               {/* Settings Tab */}
               <TabsContent value="settings" className="mt-0">
