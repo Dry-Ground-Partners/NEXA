@@ -98,6 +98,8 @@ model User {
   usageEvents           UsageEvent[]
   auditLogs             AuditLog[]
   invitedMemberships    OrganizationMembership[] @relation("InvitedBy")
+  createdPreferences    OrganizationPreference[] @relation("PreferenceCreator")
+  updatedPreferences    OrganizationPreference[] @relation("PreferenceUpdater")
 
   @@map("users")
 }
@@ -138,6 +140,7 @@ model Organization {
   domains               OrganizationDomain[]
   usageEvents           UsageEvent[]
   auditLogs             AuditLog[]
+  preferences           OrganizationPreference?
 
   @@map("organizations")
 }
@@ -303,5 +306,46 @@ model PlanDefinition {
   updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
 
   @@map("plan_definitions")
+}
+
+model OrganizationPreference {
+  id                      String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organizationId          String       @unique @map("organization_id") @db.Uuid
+  
+  // Logos (Base64 storage)
+  mainLogo                String?      @map("main_logo") @db.Text
+  mainLogoFilename        String?      @map("main_logo_filename") @db.VarChar(255)
+  mainLogoMimeType        String?      @map("main_logo_mime_type") @db.VarChar(50)
+  mainLogoSizeBytes       Int?         @map("main_logo_size_bytes")
+  
+  secondLogo              String?      @map("second_logo") @db.Text
+  secondLogoFilename      String?      @map("second_logo_filename") @db.VarChar(255)
+  secondLogoMimeType      String?      @map("second_logo_mime_type") @db.VarChar(50)
+  secondLogoSizeBytes     Int?         @map("second_logo_size_bytes")
+  
+  // General approach
+  generalApproach         String?      @map("general_approach") @db.Text
+  
+  // Stage-specific preferences (JSONB)
+  structuringPreferences  Json         @default("{\"diagnose\": \"\", \"echo\": \"\", \"traceback\": \"\", \"solution\": \"\"}") @map("structuring_preferences")
+  visualsPreferences      Json         @default("{\"ideation\": \"\", \"planning\": \"\", \"sketching\": \"\"}") @map("visuals_preferences")
+  solutioningPreferences  Json         @default("{\"structure\": \"\", \"analysis\": \"\", \"stack\": \"\", \"enhance\": \"\", \"formatting\": \"\"}") @map("solutioning_preferences")
+  pushingPreferences      Json         @default("{\"structuringToVisuals\": \"\", \"visualsToSolutioning\": \"\", \"solutioningToSOW\": \"\", \"sowToLOE\": \"\"}") @map("pushing_preferences")
+  
+  // Audit trail
+  changeHistory           Json         @default("[]") @map("change_history")
+  
+  // System fields
+  createdAt               DateTime     @default(now()) @map("created_at")
+  updatedAt               DateTime     @default(now()) @updatedAt @map("updated_at")
+  createdBy               String?      @map("created_by") @db.Uuid
+  updatedBy               String?      @map("updated_by") @db.Uuid
+  
+  // Relations
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator                 User?        @relation("PreferenceCreator", fields: [createdBy], references: [id])
+  updater                 User?        @relation("PreferenceUpdater", fields: [updatedBy], references: [id])
+
+  @@map("organization_preferences")
 }
 
