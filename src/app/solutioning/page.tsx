@@ -38,6 +38,7 @@ import type { SolutioningSessionData, SessionResponse } from '@/lib/sessions'
 import { createDefaultSolutioningData } from '@/lib/sessions'
 import { useHyperCanvasChat } from '@/hooks/useHyperCanvasChat'
 import { ChatInterface } from '@/components/hyper-canvas/ChatInterface'
+import { useUser } from '@/contexts/user-context'
 
 interface Solution {
   id: number
@@ -60,6 +61,9 @@ interface Solution {
 }
 
 export default function SolutioningPage() {
+  // Get organization context for usage tracking
+  const { selectedOrganization } = useUser()
+  
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   
@@ -489,11 +493,18 @@ export default function SolutioningPage() {
 
     setSaving(true)
     
-    try {
-      console.log('🚀 Starting transition to SOW...')
+    // Validate organization selection
+    if (!selectedOrganization) {
+      alert('⚠️ Please select an organization before pushing features.')
+      return
+    }
 
-      // 1. Generate SOW data from current solutioning data
-      const response = await fetch('/api/solutioning/generate-sow', {
+    try {
+      const orgId = selectedOrganization.organization.id
+      console.log(`🚀 Pushing to SOW for org ${orgId}...`)
+
+      // 1. Generate SOW data from current solutioning data (org-scoped)
+      const response = await fetch(`/api/organizations/${orgId}/solutioning/generate-sow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ solutioningData: sessionData })
@@ -506,6 +517,20 @@ export default function SolutioningPage() {
       }
       
       console.log('✅ SOW generated successfully')
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        
+        if (result.usage.warning?.isNearLimit) {
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits.`)
+        }
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded!`)
+          return
+        }
+      }
       
       // 2. Update existing session with SOW data (same UUID)
       const sowResponse = await fetch(`/api/sessions/${sessionId}/add-sow`, {
@@ -639,17 +664,26 @@ export default function SolutioningPage() {
       }
     }))
     
+    // Validate organization selection
+    if (!selectedOrganization) {
+      alert('⚠️ Please select an organization before using AI features.')
+      return
+    }
+
     try {
-      console.log('🔍 Starting vision analysis...')
+      const orgId = selectedOrganization.organization.id
+      console.log(`🔍 Starting vision analysis for org ${orgId}...`)
+      console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
       
-      const response = await fetch('/api/solutioning/analyze-image', {
+      const response = await fetch(`/api/organizations/${orgId}/solutioning/analyze-image`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           imageData: imageData,
-          additionalContext: currentSolution.variables.solutionExplanation || 'No additional context provided'
+          additionalContext: currentSolution.variables.solutionExplanation || 'No additional context provided',
+          sessionId: sessionId
         })
       })
 
@@ -660,6 +694,20 @@ export default function SolutioningPage() {
       }
 
       console.log('✅ Auto vision analysis completed successfully')
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        
+        if (result.usage.warning?.isNearLimit) {
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits.`)
+        }
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded!`)
+          return
+        }
+      }
       
       // Update the session data with the analysis
       setSessionData(prev => ({
@@ -718,12 +766,20 @@ export default function SolutioningPage() {
       return
     }
 
+    // Validate organization selection
+    if (!selectedOrganization) {
+      alert('⚠️ Please select an organization before using AI features.')
+      return
+    }
+
     setLoadingStates(prev => ({ ...prev, autoFormatting: true }))
     
     try {
-      console.log('🎨 Starting auto-formatting...')
+      const orgId = selectedOrganization.organization.id
+      console.log(`🎨 Starting auto-formatting for org ${orgId}...`)
+      console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
       
-      const response = await fetch('/api/solutioning/auto-format', {
+      const response = await fetch(`/api/organizations/${orgId}/solutioning/auto-format`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -731,7 +787,8 @@ export default function SolutioningPage() {
         body: JSON.stringify({
           title,
           steps,
-          approach
+          approach,
+          sessionId: sessionId
         })
       })
 
@@ -742,6 +799,20 @@ export default function SolutioningPage() {
       }
 
       console.log('✅ Auto-formatting completed successfully')
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        
+        if (result.usage.warning?.isNearLimit) {
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits.`)
+        }
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded!`)
+          return
+        }
+      }
       
       // Update the session data with the formatted content
       setSessionData(prev => ({
@@ -779,17 +850,28 @@ export default function SolutioningPage() {
       return
     }
 
+    // Validate organization selection
+    if (!selectedOrganization) {
+      alert('⚠️ Please select an organization before using AI features.')
+      return
+    }
+
     setLoadingStates(prev => ({ ...prev, structuring: true }))
     
     try {
-      const response = await fetch('/api/solutioning/structure-solution', {
+      const orgId = selectedOrganization.organization.id
+      console.log(`📐 Starting solution structuring for org ${orgId}...`)
+      console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
+      
+      const response = await fetch(`/api/organizations/${orgId}/solutioning/structure-solution`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           aiAnalysis: analysis,
-          solutionExplanation: explanation
+          solutionExplanation: explanation,
+          sessionId: sessionId
         })
       })
 
@@ -797,6 +879,20 @@ export default function SolutioningPage() {
 
       if (!result.success) {
         throw new Error(result.error || 'Solution structuring failed')
+      }
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        
+        if (result.usage.warning?.isNearLimit) {
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits.`)
+        }
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded!`)
+          return
+        }
       }
 
       // Update the session data with the structured solution
@@ -835,16 +931,27 @@ export default function SolutioningPage() {
       return
     }
 
+    // Validate organization selection
+    if (!selectedOrganization) {
+      alert('⚠️ Please select an organization before using AI features.')
+      return
+    }
+
     setLoadingStates(prev => ({ ...prev, enhancing: true }))
     
     try {
-      const response = await fetch('/api/solutioning/enhance-text', {
+      const orgId = selectedOrganization.organization.id
+      console.log(`✨ Starting text enhancement for org ${orgId}...`)
+      console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
+      
+      const response = await fetch(`/api/organizations/${orgId}/solutioning/enhance-text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text: currentSolution.variables.solutionExplanation
+          text: currentSolution.variables.solutionExplanation,
+          sessionId: sessionId
         })
       })
 
@@ -852,6 +959,20 @@ export default function SolutioningPage() {
 
       if (!result.success) {
         throw new Error(result.error || 'Text enhancement failed')
+      }
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        
+        if (result.usage.warning?.isNearLimit) {
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits.`)
+        }
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded!`)
+          return
+        }
       }
       
       // Update the session data with the enhanced text
@@ -892,18 +1013,29 @@ export default function SolutioningPage() {
     
     try {
       // Concatenate AI analysis and solution steps as context
+      // Validate organization selection
+      if (!selectedOrganization) {
+        alert('⚠️ Please select an organization before using AI features.')
+        return
+      }
+
+      const orgId = selectedOrganization.organization.id
+      console.log(`🔧 Starting per-node stack analysis for org ${orgId}...`)
+      console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
+
       const context = [
         analysis && `AI ANALYSIS: ${analysis}`,
         steps && `SOLUTION STEPS: ${steps}`
       ].filter(Boolean).join('\n\n')
 
-      const response = await fetch('/api/solutioning/analyze-pernode', {
+      const response = await fetch(`/api/organizations/${orgId}/solutioning/analyze-pernode`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          context: context
+          context: context,
+          sessionId: sessionId
         })
       })
 
@@ -911,6 +1043,20 @@ export default function SolutioningPage() {
 
       if (!result.success) {
         throw new Error(result.error || 'Per-node stack analysis failed')
+      }
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        
+        if (result.usage.warning?.isNearLimit) {
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits.`)
+        }
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded!`)
+          return
+        }
       }
 
       // Update the session data with the stack analysis
@@ -1245,11 +1391,7 @@ export default function SolutioningPage() {
 
   return (
     <DashboardLayout 
-      currentPage="Solutioning" 
-      user={user ? {
-        fullName: user.fullName,
-        email: user.email
-      } : undefined}
+      currentPage="Solutioning"
     >
       <div className="nexa-background min-h-screen p-6">
         <div className="max-w-6xl mx-auto">

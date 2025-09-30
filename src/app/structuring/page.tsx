@@ -29,6 +29,7 @@ import {
 import type { AuthUser } from '@/types'
 import type { StructuringSessionData, SessionResponse, VisualsSessionData } from '@/lib/sessions'
 import { createDefaultStructuringData } from '@/lib/sessions'
+import { useUser } from '@/contexts/user-context'
 
 interface ContentTab {
   id: number
@@ -41,6 +42,9 @@ interface SolutionTab {
 }
 
 export default function StructuringPage() {
+  // Get organization context for usage tracking
+  const { selectedOrganization } = useUser()
+  
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   
@@ -339,6 +343,12 @@ export default function StructuringPage() {
 
   // AI Functions - Real LangChain Integration
   const handleDiagnose = async () => {
+    // Validate organization selection
+    if (!selectedOrganization) {
+      alert('⚠️ Please select an organization before using AI features.')
+      return
+    }
+
     const allContent = contentTabs.map(tab => tab.text).join('\n\n').trim()
     
     console.log(`🔍 Processing ${contentTabs.length} content tabs (${allContent.length} characters)`)
@@ -351,16 +361,21 @@ export default function StructuringPage() {
     setDiagnosing(true)
     
     try {
-      console.log('🔍 Starting pain point diagnosis with LangChain...')
+      const orgId = selectedOrganization.organization.id
+      console.log(`🔍 Starting pain point diagnosis for org ${orgId}...`)
       
       const requestPayload = {
-        content: contentTabs.map(tab => tab.text)
+        content: contentTabs.map(tab => tab.text),
+        echo: useContextEcho,
+        traceback: useTracebackReport,
+        sessionId: sessionId
       }
       
-      console.log('📡 Sending request to API...')
+      console.log('📡 Sending request to organization-scoped API...')
+      console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
       
-      // Call the LangChain API endpoint
-      const response = await fetch('/api/structuring/analyze-pain-points', {
+      // Call the organization-scoped LangChain API endpoint with usage tracking
+      const response = await fetch(`/api/organizations/${orgId}/structuring/analyze-pain-points`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -379,6 +394,25 @@ export default function StructuringPage() {
       console.log('✅ Pain point analysis completed!')
       console.log(`📊 Found ${result.data.pain_points.length} pain points`)
       console.log(`📄 Report length: ${result.data.report?.length || 0} characters`)
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        console.log(`🎫 Usage event ID: ${result.usage.usageEventId}`)
+        
+        // Show warning if near limit
+        if (result.usage.warning?.isNearLimit) {
+          console.warn(`⚠️ Credit usage at ${result.usage.warning.percentageUsed}%`)
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits. ${result.usage.remainingCredits} credits remaining.`)
+        }
+        
+        // Block if over limit
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded! ${result.usage.warning.recommendedAction}`)
+          return
+        }
+      }
       
       // Store the report data
       setReportData(result.data.report || '')
@@ -462,13 +496,20 @@ export default function StructuringPage() {
 
   // Solution generation functions
   const handleGenerateSolution = async () => {
+    // Validate organization selection
+    if (!selectedOrganization) {
+      alert('⚠️ Please select an organization before using AI features.')
+      return
+    }
+
     // Backup current pain points for rollback
     setOriginalPainPoints([...solutionTabs])
     
     setGeneratingSolution(true)
     
     try {
-      console.log('🔍 Starting solution generation with LangChain...')
+      const orgId = selectedOrganization.organization.id
+      console.log(`🔍 Starting solution generation for org ${orgId}...`)
       
       // Prepare content based on toggles
       const contextContent = useContextEcho 
@@ -484,15 +525,19 @@ export default function StructuringPage() {
       
       console.log(`📝 Context Echo: ${useContextEcho ? 'ON' : 'OFF'} (${contextContent.length} chars)`)
       console.log(`📄 Traceback Report: ${useTracebackReport ? 'ON' : 'OFF'} (${reportContent.length} chars)`)
+      console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
       
-      // Call API
-      const response = await fetch('/api/structuring/generate-solution', {
+      // Call organization-scoped API with usage tracking
+      const response = await fetch(`/api/organizations/${orgId}/structuring/generate-solution`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           solutionContent,
           content: contextContent,
-          report: reportContent
+          report: reportContent,
+          echo: useContextEcho,
+          traceback: useTracebackReport,
+          sessionId: sessionId
         })
       })
       
@@ -507,6 +552,25 @@ export default function StructuringPage() {
       
       console.log('✅ Solution generation completed!')
       console.log('🔍 Full API response:', result)
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        console.log(`🎫 Usage event ID: ${result.usage.usageEventId}`)
+        
+        // Show warning if near limit
+        if (result.usage.warning?.isNearLimit) {
+          console.warn(`⚠️ Credit usage at ${result.usage.warning.percentageUsed}%`)
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits. ${result.usage.remainingCredits} credits remaining.`)
+        }
+        
+        // Block if over limit
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded! ${result.usage.warning.recommendedAction}`)
+          return
+        }
+      }
       
       // Validate response structure
       if (!result.data) {
@@ -773,19 +837,38 @@ export default function StructuringPage() {
     
     try {
       // 1. Get current structuring data
+      // Validate organization selection
+      if (!selectedOrganization) {
+        alert('⚠️ Please select an organization before pushing features.')
+        return
+      }
+
+      const orgId = selectedOrganization.organization.id
+      console.log(`🚀 Pushing to visuals for org ${orgId}...`)
+
       const currentStructuringData = collectCurrentData()
       
       // 2. Create visuals data structure
       const visualsData = createVisualsDataFromStructuring(currentStructuringData)
       
-      // 3. Update same session row with visual data
-      const response = await fetch(`/api/sessions/${sessionId}/add-visuals`, {
+      // 3. Update same session row with visual data (org-scoped)
+      const response = await fetch(`/api/organizations/${orgId}/sessions/${sessionId}/add-visuals`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ visualsData })
       })
       
       const result = await response.json()
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        
+        if (result.usage.warning?.isNearLimit) {
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits.`)
+        }
+      }
       
       if (result.success) {
         // 4. Navigate to visuals with session loaded
@@ -811,11 +894,7 @@ export default function StructuringPage() {
 
   return (
     <DashboardLayout 
-      currentPage="Structuring" 
-      user={user ? {
-        fullName: user.fullName,
-        email: user.email
-      } : undefined}
+      currentPage="Structuring"
     >
       <div className="nexa-background min-h-screen p-6">
         <div className="max-w-6xl mx-auto">

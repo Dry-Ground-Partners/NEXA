@@ -36,6 +36,10 @@ import {
 import Link from 'next/link'
 import type { AuthUser } from '@/types'
 import { useUserRole } from '@/hooks/useUserRole'
+import { UsageProvider } from '@/contexts/usage-context'
+import { UsageDashboard } from '@/components/usage/usage-dashboard'
+import { UsageHistory } from '@/components/usage/usage-history'
+import { UsageIndicator } from '@/components/usage/usage-indicator'
 
 interface Organization {
   id: string
@@ -632,6 +636,12 @@ export default function OrganizationsPage() {
                       Billing
                     </TabsTrigger>
                   )}
+                  
+                  {/* Usage tab - available to all roles with organization access */}
+                  <TabsTrigger value="usage">
+                    <Zap className="w-4 h-4 mr-2" />
+                    Usage
+                  </TabsTrigger>
                   
                   <TabsTrigger value="history">
                     <History className="w-4 h-4 mr-2" />
@@ -1282,6 +1292,11 @@ export default function OrganizationsPage() {
                 </div>
               </TabsContent>
               )}
+
+              {/* Usage Tab Content */}
+              <TabsContent value="usage" className="mt-0">
+                <UsageTabContent />
+              </TabsContent>
 
               {/* History Tab Content */}
               <TabsContent value="history" className="mt-0">
@@ -1941,8 +1956,79 @@ export default function OrganizationsPage() {
   // Single DashboardLayout wrapper
   return (
     <DashboardLayout>
-      {content}
+      <UsageProvider>
+        {content}
+      </UsageProvider>
     </DashboardLayout>
+  )
+}
+
+/**
+ * Usage tab content component
+ */
+function UsageTabContent() {
+  const [usageView, setUsageView] = useState<'dashboard' | 'history'>('dashboard')
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Zap className="h-6 w-6 text-white" />
+          <h3 className="text-lg font-semibold text-white">Usage Analytics</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant={usageView === 'dashboard' ? 'nexa' : 'outline'}
+            size="sm"
+            onClick={() => setUsageView('dashboard')}
+          >
+            Dashboard
+          </Button>
+          <Button 
+            variant={usageView === 'history' ? 'nexa' : 'outline'}
+            size="sm"
+            onClick={() => setUsageView('history')}
+          >
+            History
+          </Button>
+        </div>
+      </div>
+
+      {/* Quick Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card variant="nexa" className="p-4">
+          <UsageIndicator compact={false} />
+        </Card>
+        <Card variant="nexa" className="p-4">
+          <div className="flex items-center gap-3">
+            <Calendar className="h-6 w-6 text-blue-400" />
+            <div>
+              <p className="text-sm text-nexa-muted">This Month</p>
+              <p className="text-lg font-bold text-white">Active Usage</p>
+              <p className="text-xs text-nexa-muted">Real-time tracking</p>
+            </div>
+          </div>
+        </Card>
+        <Card variant="nexa" className="p-4">
+          <div className="flex items-center gap-3">
+            <Users className="h-6 w-6 text-green-400" />
+            <div>
+              <p className="text-sm text-nexa-muted">Team Usage</p>
+              <p className="text-lg font-bold text-white">All Members</p>
+              <p className="text-xs text-nexa-muted">Detailed breakdown</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Main Content */}
+      {usageView === 'dashboard' ? (
+        <UsageDashboard />
+      ) : (
+        <UsageHistory />
+      )}
+    </div>
   )
 }
 

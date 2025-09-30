@@ -287,3 +287,21 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model EventDefinition {
+  eventType         String    @id @map("event_type") @db.VarChar(50)
+  config            Json      @default("{}")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@map("event_definitions")
+}
+
+model PlanDefinition {
+  planName          String    @id @map("plan_name") @db.VarChar(50)
+  config            Json      @default("{}")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@map("plan_definitions")
+}
+

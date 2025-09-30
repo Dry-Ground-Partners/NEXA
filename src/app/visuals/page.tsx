@@ -25,6 +25,7 @@ import type { AuthUser } from '@/types'
 import type { VisualsSessionData } from '@/lib/sessions'
 import { createDefaultVisualsData } from '@/lib/sessions'
 import { useCallback } from 'react'
+import { useUser } from '@/contexts/user-context'
 
 interface DiagramSet {
   id: number
@@ -46,6 +47,9 @@ interface DiagramModal {
 }
 
 export default function VisualsPage() {
+  // Get organization context for usage tracking
+  const { selectedOrganization } = useUser()
+  
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   
@@ -468,19 +472,28 @@ export default function VisualsPage() {
       return
     }
 
+    // Validate organization selection
+    if (!selectedOrganization) {
+      alert('⚠️ Please select an organization before using AI features.')
+      return
+    }
+
     setGeneratingDescription(diagramId)
     
     try {
-      console.log('🎨 Starting planning generation from ideation...')
+      const orgId = selectedOrganization.organization.id
+      console.log(`🎨 Starting planning generation for org ${orgId}...`)
       console.log('📝 Ideation content:', diagramSet.ideation)
+      console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
 
-      const response = await fetch('/api/visuals/generate-planning', {
+      const response = await fetch(`/api/organizations/${orgId}/visuals/generate-planning`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          solution: diagramSet.ideation
+          solution: diagramSet.ideation,
+          sessionId: sessionId
         })
       })
 
@@ -495,6 +508,25 @@ export default function VisualsPage() {
 
       console.log('✅ Planning generated successfully')
       console.log('📄 Planning content:', result.data)
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        console.log(`🎫 Usage event ID: ${result.usage.usageEventId}`)
+        
+        // Show warning if near limit
+        if (result.usage.warning?.isNearLimit) {
+          console.warn(`⚠️ Credit usage at ${result.usage.warning.percentageUsed}%`)
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits. ${result.usage.remainingCredits} credits remaining.`)
+        }
+        
+        // Block if over limit
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded! ${result.usage.warning.recommendedAction}`)
+          return
+        }
+      }
 
       // Update the planning field with the generated content
       updateDiagramSet(diagramId, 'planning', result.data)
@@ -514,19 +546,28 @@ export default function VisualsPage() {
       return
     }
 
+    // Validate organization selection
+    if (!selectedOrganization) {
+      alert('⚠️ Please select an organization before using AI features.')
+      return
+    }
+
     setGeneratingSketch(diagramId)
     
     try {
-      console.log('🎨 Starting sketch generation from planning...')
+      const orgId = selectedOrganization.organization.id
+      console.log(`🎨 Starting sketch generation for org ${orgId}...`)
       console.log('📝 Planning content:', diagramSet.planning)
+      console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
 
-      const response = await fetch('/api/visuals/generate-sketch', {
+      const response = await fetch(`/api/organizations/${orgId}/visuals/generate-sketch`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          planning: diagramSet.planning
+          planning: diagramSet.planning,
+          sessionId: sessionId
         })
       })
 
@@ -544,6 +585,25 @@ export default function VisualsPage() {
       console.log('📄 Sketch content length:', result.data?.length)
       console.log('📄 Sketch content preview:', result.data?.substring(0, 200))
       console.log('📄 Full sketch content:', result.data)
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        console.log(`🎫 Usage event ID: ${result.usage.usageEventId}`)
+        
+        // Show warning if near limit
+        if (result.usage.warning?.isNearLimit) {
+          console.warn(`⚠️ Credit usage at ${result.usage.warning.percentageUsed}%`)
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits. ${result.usage.remainingCredits} credits remaining.`)
+        }
+        
+        // Block if over limit
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded! ${result.usage.warning.recommendedAction}`)
+          return
+        }
+      }
 
       // Update the sketch field with the generated content and expand
       console.log('🔄 Updating diagram set with sketch content...')
@@ -883,19 +943,36 @@ export default function VisualsPage() {
         return
       }
 
-      console.log(`🚀 Starting transition to solutioning with ${validDiagrams.length} diagrams...`)
+      // Validate organization selection
+      if (!selectedOrganization) {
+        alert('⚠️ Please select an organization before pushing features.')
+        return
+      }
+
+      const orgId = selectedOrganization.organization.id
+      console.log(`🚀 Pushing to solutioning for org ${orgId} with ${validDiagrams.length} diagrams...`)
 
       // 2. Create solutioning data structure
       const solutioningData = createSolutioningDataFromVisuals(validDiagrams)
       
-      // 3. Update existing session with solutioning data (same UUID)
-      const response = await fetch(`/api/sessions/${sessionId}/add-solutioning`, {
+      // 3. Update existing session with solutioning data (org-scoped)
+      const response = await fetch(`/api/organizations/${orgId}/sessions/${sessionId}/add-solutioning`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ solutioningData })
       })
       
       const result = await response.json()
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        
+        if (result.usage.warning?.isNearLimit) {
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits.`)
+        }
+      }
       
       if (result.success) {
         console.log(`✅ Added solutioning data to existing session: ${sessionId}`)
@@ -979,11 +1056,7 @@ export default function VisualsPage() {
 
   return (
     <DashboardLayout 
-      currentPage="Visuals" 
-      user={user ? {
-        fullName: user.fullName,
-        email: user.email
-      } : undefined}
+      currentPage="Visuals"
     >
       <div className="nexa-background min-h-screen p-6">
         <div className="max-w-7xl mx-auto">

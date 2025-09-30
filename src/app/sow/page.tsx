@@ -23,8 +23,12 @@ import {
 import type { AuthUser } from '@/types'
 import type { SOWSessionData } from '@/lib/sessions'
 import { createDefaultSOWData } from '@/lib/sessions'
+import { useUser } from '@/contexts/user-context'
 
 export default function SOWPage() {
+  // Get organization context for usage tracking
+  const { selectedOrganization } = useUser()
+  
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   
@@ -167,12 +171,19 @@ export default function SOWPage() {
 
     setSaving(true)
     
+    // Validate organization selection
+    if (!selectedOrganization) {
+      alert('⚠️ Please select an organization before pushing features.')
+      return
+    }
+
     try {
-      console.log('🚀 Starting transition to LOE...')
+      const orgId = selectedOrganization.organization.id
+      console.log(`🚀 Pushing to LOE for org ${orgId}...`)
       
-      // 1. Generate LOE data from SOW
+      // 1. Generate LOE data from SOW (org-scoped)
       console.log('📊 Generating LOE from SOW data...')
-      const response = await fetch('/api/sow/generate-loe', {
+      const response = await fetch(`/api/organizations/${orgId}/sow/generate-loe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sowData: sessionData })
@@ -192,6 +203,20 @@ export default function SOWPage() {
       console.log('✅ LOE generated successfully')
       console.log(`   - Workstreams: ${result.loeData.workstreams?.workstreams?.length || 0}`)
       console.log(`   - Resources: ${result.loeData.resources?.resources?.length || 0}`)
+      
+      // Log usage tracking info
+      if (result.usage) {
+        console.log(`💰 Credits consumed: ${result.usage.creditsConsumed}`)
+        console.log(`💵 Credits remaining: ${result.usage.remainingCredits}`)
+        
+        if (result.usage.warning?.isNearLimit) {
+          alert(`⚠️ Warning: You've used ${result.usage.warning.percentageUsed}% of your credits.`)
+        }
+        if (result.usage.warning?.isOverLimit) {
+          alert(`🚫 Credit limit exceeded!`)
+          return
+        }
+      }
       
       // 2. Add LOE data to same session UUID
       console.log('📝 Adding LOE data to existing session...')
@@ -671,11 +696,7 @@ export default function SOWPage() {
 
   return (
     <DashboardLayout 
-      currentPage="Statement of Work" 
-      user={user ? {
-        fullName: user.fullName,
-        email: user.email
-      } : undefined}
+      currentPage="Statement of Work"
     >
       <div className="nexa-background min-h-screen p-6">
         <div className="max-w-6xl mx-auto">
