@@ -628,3 +628,168 @@ interface DiagramSet {
 
 **Next Action:** Create a test environment to validate postMessage communication and document exact protocol behavior.
 
+
+==========// MORE INFO BELOW //==========
+
+RESPONSE FROM CHATGPT:
+```
+Yes — I dug into the docs, blog posts, and integration code, and here’s what I found: you can convert XML → PNG (or other formats) programmatically via the embed protocol, with some constraints and details to be aware of. Below is a refined “fill-in” of your gaps, plus caveats. Use this to update your assessment. ✅ Protocol & Embed Mode Details (Filling the Gaps) Embed Mode & URL Parameters The embed=1 parameter activates embed mode. In that mode, the editor sends an { event: "init" } message once ready. draw.io +1 The proto=json URL parameter enables JSON-structured postMessage communication. draw.io +2 jgraph.github.io +2 Additional known URL parameters: spin=1 → show loading spinner while waiting for diagram data. draw.io modified, keepmodified → control “modified state” behavior. draw.io libraries=1 → enable shape libraries in embed mode. draw.io noSaveBtn=1, saveAndExit=1, noExitBtn=1 → control which buttons (Save, Exit) appear. draw.io configure=1 → triggers a { event: 'configure' } message to let the host supply configuration before full initialization. draw.io returnbounds=1 → returns JSON with diagram bounds after loading. draw.io Note: URL parameters have precedence over flags in the load message. draw.io postMessage Protocol (Actions / Events) The official drawio-integration repo (and its documentation pages) describe a fairly well-defined JSON messaging protocol. jgraph.github.io +2 GitHub +2 Here’s a refined summary: 
+| Direction         | Message Type / Key  | Fields / Payload                                                                                            | Purpose / Notes                                                                                               |          |          |                                           |                                                                                                                      | | ----------------- | ------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------- | -------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | | **Editor → Host** | `event: 'init'`     | `{ event: 'init' }`                                                                                         | Signals that the editor is ready to receive load data. ([draw.io][1])                                         |          |          |                                           |                                                                                                                      | | **Host → Editor** | `action: 'load'`    | `{ action: 'load', xml: <XML string>, autosave?: 1, saveAndExit?: 0/1, title?: string, modified?: string }` | Loads XML into the editor. `autosave` flag enables autosave. ([draw.io][1])                                   |          |          |                                           |                                                                                                                      | | **Editor → Host** | `event: 'autosave'` | `{ event: 'autosave', xml: <XML string> }`                                                                  | Sent periodically when editor content changes (if autosave is enabled). ([draw.io][1])                        |          |          |                                           |                                                                                                                      | | **Editor → Host** | `event: 'save'`     | `{ event: 'save', xml: <XML string> }`                                                                      | Sent when user triggers a save. ([jgraph.github.io][2])                                                       |          |          |                                           |                                                                                                                      | | **Host → Editor** | `action: 'export'`  | `{ action: 'export', format: <"png"                                                                         | "svg"                                                                                                         | "xmlpng" | "xmlsvg" | "pdf">, xml?: <XML> , spinKey?: string }` | Requests export of diagram in given format. `xml` may optionally be provided (but not always needed) ([DeepWiki][3]) | | **Editor → Host** | `event: 'export'`   | `{ event: 'export', data: <Base64 string or data URI>, xml?: <XML> }`                                       | Response containing the exported image or format data plus possibly embedded XML. ([DeepWiki][3])             |          |          |                                           |                                                                                                                      | | **Editor → Host** | `event: 'exit'`     | `{ event: 'exit', xml: <XML> }`                                                                             | Signifies that the editor either closed or user left. Optionally includes latest XML. ([jgraph.github.io][2]) |          |          |                                           |                                                                                                                      | [1]: https://www.drawio.com/doc/faq/embed-mode?utm_source=chatgpt.com "Embed mode - draw.io" [2]: https://jgraph.github.io/drawio-integration/?utm_source=chatgpt.com "diagrams.net Integration | drawio-integration" [3]: https://deepwiki.com/jgraph/drawio-integration/2.2-integration-protocol?utm_source=chatgpt.com "Integration Protocol | jgraph/drawio-integration | DeepWiki"
+ Other message types (e.g. configure) exist when using configure=1 param. draw.io +2 DeepWiki +2 Important behavioral notes: You must wait for event: 'init' before sending the action: 'load' message. If you send too early, messages may get ignored. jgraph.github.io +2 draw.io +2 The host may include autosave: 1 in the load message to enable autosave mode. draw.io +1 If autosave is on, the editor will emit event: 'autosave' messages with the current XML. draw.io +2 GitHub +2 The host can request an export (e.g. PNG) at any time by sending action: 'export'. jgraph.github.io +1 The format xmlpng is supported, which means a PNG image with embedded XML (so re-editable later) draw.io +3 jgraph.github.io +3 draw.io +3 Thus, it is factual: the protocol supports a programmatic export, including PNG, and it delivers the result via postMessage. Export / Embedded XML in PNG draw.io supports embedding the diagram XML inside PNG files (via metadata) in the zTxt section. draw.io +2 draw.io +2 When exporting as PNG via the UI or via export action, you should enable “Include a copy of my diagram / diagram data” so that the resulting PNG is re-editable. draw.io +3 draw.io +3 draw.io +3 The blog “Embedded XML in PNG image files” describes exactly this: the PNG format supports metadata embedding, and draw.io uses that to store the XML inside the image so that reloading is possible. draw.io One caveat: some image-hosting services or processing pipelines may strip metadata from PNGs (which would remove the embedded XML). draw.io +1 Therefore, when you use format: "xmlpng" in export, you should get back a PNG (data URI) that also contains the diagram XML inside it (so the file is both a viewable image and editable later). ⚠️ Caveats, Observations & Implementation Warnings Timing matters: if you send messages too early (before init) they may be discarded. Very large diagrams may cause heavy memory or payload sizes (big Base64 strings). Origin checking is crucial: validate event.origin and event.source before accepting messages. If exporting images with embedded XML, but then passing through an image pipeline that strips metadata, you may lose the embedded XML. Some forum issues show that debugging cross-window postMessage can be tricky: breakpoints may interfere with postMessage during debugging. Stack Overflow There is limited control over export parameters (e.g., DPI, scaling) in the standard protocol (not many documented knobs). Some actions (like pushing external file formats into the editor via postMessage) may be unsupported in certain versions. For instance, in an old GitHub issue, someone asked about “importing” a file format via JSON protocol and was told it was not supported in that version. GitHub ✅ Conclusion: Your Hypothesis Is Valid (with nuance) Yes — you can programmatically convert the XML to a PNG (or other formats) via the embed protocol (action: "export", format: "png" / "xmlpng") without user intervention. The editor will reply with a Base64-encoded PNG (or data URI), potentially with the XML embedded. That enables you to convert to a Blob or send to your backend. Thus your assumption is correct; it’s not just theoretical — it's supported by the official integration protocol. But implementation has details you must respect (timing, message structure, origin, size) to make it robust.
+```
+
+RESEARCH FROM CHATGPT:
+```
+# 🔬 DRAW.IO INTEGRATION RESEARCH - FOLLOW-UP REPORT
+
+**Research Date:** October 1, 2025  
+**Purpose:** Fill knowledge gaps on draw.io integration for NEXA `/visuals` page  
+**Status:** ✅ SUBSTANTIALLY COMPLETE - Key protocol details confirmed, a few advanced options still unclear
+
+---
+
+## 📊 EXECUTIVE SUMMARY
+
+### ✅ Newly Confirmed
+1. **postMessage Protocol** is officially documented and supported: actions like `load`, `export`, `merge`; events like `init`, `autosave`, `save`, `exit`, `configure`.  
+2. **Embed URL Parameters** include: `embed=1`, `proto=json`, `spin=1`, `libraries=1`, `ui=`, `offline=1`, `saveAndExit=1`, `noSaveBtn=1`, `noExitBtn=1`, `configure=1`, `returnbounds=1`.  
+3. **Export Mechanism**: sending `{ action: "export", format: "png" }` returns `{ event: "export", data: <Base64 PNG> }`. Other formats include `svg`, `pdf`, `xmlpng`, `xmlsvg`.  
+4. **XML Initialization**: a blank diagram uses the minimal `mxGraphModel` with `<root><mxCell id="0"/><mxCell id="1" parent="0"/></root>`.  
+5. **Autosave** is enabled by passing `autosave: 1` in the `load` action. Editor then emits `event: "autosave"` with current XML.  
+6. **Timing**: must wait for `event: "init"` before sending `load`. If sent too early, messages are ignored.  
+
+### ⚠️ Remaining Gaps
+1. **Export Quality Controls**: No documented way to set DPI, scaling, or resolution. Only base64 output confirmed.  
+2. **Autosave Frequency**: Trigger timing is internal to draw.io, not configurable from host.  
+3. **Error Events**: No published list of error messages (e.g. failed export, invalid XML). Must be observed in testing.  
+4. **Compression/Encoding**: XML is typically plain text. No formal confirmation of compressed variants beyond embedded XML in PNG/SVG.  
+
+---
+
+## 🔌 PART 1: POSTMESSAGE PROTOCOL
+
+### Actions (Host → Editor)
+- `load`: `{ action: "load", xml: "<mxGraphModel>...</mxGraphModel>", autosave: 1, saveAndExit: 0 }`  
+- `export`: `{ action: "export", format: "png"|"svg"|"pdf"|"xmlpng"|"xmlsvg" }`  
+- `merge`: merges XML into an existing diagram  
+
+### Events (Editor → Host)
+- `init`: editor ready to receive load  
+- `autosave`: `{ event: "autosave", xml: "<...>" }`  
+- `save`: `{ event: "save", xml: "<...>" }`  
+- `export`: `{ event: "export", data: "<Base64...>", xml?: "<...>" }`  
+- `exit`: `{ event: "exit", xml?: "<...>" }`  
+- `configure`: triggered if `configure=1` param is set, lets host send configuration  
+
+---
+
+## 🌐 PART 2: EMBED URL PARAMETERS (CONFIRMED)
+
+- `embed=1` → embed mode  
+- `proto=json` → JSON postMessage protocol  
+- `spin=1` → show loading spinner  
+- `libraries=1` → show shape libraries  
+- `ui=atlas|minimal|kennedy...` → UI theme  
+- `offline=1` → offline/standalone mode  
+- `saveAndExit=1` → enables Save & Exit button  
+- `noSaveBtn=1` / `noExitBtn=1` → hide buttons  
+- `configure=1` → trigger configuration event  
+- `returnbounds=1` → return bounds JSON after load  
+
+---
+
+## 📦 PART 3: XML STRUCTURE
+
+**Blank XML template (minimal valid diagram):**
+
+    <mxGraphModel>
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+      </root>
+    </mxGraphModel>
+
+- User elements get added as `<mxCell vertex="1"...>` or `<mxCell edge="1"...>`  
+- `style` attribute encodes visual styling.  
+- No compression by default; XML is plain text.  
+
+---
+
+## 🖼️ PART 4: EXPORT FUNCTIONALITY
+
+**Confirmed usage:**
+
+    // Request
+    iframe.contentWindow.postMessage({
+      action: "export",
+      format: "png"
+    }, "*");
+
+    // Response
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+      if (msg.event === "export") {
+        const base64 = msg.data; // "iVBORw0..." base64 string
+      }
+    });
+
+**Formats Supported:**
+- `png` → plain image  
+- `xmlpng` → PNG with embedded XML  
+- `svg` → vector  
+- `xmlsvg` → SVG with embedded XML  
+- `pdf` → document  
+
+**Gaps:** No documented way to configure DPI, scaling, or resolution in embed API.  
+
+---
+
+## 🔄 PART 5: TIMING & AUTOSAVE
+
+- Must wait for `event: "init"` before sending `load`.  
+- `autosave: 1` in load action enables autosave messages.  
+- Autosave frequency not configurable. Triggered internally by editor changes.  
+
+---
+
+## 🚨 PART 6: SECURITY
+
+- Validate `event.origin` before processing messages.  
+- Use `sandbox="allow-scripts allow-same-origin"` for iframe if possible.  
+- Add CSP:  
+
+    Content-Security-Policy: frame-src 'self' https://drawio.yourdomain.com
+
+- Monitor Base64 payload sizes, as PNG data URIs can be large.  
+
+---
+
+## 📋 PART 7: STATUS OF GAPS
+
+### ❌ Closed
+- Protocol actions/events  
+- Embed URL parameters  
+- PNG export implementation  
+- Blank XML structure  
+- Event handling basics  
+
+### ⚠️ Still Open
+- Export resolution/DPI controls  
+- Autosave frequency config  
+- Error event list  
+
+---
+
+## 🎬 CONCLUSION
+
+**Status: ~85% Complete**  
+
+- ✅ Protocol and flows are clear enough to prototype.  
+- ✅ Export to PNG/XMLPNG/SVG/PDF is confirmed.  
+- ✅ Blank XML structure identified.  
+
+Still missing are advanced options (quality controls, error events). These require either source code review or hands-on testing.  
+
+**Bottom Line:** You can build a working iframe + postMessage integration today. Remaining unknowns are optimizations, not blockers.  
+
+```
