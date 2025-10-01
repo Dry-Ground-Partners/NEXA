@@ -1,5 +1,0 @@
-   column_name    | data_type 
-------------------+-----------
- offboarding_data | jsonb
-(1 row)
-
