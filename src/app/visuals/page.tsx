@@ -19,13 +19,15 @@ import {
   RotateCw,
   Info,
   Grid3X3,
-  Eye
+  Eye,
+  Pencil
 } from 'lucide-react'
 import type { AuthUser } from '@/types'
 import type { VisualsSessionData } from '@/lib/sessions'
 import { createDefaultVisualsData } from '@/lib/sessions'
 import { useCallback } from 'react'
 import { useUser } from '@/contexts/user-context'
+import { DrawioEditor } from '@/components/drawio/DrawioEditor'
 
 interface DiagramSet {
   id: number
@@ -91,6 +93,10 @@ export default function VisualsPage() {
   const [generatingSketch, setGeneratingSketch] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+
+  // Draw.io editor state
+  const [drawioOpen, setDrawioOpen] = useState(false)
+  const [editingDiagramId, setEditingDiagramId] = useState<number | null>(null)
 
   // Session management
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -162,6 +168,34 @@ export default function VisualsPage() {
     } finally {
       setUploadingImage(false)
     }
+  }
+
+  // Handle Draw.io diagram save
+  const handleDrawioSave = (xml: string, png: string) => {
+    if (!editingDiagramId) return
+
+    console.log('💾 Saving Draw.io diagram:', {
+      diagramId: editingDiagramId,
+      xmlLength: xml.length,
+      pngSize: Math.round(png.length / 1024) + 'KB'
+    })
+
+    // Update the diagram set: sketch = XML, image = PNG
+    setDiagramSets(prev => prev.map(set => 
+      set.id === editingDiagramId 
+        ? { 
+            ...set, 
+            sketch: xml,    // Store XML in sketch field
+            image: png      // Store PNG in image field
+          }
+        : set
+    ))
+
+    setHasUnsavedChanges(true)
+    setDrawioOpen(false)
+    setEditingDiagramId(null)
+    
+    console.log('✅ Diagram updated successfully')
   }
 
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1511,7 +1545,7 @@ export default function VisualsPage() {
                     <Upload className="h-12 w-12 text-nexa-muted mx-auto mb-4" />
                     <div className="text-white font-medium mb-2">Upload Solution Diagram</div>
                     <div className="text-nexa-muted text-sm mb-4">
-                          Drag & drop, upload from device, or Ctrl+V to paste from clipboard
+                          Drag & drop, upload from device, or create with Draw.io
                     </div>
                         <input
                           type="file"
@@ -1521,6 +1555,7 @@ export default function VisualsPage() {
                           id="image-upload-input"
                           disabled={uploadingImage}
                         />
+                    <div className="flex gap-2 justify-center">
                     <Button
                       variant="outline"
                       className="border-nexa-border text-white hover:bg-white/10"
@@ -1530,6 +1565,20 @@ export default function VisualsPage() {
                       <Upload className="h-4 w-4 mr-2" />
                       Upload from Device
                     </Button>
+                    <Button
+                      variant="default"
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => {
+                        setEditingDiagramId(modal.diagramId)
+                        setDrawioOpen(true)
+                        closeModal()
+                      }}
+                      disabled={uploadingImage}
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Open in Draw.io Advanced Editing
+                    </Button>
+                    </div>
                       </>
                     )}
                   </div>
@@ -1617,6 +1666,17 @@ export default function VisualsPage() {
           </div>
         </div>
       )}
+
+      {/* Draw.io Editor Modal */}
+      <DrawioEditor
+        diagramXML={diagramSets.find(s => s.id === editingDiagramId)?.sketch || null}
+        onSave={handleDrawioSave}
+        onClose={() => {
+          setDrawioOpen(false)
+          setEditingDiagramId(null)
+        }}
+        isOpen={drawioOpen}
+      />
     </DashboardLayout>
   )
 }
