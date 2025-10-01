@@ -1,0 +1,2766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRY GROUND AI - Visuals</title>
+    
+    <!-- Inter Font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Header and Footer Styling */
+        .header {
+            background-color: #000;
+            color: #fff;
+            padding: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            position: relative;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+        }
+        
+        .header-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            flex: 1;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+        }
+        
+        .system-icon {
+            width: 28px;
+            height: 28px;
+            fill: #fff;
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.8s ease;
+        }
+        
+        .system-icon:hover {
+            transform: scale(1.1);
+            opacity: 0.8;
+        }
+        
+        .nav-item {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 16px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .nav-item:hover {
+            color: #fff;
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .nav-item.clickable {
+            position: relative;
+        }
+        
+        .nav-item.clickable:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .nav-item.active {
+            color: #007bff;
+        }
+        
+        .nav-separator {
+            color: #666;
+            font-weight: 300;
+            user-select: none;
+        }
+        
+        .header .logo-img {
+            height: 40px;
+            width: auto;
+            filter: invert(1);
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.8s ease;
+        }
+        
+        .header .logo-img:hover {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+        
+        .chat-btn {
+            background: linear-gradient(45deg, #00ff88, #00ccff, #ff00ff, #ffff00);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: neon-gradient 3s ease-in-out infinite;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            position: relative;
+            user-select: none;
+        }
+        
+        .chat-btn:hover {
+            transform: translateY(-1px);
+            filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5));
+        }
+        
+        @keyframes neon-gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header-center {
+                gap: 12px;
+                position: static;
+                transform: none;
+                flex: 1;
+                margin: 0 20px;
+            }
+            
+            .nav-item {
+                font-size: 14px;
+                padding: 6px 8px;
+            }
+            
+            .chat-btn {
+                font-size: 14px;
+                padding: 6px 12px;
+            }
+            
+            .system-icon {
+                width: 28px;
+                height: 28px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .header-center {
+                gap: 8px;
+            }
+            
+            .nav-item {
+                font-size: 12px;
+                padding: 4px 6px;
+            }
+            
+            .header .logo-img {
+                height: 32px;
+            }
+        }
+        
+        .footer {
+            background-color: #000;
+            color: #fff;
+            padding: 30px 0;
+            margin-top: auto;
+            border-top: 1px solid #333;
+        }
+        
+        .footer .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .footer .footer-links {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .footer .footer-links a {
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer .footer-links a:hover {
+            color: #00ff88;
+        }
+        
+        .footer .copyright {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        /* Main content styling */
+        .main-content {
+            flex: 1;
+            padding: 40px 0;
+            min-height: calc(100vh - 120px);
+        }
+        
+        .page-wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .content-card {
+            background-color: #000000;  /* Pitch black to match main page */
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid #495057;
+        }
+        
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #ffffff;  /* White text for dark theme */
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .page-subtitle {
+            font-size: 1.1rem;
+            color: #ced4da;  /* Light gray for dark theme */
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        /* Visuals specific styles */
+        .visuals-content {
+            padding: 20px;
+            background-color: #212529;  /* Dark background */
+            border-radius: 8px;
+            border: 1px solid #495057;  /* Dark border */
+            text-align: center;
+            color: #ced4da;  /* Light gray text */
+        }
+        
+        /* Body styling to match main page */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a;  /* Almost black background */
+            color: #e9ecef;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            margin: 0;
+        }
+        
+        /* Button styling to match main page */
+        .btn-primary {
+            background-color: #ffffff;  /* White background to match main page */
+            border-color: #ffffff;
+            color: #000000;  /* Black text */
+        }
+        
+        .btn-primary:hover {
+            background-color: #f8f9fa;
+            border-color: #f8f9fa;
+            color: #000000;
+        }
+        
+        .btn-danger {
+            background-color: #EF4444;
+            border-color: #EF4444;
+            color: #ffffff;
+        }
+        
+        .btn-danger:hover {
+            background-color: #DC2626;
+            border-color: #DC2626;
+            color: #ffffff;
+        }
+        
+        /* Alert styling for dark theme */
+        .alert {
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-info {
+            background-color: rgba(13, 202, 240, 0.1);
+            color: #0dcaf0;
+            border: 1px solid rgba(13, 202, 240, 0.3);
+        }
+        
+        .alert-danger {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #EF4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .alert-success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: #10B981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .alert-warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: #F59E0B;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        
+        /* Additional text colors */
+        .text-muted {
+            color: #adb5bd !important;
+        }
+        
+        /* Form styling */
+        .form-control {
+            background-color: #212529;
+            border: 1px solid #495057;
+            color: #e9ecef;
+            border-radius: 6px;
+            padding: 12px 16px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            background-color: #212529;
+            border-color: #ffffff;
+            color: #e9ecef;
+            box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+        }
+        
+        .form-control::placeholder {
+            color: #6c757d;
+        }
+        
+        .form-label {
+            color: #ffffff;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .basic-info-section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #495057;
+        }
+        
+        /* Diagram Mapping Section Styling */
+        .diagram-mapping-section {
+            background: #000000;  /* Black background to match basic info */
+            border: 1px solid #495057;  /* Dark border */
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+        }
+        
+        .diagram-set {
+            background: #1a1a1a;  /* Slightly lighter than main background */
+            border: 1px solid #495057;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .diagram-set:hover {
+            border-color: #ffffff;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+        }
+        
+        .arrow-btn {
+            background: none;
+            border: 2px solid #495057;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #ced4da;
+        }
+        
+        .arrow-btn:hover {
+            border-color: #ffffff;
+            color: #ffffff;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        
+        .arrow-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            border-color: #495057;
+            color: #6c757d;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .arrow-btn:disabled:hover {
+            border-color: #495057;
+            color: #6c757d;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .arrow-btn i {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .delete-diagram-btn {
+            background: none;
+            border: 2px solid #495057;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #ced4da;
+        }
+        
+        .delete-diagram-btn:hover {
+            border-color: #EF4444;
+            color: #EF4444;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+        }
+        
+        .delete-diagram-btn i {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .diagram-input {
+            background-color: #212529;
+            border: 1px solid #495057;
+            color: #e9ecef;
+            border-radius: 6px;
+            padding: 12px 16px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .diagram-input:focus {
+            background-color: #212529;
+            border-color: #ffffff;
+            color: #e9ecef;
+            box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+        }
+        
+        .diagram-input::placeholder {
+            color: #6c757d;
+        }
+        
+        /* Diagram Rectangle Styling */
+        .diagram-rectangle {
+            background-color: #212529;
+            border: 2px dashed #495057;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 80px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+        }
+        
+        .diagram-rectangle:hover {
+            border-color: #ffffff;
+            background-color: #2c3034;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+        }
+        
+        .diagram-rectangle.has-content {
+            border-style: solid;
+            border-color: #28a745;
+            background-color: #1a2e1a;
+        }
+        
+        .diagram-rectangle.has-content:hover {
+            border-color: #34ce57;
+            background-color: #1e3a1e;
+        }
+        
+        /* Special styling for expanded content when sketch has content */
+        .diagram-rectangle[data-field="expanded-content"].sketch-has-content {
+            border-style: solid;
+            border-color: #007bff;
+            background-color: #1a2a3e;
+        }
+        
+        .diagram-rectangle[data-field="expanded-content"].sketch-has-content:hover {
+            border-color: #0099ff;
+            background-color: #1e3e5e;
+        }
+        
+        .diagram-rectangle[data-field="expanded-content"].sketch-has-content .diagram-placeholder {
+            display: none !important;
+        }
+        
+        .diagram-rectangle[data-field="expanded-content"].sketch-has-content .diagram-content {
+            display: block !important;
+        }
+        
+        .diagram-placeholder {
+            color: #6c757d;
+            font-style: italic;
+            font-size: 14px;
+        }
+        
+        .diagram-content {
+            color: #e9ecef;
+            font-size: 14px;
+            line-height: 1.4;
+            max-height: 60px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .diagram-rectangle.has-content .diagram-placeholder {
+            display: none !important;
+        }
+        
+        .diagram-rectangle.has-content .diagram-content {
+            display: block !important;
+        }
+        
+        /* Modal Dark Theme Styling */
+        .modal-content {
+            background-color: #212529;
+            border: 1px solid #495057;
+            color: #e9ecef;
+        }
+        
+        .modal-header {
+            border-bottom: 1px solid #495057;
+        }
+        
+        .modal-footer {
+            border-top: 1px solid #495057;
+        }
+        
+        .modal-title {
+            color: #ffffff;
+        }
+        
+        .btn-close {
+            filter: invert(1);
+        }
+        
+        #diagramTextarea {
+            background-color: #1a1a1a;
+            border: 1px solid #495057;
+            color: #e9ecef;
+            border-radius: 6px;
+            padding: 16px;
+            font-size: 16px;
+            line-height: 1.5;
+            resize: vertical;
+            min-height: 200px;
+        }
+        
+        #diagramTextarea:focus {
+            background-color: #1a1a1a;
+            border-color: #ffffff;
+            color: #e9ecef;
+            box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+        }
+        
+        #diagramTextarea::placeholder {
+            color: #6c757d;
+        }
+        
+        /* Rotating animation for loading states */
+        .rotating {
+            animation: rotate 1s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .arrow-btn[data-from="ideation"][data-to="planning"] {
+            border-color: #495057;
+            color: #495057;
+            position: relative;
+        }
+        
+        .arrow-btn[data-from="ideation"][data-to="planning"]:hover {
+            border-color: #ffffff;
+            color: #ffffff;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        
+        .arrow-btn[data-from="ideation"][data-to="planning"].has-planning {
+            border-color: #28a745;
+            color: #28a745;
+        }
+        
+        .arrow-btn[data-from="ideation"][data-to="planning"].has-planning:hover {
+            border-color: #34ce57;
+            color: #34ce57;
+            box-shadow: 0 0 12px rgba(40, 167, 69, 0.4);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(-5px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        
+        /* Expandable Section Styling */
+        .diagram-expand-bar {
+            background: linear-gradient(135deg, #2d3748, #4a5568);
+            height: 12px;
+            margin-top: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            border: 1px solid #495057;
+        }
+        
+        .diagram-expand-bar:hover {
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+        }
+        
+        .diagram-expand-bar::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid #ced4da;
+            transition: transform 0.3s ease;
+        }
+        
+        .diagram-expand-bar.expanded::after {
+            transform: translate(-50%, -50%) rotate(180deg);
+        }
+        
+        .expanded-row {
+            transition: all 0.3s ease;
+        }
+        
+        .expanded-arrow-btn {
+            background: none;
+            border: 2px solid #495057;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #ced4da;
+        }
+        
+        .expanded-arrow-btn:hover {
+            border-color: #ffffff;
+            color: #ffffff;
+            transform: scale(1.1);
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+        }
+        
+        .expanded-arrow-btn i {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .image-rectangle {
+            background-color: #212529;
+            border: 2px dashed #495057;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 60px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+        }
+        
+        .image-rectangle:hover {
+            border-color: #ffffff;
+            background-color: #2c3034;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+        }
+        
+        .image-rectangle.has-content {
+            border-style: solid;
+            border-color: #17a2b8;
+            background-color: #1a2a2e;
+        }
+        
+        .image-rectangle.has-content:hover {
+            border-color: #20c997;
+            background-color: #1e3a3e;
+        }
+        
+        .expanded-content-rectangle {
+            background-color: #212529;
+            border: 2px dashed #495057;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 60px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+        }
+        
+        .expanded-content-rectangle:hover {
+            border-color: #ffffff;
+            background-color: #2c3034;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+        }
+        
+        .expanded-content-rectangle.has-content {
+            border-style: solid;
+            border-color: #ffc107;
+            background-color: #2a2a1a;
+        }
+        
+        .expanded-content-rectangle.has-content:hover {
+            border-color: #ffca2c;
+            background-color: #2e2e1e;
+        }
+    </style>
+</head>
+<body class="page-wrapper">
+    <!-- Black Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-container">
+                <!-- Left: System Icon -->
+                <div class="header-left">
+                    <a href="/sessions">
+                        <svg class="system-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <ellipse cx="12" cy="6" rx="8" ry="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <path d="M4 6v6c0 1.1 3.6 2 8 2s8-.9 8-2V6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <path d="M4 12v6c0 1.1 3.6 2 8 2s8-.9 8-2v-6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                        </svg>
+                    </a>
+                </div>
+                
+                <!-- Center: Navigation -->
+                <div class="header-center">
+                    <a href="/solutioning" class="nav-item clickable">Solutioning</a>
+                    <span class="nav-separator">|</span>
+                    <a href="/solutioning">
+                        <img src="{{ url_for('static', filename='images/dry_ground_ai_logo.svg') }}" alt="Dry Ground AI Logo" class="logo-img">
+                    </a>
+                    <span class="nav-separator">|</span>
+                    <span class="nav-item active">Visuals</span>
+                    <span class="nav-separator">|</span>
+                    <a href="/sow" class="nav-item clickable">SoW</a>
+                    <span class="nav-separator">|</span>
+                    <span class="nav-item">LoE</span>
+                </div>
+                
+                <!-- Right: Chat -->
+                <div class="header-right">
+                    <span class="chat-btn">Chat</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 col-md-12">
+                    <main class="content-card">
+                        <h1 class="page-title">Visuals</h1>
+                        <p class="page-subtitle">Create and manage visual assets for your solutions</p>
+                        
+                        <!-- Session ID for tracking -->
+                        <input type="hidden" id="sessionId" name="sessionId" value="{{ session_id }}">
+                        
+                        <!-- Basic Information Section -->
+                        <div class="basic-info-section">
+                            <h3 class="section-title">Basic Information</h3>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="titleInput" class="form-label">Title</label>
+                                        <input type="text" class="form-control" id="titleInput" name="title" 
+                                               placeholder="Enter project title" value="">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="clientInput" class="form-label">Client</label>
+                                        <input type="text" class="form-control" id="clientInput" name="client" 
+                                               placeholder="Enter client name" value="">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Diagram Mapping Section -->
+                        <div class="diagram-mapping-section">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h3 class="section-title mb-0">Diagram Mapping</h3>
+                                <button type="button" id="addDiagramBtn" class="btn btn-primary btn-sm">
+                                    <i data-feather="plus" style="width: 16px; height: 16px; margin-right: 4px;"></i>Add Diagram
+                                </button>
+                            </div>
+                            
+                            <!-- Diagram Sets Container -->
+                            <div id="diagramSetsContainer">
+                                <!-- Initial Diagram Set -->
+                                <div class="diagram-set" data-diagram-id="1">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                <label class="form-label">Ideation</label>
+                                                <div class="diagram-rectangle" data-diagram-id="1" data-field="ideation" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                                    <span class="diagram-placeholder">Click to add ideation details...</span>
+                                                    <span class="diagram-content" style="display: none;"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1 text-center">
+                                            <button type="button" class="arrow-btn" data-from="ideation" data-to="planning">
+                                                <i data-feather="arrow-right"></i>
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                <label class="form-label">Planning</label>
+                                                <div class="diagram-rectangle" data-diagram-id="1" data-field="planning" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                                    <span class="diagram-placeholder">Click to add planning details...</span>
+                                                    <span class="diagram-content" style="display: none;"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1 text-center">
+                                            <button type="button" class="arrow-btn" data-from="planning" data-to="sketch">
+                                                <i data-feather="arrow-right"></i>
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                <label class="form-label">Sketch</label>
+                                                <div class="diagram-rectangle" data-diagram-id="1" data-field="sketch" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                                    <span class="diagram-placeholder">Click to add sketch details...</span>
+                                                    <span class="diagram-content" style="display: none;"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1 text-center">
+                                            <button type="button" class="delete-diagram-btn" data-diagram-id="1" title="Delete diagram set">
+                                                <i data-feather="trash-2"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Expandable Row (hidden by default, shown when Sketch has content) -->
+                                    <div class="expanded-row d-none" data-diagram-id="1">
+                                        <div class="row align-items-center">
+                                            <!-- Empty space (aligned with Ideation) -->
+                                            <div class="col-md-3">
+                                                <div class="mb-1">
+                                                    <label class="form-label" style="visibility: hidden;">.</label>
+                                                    <div style="height: 20px;"></div>
+                                                </div>
+                                            </div>
+                                            <!-- Empty space (aligned with Ideation→Planning arrow) -->
+                                            <div class="col-md-1 text-center">
+                                                <div style="height: 20px;"></div>
+                                            </div>
+                                            <!-- Empty space (aligned with Planning) -->
+                                            <div class="col-md-3">
+                                                <div class="mb-1">
+                                                    <label class="form-label" style="visibility: hidden;">.</label>
+                                                    <div style="height: 20px;"></div>
+                                                </div>
+                                            </div>
+                                            <!-- Empty space (aligned with Planning→Sketch arrow) -->
+                                            <div class="col-md-1 text-center">
+                                                <div style="height: 20px;"></div>
+                                            </div>
+                                            <!-- Down Arrow (centralized under Sketch) -->
+                                            <div class="col-md-3 text-center">
+                                                <div class="d-flex justify-content-center">
+                                                    <button type="button" class="arrow-btn" data-from="sketch" data-to="expanded">
+                                                        <i data-feather="arrow-down"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <!-- Empty space for delete button alignment -->
+                                            <div class="col-md-1 text-center">
+                                                <div style="height: 20px;"></div>
+                                            </div>
+                                        </div>
+                                        <div class="row align-items-center">
+                                            <!-- Empty space (aligned with Ideation) -->
+                                            <div class="col-md-3">
+                                                <div class="mb-1">
+                                                    <label class="form-label" style="visibility: hidden;">.</label>
+                                                    <div style="height: 20px;"></div>
+                                                </div>
+                                            </div>
+                                            <!-- Empty space (aligned with Ideation→Planning arrow) -->
+                                            <div class="col-md-1 text-center">
+                                                <div style="height: 20px;"></div>
+                                            </div>
+                                            <!-- Image Box (aligned with Planning, same dimensions) -->
+                                            <div class="col-md-3">
+                                                <div class="mb-1">
+                                                    <label class="form-label" style="visibility: hidden;">.</label>
+                                                    <div class="diagram-rectangle" data-diagram-id="1" data-field="image" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                                        <span class="diagram-placeholder">Click to add image...</span>
+                                                        <span class="diagram-content" style="display: none;"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- Left Arrow (same size as other arrows) -->
+                                            <div class="col-md-1 text-center">
+                                                <button type="button" class="arrow-btn" data-from="image" data-to="expanded-content">
+                                                    <i data-feather="arrow-left"></i>
+                                                </button>
+                                            </div>
+                                            <!-- Expanded Content Box (same dimensions as other boxes) -->
+                                            <div class="col-md-3">
+                                                <div class="mb-1">
+                                                    <label class="form-label" style="visibility: hidden;">.</label>
+                                                    <div class="diagram-rectangle" data-diagram-id="1" data-field="expanded-content">
+                                                        <span class="diagram-placeholder">Click to add content...</span>
+                                                        <span class="diagram-content" style="display: none;"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- Empty space for delete button alignment -->
+                                            <div class="col-md-1 text-center">
+                                                <div style="height: 20px;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Expand Bar (always at the bottom of the diagram rectangle) -->
+                                    <div class="diagram-expand-bar d-none" data-diagram-id="1" title="Click to expand/collapse"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Action Buttons -->
+                        <div class="quick-actions-section mb-4">
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="button" id="saveVisualsBtn" class="btn btn-primary btn-sm" style="width: 96px; height: 32px; padding: 6px 12px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Save Visuals Session">
+                                    <i data-feather="save" style="width: 16px; height: 16px; margin-right: 4px;"></i>Save
+                                </button>
+                                <button type="button" id="deleteVisualsBtn" class="btn btn-danger btn-sm" style="width: 32px; height: 32px; padding: 6px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Delete Visuals Session">
+                                    <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Diagram Modal -->
+                        <div class="modal fade" id="diagramModal" tabindex="-1" aria-labelledby="diagramModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="diagramModalLabel">Edit Diagram Content</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <!-- Text Content Section (for non-image fields) -->
+                                        <div class="mb-3" id="textContentSection">
+                                            <label for="diagramTextarea" class="form-label" id="diagramFieldLabel">Content</label>
+                                            <textarea class="form-control" id="diagramTextarea" rows="8" placeholder="Enter your content here..."></textarea>
+                                        </div>
+                                        
+                                        <!-- Image Content Section (for image fields) -->
+                                        <div class="mb-3 d-none" id="imageContentSection">
+                                            <label class="form-label">Image</label>
+                                            
+                                            <!-- Image Display Area -->
+                                            <div class="mb-3">
+                                                <div id="imageDisplayArea" class="border rounded p-3 text-center" style="min-height: 200px; background-color: #1a1a1a; border-color: #495057 !important;">
+                                                    <div id="imagePreview" class="d-none">
+                                                        <img id="previewImage" src="" alt="Preview" class="img-fluid" style="max-height: 300px; border-radius: 6px;">
+                                                        <div class="mt-2">
+                                                            <button type="button" class="btn btn-danger btn-sm" id="removeImageBtn">
+                                                                <i data-feather="trash-2" style="width: 16px; height: 16px; margin-right: 4px;"></i>Remove Image
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div id="imageUploadPrompt">
+                                                        <i data-feather="image" style="width: 48px; height: 48px; color: #6c757d; margin-bottom: 10px;"></i>
+                                                        <p class="text-muted mb-3">No image selected</p>
+                                                        <button type="button" class="btn btn-primary btn-sm me-2" id="uploadImageBtn">
+                                                            <i data-feather="upload" style="width: 16px; height: 16px; margin-right: 4px;"></i>Upload from Device
+                                                        </button>
+                                                        <p class="text-muted mt-2 mb-0" style="font-size: 14px;">Or press Ctrl+V to paste from clipboard</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Hidden file input -->
+                                            <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="button" class="btn btn-primary" id="saveDiagramContent">Save Content</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="/solutioning">Home</a>
+                    <a href="/sessions">Sessions</a>
+                    <a href="#">About</a>
+                    <a href="#">Contact</a>
+                </div>
+                <div class="copyright">
+                    <p>&copy; 2024 Dry Ground AI. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize Feather icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+        
+        // DOM ready event
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Visuals page loaded');
+            console.log('Session ID:', document.getElementById('sessionId').value);
+            
+            // Initialize global session data for XML file generation
+            window.visualsSessionData = {
+                badge: {
+                    glyph: '{{ session_id }}'  // This will be the session ID which can be used as glyph
+                }
+            };
+            console.log('Session data initialized:', window.visualsSessionData);
+            
+            // Initialize session if needed
+            initializeVisualsSession();
+            
+            // Add event listeners for form inputs
+            setupFormEventListeners();
+            
+            // Initialize diagram mapping functionality
+            initializeDiagramMapping();
+            
+            // Add event listeners for save and delete buttons
+            setupSaveDeleteButtons();
+        });
+        
+        // Global variable to track diagram IDs
+        let maxDiagramId = 1;
+        
+        // Global variables for modal state
+        let currentEditingDiagram = null;
+        let currentEditingField = null;
+        
+        // Initialize diagram mapping functionality
+        function initializeDiagramMapping() {
+            // Add event listener for Add Diagram button
+            const addDiagramBtn = document.getElementById('addDiagramBtn');
+            if (addDiagramBtn) {
+                addDiagramBtn.addEventListener('click', addNewDiagramSet);
+            }
+            
+            // Initialize existing diagram inputs
+            setupDiagramEventListeners();
+            
+            // Setup modal event listeners
+            setupModalEventListeners();
+        }
+        
+        // Setup modal event listeners
+        function setupModalEventListeners() {
+            // Save button in modal
+            const saveBtn = document.getElementById('saveDiagramContent');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', saveDiagramContentFromModal);
+            }
+            
+            // Modal shown event - populate with existing content
+            const modal = document.getElementById('diagramModal');
+            if (modal) {
+                modal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    const diagramId = button.getAttribute('data-diagram-id');
+                    const field = button.getAttribute('data-field');
+                    
+                    currentEditingDiagram = diagramId;
+                    currentEditingField = field;
+                    
+                    // Update modal title
+                    const modalTitle = document.getElementById('diagramModalLabel');
+                    modalTitle.textContent = `Edit ${field.charAt(0).toUpperCase() + field.slice(1)} - Diagram ${diagramId}`;
+                    
+                    // Show/hide appropriate sections based on field type
+                    const textSection = document.getElementById('textContentSection');
+                    const imageSection = document.getElementById('imageContentSection');
+                    
+                    if (field === 'image') {
+                        // Show image section, hide text section
+                        textSection.classList.add('d-none');
+                        imageSection.classList.remove('d-none');
+                        
+                        // Load existing image if any
+                        loadExistingImage(button);
+                    } else {
+                        // Show text section, hide image section
+                        textSection.classList.remove('d-none');
+                        imageSection.classList.add('d-none');
+                        
+                        // Load existing text content
+                    const fieldLabel = document.getElementById('diagramFieldLabel');
+                    const textarea = document.getElementById('diagramTextarea');
+                    
+                    fieldLabel.textContent = field.charAt(0).toUpperCase() + field.slice(1);
+                    
+                    // Get existing content
+                    const contentSpan = button.querySelector('.diagram-content');
+                    const existingContent = contentSpan ? contentSpan.textContent : '';
+                    textarea.value = existingContent;
+                    
+                    // Focus the textarea
+                    setTimeout(() => textarea.focus(), 100);
+                    }
+                });
+                
+                // Modal hidden event - clear state
+                modal.addEventListener('hidden.bs.modal', function (event) {
+                    currentEditingDiagram = null;
+                    currentEditingField = null;
+                    document.getElementById('diagramTextarea').value = '';
+                    clearImageModal();
+                });
+            }
+            
+            // Setup image-specific event listeners
+            setupImageEventListeners();
+        }
+        
+        // Update arrow styling based on Planning content
+        function updateArrowStyling() {
+            document.querySelectorAll('.diagram-set').forEach(diagramSet => {
+                const planningRectangle = diagramSet.querySelector('[data-field="planning"]');
+                const arrowButton = diagramSet.querySelector('.arrow-btn[data-from="ideation"][data-to="planning"]');
+                
+                if (planningRectangle && arrowButton) {
+                    const planningContent = planningRectangle.querySelector('.diagram-content').textContent.trim();
+                    
+                    if (planningContent) {
+                        arrowButton.classList.add('has-planning');
+                    } else {
+                        arrowButton.classList.remove('has-planning');
+                    }
+                }
+            });
+        }
+        
+        // Save content from modal
+        function saveDiagramContentFromModal() {
+            if (!currentEditingDiagram || !currentEditingField) {
+                console.error('No diagram/field selected for editing');
+                return;
+            }
+            
+            let content = '';
+            
+            // Handle different field types
+            if (currentEditingField === 'image') {
+                // For image fields, use the base64 image data
+                content = currentImageData || '';
+            } else {
+                // For text fields, use the textarea content
+            const textarea = document.getElementById('diagramTextarea');
+                content = textarea.value.trim();
+            }
+            
+            // Find the diagram rectangle
+            const rectangle = document.querySelector(`.diagram-rectangle[data-diagram-id="${currentEditingDiagram}"][data-field="${currentEditingField}"]`);
+            
+            if (rectangle) {
+                const placeholderSpan = rectangle.querySelector('.diagram-placeholder');
+                const contentSpan = rectangle.querySelector('.diagram-content');
+                
+                if (content) {
+                    // Has content - show content, hide placeholder
+                    if (currentEditingField === 'image') {
+                        // For images, store base64 data but show a preview indicator
+                        contentSpan.textContent = content; // Store full base64 data
+                        placeholderSpan.textContent = 'Image uploaded'; // Show user-friendly text
+                    } else {
+                        // For text, show the actual content
+                    contentSpan.textContent = content;
+                    }
+                    rectangle.classList.add('has-content');
+                } else {
+                    // No content - show placeholder, hide content
+                    contentSpan.textContent = '';
+                    rectangle.classList.remove('has-content');
+                    
+                    if (currentEditingField === 'image') {
+                        placeholderSpan.textContent = 'Click to add image...';
+                    }
+                }
+                
+                // Update arrow styling if this was a Planning field
+                if (currentEditingField === 'planning') {
+                    updateArrowStyling();
+                }
+                
+                // Update expand bar visibility in case this was a sketch update
+                updateExpandBarVisibility(currentEditingDiagram);
+                
+                // Refresh event listeners to handle expanded content Draw.io functionality
+                setupDiagramEventListeners();
+                
+                // Save to session
+                saveDiagramData();
+            }
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('diagramModal'));
+            modal.hide();
+        }
+        
+        // Setup event listeners for all diagram inputs and buttons
+        function setupDiagramEventListeners() {
+            // Remove existing event listeners to prevent duplicates
+            document.querySelectorAll('.diagram-expand-bar').forEach(bar => {
+                bar.replaceWith(bar.cloneNode(true));
+            });
+            
+            document.querySelectorAll('.arrow-btn').forEach(btn => {
+                btn.replaceWith(btn.cloneNode(true));
+            });
+            
+            document.querySelectorAll('.delete-diagram-btn').forEach(btn => {
+                btn.replaceWith(btn.cloneNode(true));
+            });
+            
+            // Add event listeners for diagram rectangles (handled by modal now)
+            document.querySelectorAll('.diagram-rectangle').forEach(rectangle => {
+                const field = rectangle.getAttribute('data-field');
+                
+                if (field === 'expanded-content') {
+                    // Special handling for expanded content rectangles
+                    const hasSketchContent = rectangle.classList.contains('sketch-has-content');
+                    
+                    if (hasSketchContent) {
+                        // Remove any existing modal attributes and add Draw.io functionality
+                    rectangle.removeAttribute('data-bs-toggle');
+                    rectangle.removeAttribute('data-bs-target');
+                    
+                        // Remove any existing click listeners
+                        rectangle.replaceWith(rectangle.cloneNode(true));
+                        const newRectangle = document.querySelector(`[data-diagram-id="${rectangle.getAttribute('data-diagram-id')}"][data-field="expanded-content"]`);
+                        
+                        // Add Draw.io click handler
+                        newRectangle.addEventListener('click', function() {
+                        const diagramId = this.getAttribute('data-diagram-id');
+                        openInDrawIO(diagramId);
+                    });
+                } else {
+                        // Add modal functionality for empty expanded content boxes
+                        rectangle.setAttribute('data-bs-toggle', 'modal');
+                        rectangle.setAttribute('data-bs-target', '#diagramModal');
+                    }
+                } else {
+                    // Normal modal behavior for all other rectangles
+                    if (!rectangle.hasAttribute('data-bs-toggle')) {
+                        rectangle.setAttribute('data-bs-toggle', 'modal');
+                        rectangle.setAttribute('data-bs-target', '#diagramModal');
+                    }
+                }
+            });
+            
+            // Add event listeners for expand bars
+            document.querySelectorAll('.diagram-expand-bar').forEach(bar => {
+                bar.addEventListener('click', function() {
+                    const diagramId = this.getAttribute('data-diagram-id');
+                    console.log('Expand bar clicked for diagram:', diagramId);
+                    toggleDiagramExpansion(diagramId);
+                });
+            });
+
+            // Add event listeners for arrow buttons
+            document.querySelectorAll('.arrow-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const from = this.getAttribute('data-from');
+                    const to = this.getAttribute('data-to');
+                    console.log(`Arrow clicked: ${from} → ${to}`);
+                    
+                    // Handle ideation → planning arrow click
+                    if (from === 'ideation' && to === 'planning') {
+                        // Check if ideation has content before allowing click
+                        const diagramSet = this.closest('.diagram-set');
+                        const ideationRectangle = diagramSet.querySelector('[data-field="ideation"]');
+                        const ideationContent = ideationRectangle.querySelector('.diagram-content').textContent.trim();
+                        
+                        if (!ideationContent) {
+                            // Show a brief message and highlight the ideation box
+                            ideationRectangle.style.border = '2px solid #ffc107';
+                            setTimeout(() => {
+                                ideationRectangle.style.border = '';
+                            }, 2000);
+                            showVisualsMessage('Please add ideation content first to generate diagram description.', 'warning');
+                            return;
+                        }
+                        
+                        handleIdeationToPlanningArrow(this);
+                    } else if (from === 'planning' && to === 'sketch') {
+                        // Handle planning → sketch arrow click
+                        const diagramSet = this.closest('.diagram-set');
+                        const planningRectangle = diagramSet.querySelector('[data-field="planning"]');
+                        const planningContent = planningRectangle.querySelector('.diagram-content').textContent.trim();
+                        
+                        if (!planningContent) {
+                            // Show a brief message and highlight the planning box
+                            planningRectangle.style.border = '2px solid #ffc107';
+                            setTimeout(() => {
+                                planningRectangle.style.border = '';
+                            }, 2000);
+                            showVisualsMessage('Please add planning content first to generate sketch.', 'warning');
+                            return;
+                        }
+                        
+                        handlePlanningToSketchArrow(this);
+                    } else if (from === 'sketch' && to === 'expanded') {
+                        // Handle sketch → expanded arrow click (↓ arrow) - Create XML file and open in new tab
+                        const diagramSet = this.closest('.diagram-set');
+                        const diagramId = diagramSet.getAttribute('data-diagram-id');
+                        const sketchRectangle = diagramSet.querySelector('[data-field="sketch"]');
+                        const sketchContent = sketchRectangle.querySelector('.diagram-content').textContent.trim();
+                        
+                        if (!sketchContent) {
+                            // Show a brief message and highlight the sketch box
+                            sketchRectangle.style.border = '2px solid #ffc107';
+                            setTimeout(() => {
+                                sketchRectangle.style.border = '';
+                            }, 2000);
+                            showVisualsMessage('Please add sketch content first to create XML file.', 'warning');
+                            return;
+                        }
+                        
+                        handleSketchToExpandedArrow(this, diagramId, sketchContent);
+                    } else {
+                        // Add animation or feedback for other arrows
+                        this.style.transform = 'scale(1.2)';
+                        setTimeout(() => {
+                            this.style.transform = 'scale(1.1)';
+                        }, 150);
+                    }
+                });
+            });
+
+            // Add event listeners for delete diagram buttons
+            document.querySelectorAll('.delete-diagram-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const diagramId = this.getAttribute('data-diagram-id');
+                    deleteDiagramSet(diagramId);
+                });
+            });
+        }
+        
+        // Toggle diagram expansion
+        function toggleDiagramExpansion(diagramId) {
+            console.log('Toggling expansion for diagram:', diagramId);
+            const expandBar = document.querySelector(`.diagram-expand-bar[data-diagram-id="${diagramId}"]`);
+            const expandedRow = document.querySelector(`.expanded-row[data-diagram-id="${diagramId}"]`);
+            
+            console.log('Found expand bar:', !!expandBar);
+            console.log('Found expanded row:', !!expandedRow);
+            
+            if (!expandBar || !expandedRow) {
+                console.error('Expand bar or expanded row not found for diagram:', diagramId);
+                return;
+            }
+            
+            const isExpanded = expandBar.classList.contains('expanded');
+            console.log('Currently expanded:', isExpanded);
+            
+            if (isExpanded) {
+                // Collapse
+                expandBar.classList.remove('expanded');
+                expandedRow.classList.add('d-none');
+                console.log('Collapsed diagram:', diagramId);
+            } else {
+                // Expand
+                expandBar.classList.add('expanded');
+                expandedRow.classList.remove('d-none');
+                console.log('Expanded diagram:', diagramId);
+            }
+        }
+        
+        // Check if sketch has content and show/hide expand bar accordingly
+        function updateExpandBarVisibility(diagramId) {
+            const sketchRectangle = document.querySelector(`.diagram-rectangle[data-diagram-id="${diagramId}"][data-field="sketch"]`);
+            const expandBar = document.querySelector(`.diagram-expand-bar[data-diagram-id="${diagramId}"]`);
+            const expandedContentRectangle = document.querySelector(`.diagram-rectangle[data-diagram-id="${diagramId}"][data-field="expanded-content"]`);
+            
+            if (!sketchRectangle || !expandBar) {
+                return;
+            }
+            
+            const sketchContent = sketchRectangle.querySelector('.diagram-content').textContent.trim();
+            
+            if (sketchContent && sketchContent.length > 0) {
+                // Sketch has content, show expand bar
+                expandBar.classList.remove('d-none');
+                
+                // Update expanded content styling to blue and change placeholder text
+                if (expandedContentRectangle) {
+                    expandedContentRectangle.classList.add('sketch-has-content');
+                    const placeholder = expandedContentRectangle.querySelector('.diagram-placeholder');
+                    const content = expandedContentRectangle.querySelector('.diagram-content');
+                    if (placeholder && content) {
+                        // Set special placeholder text and content for Draw.io functionality
+                        placeholder.textContent = 'Click to open in Draw.io...';
+                        content.textContent = 'Open diagram in Draw.io for editing';
+                    }
+                }
+            } else {
+                // Sketch is empty, hide expand bar and collapse if expanded
+                expandBar.classList.add('d-none');
+                expandBar.classList.remove('expanded');
+                const expandedRow = document.querySelector(`.expanded-row[data-diagram-id="${diagramId}"]`);
+                if (expandedRow) {
+                    expandedRow.classList.add('d-none');
+                }
+                
+                // Remove blue styling from expanded content
+                if (expandedContentRectangle) {
+                    expandedContentRectangle.classList.remove('sketch-has-content');
+                    const placeholder = expandedContentRectangle.querySelector('.diagram-placeholder');
+                    const content = expandedContentRectangle.querySelector('.diagram-content');
+                    if (placeholder && content) {
+                        // Reset to default placeholder text
+                        placeholder.textContent = 'Click to add content...';
+                        content.textContent = '';
+                    }
+                }
+            }
+        }
+        
+        // Update expand bar visibility for all diagrams
+        function updateAllExpandBarVisibility() {
+            document.querySelectorAll('.diagram-set').forEach(diagramSet => {
+                const diagramId = diagramSet.getAttribute('data-diagram-id');
+                updateExpandBarVisibility(diagramId);
+            });
+        }
+        
+        // Add new diagram set
+        function addNewDiagramSet() {
+            maxDiagramId++;
+            const newId = maxDiagramId;
+            
+            const container = document.getElementById('diagramSetsContainer');
+            
+            // Create new diagram set HTML
+            const diagramSetHTML = `
+                <div class="diagram-set" data-diagram-id="${newId}">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Ideation</label>
+                                <div class="diagram-rectangle" data-diagram-id="${newId}" data-field="ideation" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                    <span class="diagram-placeholder">Click to add ideation details...</span>
+                                    <span class="diagram-content" style="display: none;"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <button type="button" class="arrow-btn" data-from="ideation" data-to="planning">
+                                <i data-feather="arrow-right"></i>
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Planning</label>
+                                <div class="diagram-rectangle" data-diagram-id="${newId}" data-field="planning" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                    <span class="diagram-placeholder">Click to add planning details...</span>
+                                    <span class="diagram-content" style="display: none;"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <button type="button" class="arrow-btn" data-from="planning" data-to="sketch">
+                                <i data-feather="arrow-right"></i>
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Sketch</label>
+                                <div class="diagram-rectangle" data-diagram-id="${newId}" data-field="sketch" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                    <span class="diagram-placeholder">Click to add sketch details...</span>
+                                    <span class="diagram-content" style="display: none;"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <button type="button" class="delete-diagram-btn" data-diagram-id="${newId}" title="Delete diagram set">
+                                <i data-feather="trash-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Expandable Row (hidden by default, shown when Sketch has content) -->
+                    <div class="expanded-row d-none" data-diagram-id="${newId}">
+                        <div class="row align-items-center">
+                            <!-- Empty space (aligned with Ideation) -->
+                            <div class="col-md-3">
+                                <div class="mb-1">
+                                    <label class="form-label" style="visibility: hidden;">.</label>
+                                    <div style="height: 20px;"></div>
+                                </div>
+                            </div>
+                            <!-- Empty space (aligned with Ideation→Planning arrow) -->
+                            <div class="col-md-1 text-center">
+                                <div style="height: 20px;"></div>
+                            </div>
+                            <!-- Empty space (aligned with Planning) -->
+                            <div class="col-md-3">
+                                <div class="mb-1">
+                                    <label class="form-label" style="visibility: hidden;">.</label>
+                                    <div style="height: 20px;"></div>
+                                </div>
+                            </div>
+                            <!-- Empty space (aligned with Planning→Sketch arrow) -->
+                            <div class="col-md-1 text-center">
+                                <div style="height: 20px;"></div>
+                            </div>
+                            <!-- Down Arrow (centralized under Sketch) -->
+                            <div class="col-md-3 text-center">
+                                <div class="d-flex justify-content-center">
+                                    <button type="button" class="arrow-btn" data-from="sketch" data-to="expanded">
+                                        <i data-feather="arrow-down"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Empty space for delete button alignment -->
+                            <div class="col-md-1 text-center">
+                                <div style="height: 20px;"></div>
+                            </div>
+                        </div>
+                        <div class="row align-items-center">
+                            <!-- Empty space (aligned with Ideation) -->
+                            <div class="col-md-3">
+                                <div class="mb-1">
+                                    <label class="form-label" style="visibility: hidden;">.</label>
+                                    <div style="height: 20px;"></div>
+                                </div>
+                            </div>
+                            <!-- Empty space (aligned with Ideation→Planning arrow) -->
+                            <div class="col-md-1 text-center">
+                                <div style="height: 20px;"></div>
+                            </div>
+                            <!-- Image Box (aligned with Planning, same dimensions) -->
+                            <div class="col-md-3">
+                                <div class="mb-1">
+                                    <label class="form-label" style="visibility: hidden;">.</label>
+                                    <div class="diagram-rectangle" data-diagram-id="${newId}" data-field="image" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                        <span class="diagram-placeholder">Click to add image...</span>
+                                        <span class="diagram-content" style="display: none;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Left Arrow (same size as other arrows) -->
+                            <div class="col-md-1 text-center">
+                                <button type="button" class="arrow-btn" data-from="image" data-to="expanded-content">
+                                    <i data-feather="arrow-left"></i>
+                                </button>
+                            </div>
+                            <!-- Expanded Content Box (same dimensions as other boxes) -->
+                            <div class="col-md-3">
+                                <div class="mb-1">
+                                    <label class="form-label" style="visibility: hidden;">.</label>
+                                    <div class="diagram-rectangle" data-diagram-id="${newId}" data-field="expanded-content">
+                                        <span class="diagram-placeholder">Click to add content...</span>
+                                        <span class="diagram-content" style="display: none;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Empty space for delete button alignment -->
+                            <div class="col-md-1 text-center">
+                                <div style="height: 20px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Expand Bar (always at the bottom of the diagram rectangle) -->
+                    <div class="diagram-expand-bar d-none" data-diagram-id="${newId}" title="Click to expand/collapse"></div>
+                </div>
+            `;
+            
+            // Add the new diagram set to the container
+            container.insertAdjacentHTML('beforeend', diagramSetHTML);
+            
+            // Re-initialize feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            
+            // Setup event listeners for the new diagram set
+            setupDiagramEventListeners();
+            
+            // Save initial empty diagram data
+            saveDiagramData();
+            
+            console.log(`Added new diagram set with ID: ${newId}`);
+        }
+        
+        // Delete diagram set
+        function deleteDiagramSet(diagramId) {
+            const diagramSets = document.querySelectorAll('.diagram-set');
+            
+            // Prevent deletion if it's the last diagram set
+            if (diagramSets.length <= 1) {
+                alert('Cannot delete the last diagram set.');
+                return;
+            }
+            
+            // Remove the diagram set from DOM
+            const diagramSet = document.querySelector(`.diagram-set[data-diagram-id="${diagramId}"]`);
+            if (diagramSet) {
+                diagramSet.remove();
+                console.log(`Deleted diagram set with ID: ${diagramId}`);
+                
+                // Re-setup event listeners for remaining diagram sets
+                setupDiagramEventListeners();
+                
+                // Save updated diagram data
+                saveDiagramData();
+            }
+        }
+        
+        // Get all diagram data
+        function getAllDiagramData() {
+            const diagramData = [];
+            
+            document.querySelectorAll('.diagram-set').forEach(diagramSet => {
+                const diagramId = diagramSet.getAttribute('data-diagram-id');
+                const ideationRectangle = diagramSet.querySelector(`[data-field="ideation"]`);
+                const planningRectangle = diagramSet.querySelector(`[data-field="planning"]`);
+                const sketchRectangle = diagramSet.querySelector(`[data-field="sketch"]`);
+                const imageRectangle = diagramSet.querySelector(`[data-field="image"]`);
+                const expandedContentRectangle = diagramSet.querySelector(`[data-field="expanded-content"]`);
+                
+                // Extract content from rectangles
+                const ideationContent = ideationRectangle ? ideationRectangle.querySelector('.diagram-content').textContent : '';
+                const planningContent = planningRectangle ? planningRectangle.querySelector('.diagram-content').textContent : '';
+                const sketchContent = sketchRectangle ? sketchRectangle.querySelector('.diagram-content').textContent : '';
+                const imageContent = imageRectangle ? imageRectangle.querySelector('.diagram-content').textContent : '';
+                const expandedContent = expandedContentRectangle ? expandedContentRectangle.querySelector('.diagram-content').textContent : '';
+                
+                diagramData.push({
+                    id: parseInt(diagramId),
+                    ideation: ideationContent,
+                    planning: planningContent,
+                    sketch: sketchContent,
+                    image: imageContent, // Base64 image data
+                    expandedContent: expandedContent
+                });
+            });
+            
+            return diagramData;
+        }
+        
+        // Save diagram data to session
+        async function saveDiagramData() {
+            // Use the comprehensive session update function
+            await updateVisualsSession();
+        }
+        
+        // Setup event listeners for form inputs
+        function setupFormEventListeners() {
+            const titleInput = document.getElementById('titleInput');
+            const clientInput = document.getElementById('clientInput');
+            
+            if (titleInput) {
+                titleInput.addEventListener('blur', updateVisualsSession);
+                titleInput.addEventListener('input', debounce(updateVisualsSession, 1000));
+            }
+            
+            if (clientInput) {
+                clientInput.addEventListener('blur', updateVisualsSession);
+                clientInput.addEventListener('input', debounce(updateVisualsSession, 1000));
+            }
+        }
+        
+        // Debounce function to limit API calls
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        // Initialize visuals session with the specified structure
+        async function initializeVisualsSession() {
+            const sessionIdElement = document.getElementById('sessionId');
+            if (!sessionIdElement) {
+                console.error('Session ID element not found!');
+                return;
+            }
+            
+            const sessionId = sessionIdElement.value;
+            if (!sessionId) {
+                console.error('Session ID is required');
+                return;
+            }
+            
+            // Check if this is a loaded session by checking URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const isLoadedSession = urlParams.get('loaded') === 'true';
+            
+            console.log('Initializing visuals session:', sessionId);
+            console.log('Is loaded session:', isLoadedSession);
+            
+            if (isLoadedSession) {
+                // This is a loaded session, try to load existing data first
+                console.log('Loading existing session data for loaded session...');
+                await loadExistingSessionData();
+            } else {
+                // This is a new session, initialize with default structure
+                console.log('Creating new session structure...');
+                
+                const initialSessionData = {
+                    sessionId: sessionId,
+                    data: {
+                        badge: {
+                            row: 0,
+                            glyph: sessionId,
+                            "created-at": new Date().toISOString().slice(0, 19).replace('T', ' ')
+                        },
+                        basic: {
+                            title: "",
+                            client: ""
+                        },
+                        diagrams: [
+                            {
+                                id: 1,
+                                ideation: "",
+                                planning: "",
+                                sketch: ""
+                            }
+                        ]
+                    }
+                };
+                
+                try {
+                    const response = await fetch('/update-visuals-session', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(initialSessionData)
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        console.log('New visuals session initialized successfully');
+                    } else {
+                        console.error('Error initializing new visuals session:', result.message);
+                    }
+                } catch (error) {
+                    console.error('Error initializing new visuals session:', error);
+                }
+            }
+        }
+        
+        // Load existing session data
+        async function loadExistingSessionData() {
+            const sessionId = document.getElementById('sessionId').value;
+            
+            try {
+                const response = await fetch(`/visuals/debug/${sessionId}`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    const data = result.data;
+                    console.log('Loading existing visuals session data:', data);
+                    
+                    // Populate basic info
+                    if (data.basic) {
+                        const titleInput = document.getElementById('titleInput');
+                        const clientInput = document.getElementById('clientInput');
+                        
+                        if (titleInput && data.basic.title) {
+                            titleInput.value = data.basic.title;
+                        }
+                        
+                        if (clientInput && data.basic.client) {
+                            clientInput.value = data.basic.client;
+                        }
+                    }
+                    
+                    // Populate diagram data
+                    if (data.diagrams && data.diagrams.length > 0) {
+                        await loadDiagramData(data.diagrams);
+                    }
+                } else {
+                    console.log('No existing visuals session data found');
+                }
+            } catch (error) {
+                console.error('Error loading existing session data:', error);
+            }
+        }
+        
+        // Load diagram data into rectangles
+        async function loadDiagramData(diagramsArray) {
+            console.log('Loading diagram data:', diagramsArray);
+            
+            // Clear existing diagram sets (except the first one)
+            const container = document.getElementById('diagramSetsContainer');
+            const existingSets = container.querySelectorAll('.diagram-set');
+            
+            // Remove all sets except the first
+            for (let i = 1; i < existingSets.length; i++) {
+                existingSets[i].remove();
+            }
+            
+            // Find the maximum ID to set maxDiagramId
+            maxDiagramId = Math.max(...diagramsArray.map(item => item.id), 1);
+            
+            // Sort diagrams by ID to ensure proper order
+            const sortedDiagrams = diagramsArray.sort((a, b) => a.id - b.id);
+            
+            // Process each diagram
+            for (const diagram of sortedDiagrams) {
+                const diagramId = diagram.id;
+                
+                if (diagramId === 1) {
+                    // Update the first diagram set
+                    populateDiagramRectangle(diagramId, 'ideation', diagram.ideation || '');
+                    populateDiagramRectangle(diagramId, 'planning', diagram.planning || '');
+                    populateDiagramRectangle(diagramId, 'sketch', diagram.sketch || '');
+                    populateDiagramRectangle(diagramId, 'image', diagram.image || '');
+                    populateDiagramRectangle(diagramId, 'expanded-content', diagram.expandedContent || '');
+                } else {
+                    // Create new diagram set
+                    const diagramSetHTML = `
+                        <div class="diagram-set" data-diagram-id="${diagramId}">
+                            <div class="row align-items-center">
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Ideation</label>
+                                        <div class="diagram-rectangle" data-diagram-id="${diagramId}" data-field="ideation" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                            <span class="diagram-placeholder">Click to add ideation details...</span>
+                                            <span class="diagram-content" style="display: none;"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-1 text-center">
+                                    <button type="button" class="arrow-btn" data-from="ideation" data-to="planning">
+                                        <i data-feather="arrow-right"></i>
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Planning</label>
+                                        <div class="diagram-rectangle" data-diagram-id="${diagramId}" data-field="planning" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                            <span class="diagram-placeholder">Click to add planning details...</span>
+                                            <span class="diagram-content" style="display: none;"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-1 text-center">
+                                    <button type="button" class="arrow-btn" data-from="planning" data-to="sketch">
+                                        <i data-feather="arrow-right"></i>
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label class="form-label">Sketch</label>
+                                        <div class="diagram-rectangle" data-diagram-id="${diagramId}" data-field="sketch" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                            <span class="diagram-placeholder">Click to add sketch details...</span>
+                                            <span class="diagram-content" style="display: none;"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-1 text-center">
+                                    <button type="button" class="delete-diagram-btn" data-diagram-id="${diagramId}" title="Delete diagram set">
+                                        <i data-feather="trash-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Expandable Row (hidden by default, shown when Sketch has content) -->
+                            <div class="expanded-row d-none" data-diagram-id="${diagramId}">
+                                <div class="row align-items-center">
+                                    <!-- Empty space (aligned with Ideation) -->
+                                    <div class="col-md-3">
+                                        <div class="mb-1">
+                                            <label class="form-label" style="visibility: hidden;">.</label>
+                                            <div style="height: 20px;"></div>
+                                        </div>
+                                    </div>
+                                    <!-- Empty space (aligned with Ideation→Planning arrow) -->
+                                    <div class="col-md-1 text-center">
+                                        <div style="height: 20px;"></div>
+                                    </div>
+                                    <!-- Empty space (aligned with Planning) -->
+                                    <div class="col-md-3">
+                                        <div class="mb-1">
+                                            <label class="form-label" style="visibility: hidden;">.</label>
+                                            <div style="height: 20px;"></div>
+                                        </div>
+                                    </div>
+                                    <!-- Empty space (aligned with Planning→Sketch arrow) -->
+                                    <div class="col-md-1 text-center">
+                                        <div style="height: 20px;"></div>
+                                    </div>
+                                    <!-- Down Arrow (centralized under Sketch) -->
+                                    <div class="col-md-3 text-center">
+                                        <div class="d-flex justify-content-center">
+                                            <button type="button" class="arrow-btn" data-from="sketch" data-to="expanded">
+                                                <i data-feather="arrow-down"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- Empty space for delete button alignment -->
+                                    <div class="col-md-1 text-center">
+                                        <div style="height: 20px;"></div>
+                                    </div>
+                                </div>
+                                <div class="row align-items-center">
+                                    <!-- Empty space (aligned with Ideation) -->
+                                    <div class="col-md-3">
+                                        <div class="mb-1">
+                                            <label class="form-label" style="visibility: hidden;">.</label>
+                                            <div style="height: 20px;"></div>
+                                        </div>
+                                    </div>
+                                    <!-- Empty space (aligned with Ideation→Planning arrow) -->
+                                    <div class="col-md-1 text-center">
+                                        <div style="height: 20px;"></div>
+                                    </div>
+                                    <!-- Image Box (aligned with Planning, same dimensions) -->
+                                    <div class="col-md-3">
+                                        <div class="mb-1">
+                                            <label class="form-label" style="visibility: hidden;">.</label>
+                                            <div class="diagram-rectangle" data-diagram-id="${diagramId}" data-field="image" data-bs-toggle="modal" data-bs-target="#diagramModal">
+                                                <span class="diagram-placeholder">Click to add image...</span>
+                                                <span class="diagram-content" style="display: none;"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Left Arrow (same size as other arrows) -->
+                                    <div class="col-md-1 text-center">
+                                        <button type="button" class="arrow-btn" data-from="image" data-to="expanded-content">
+                                            <i data-feather="arrow-left"></i>
+                                        </button>
+                                    </div>
+                                    <!-- Expanded Content Box (same dimensions as other boxes) -->
+                                    <div class="col-md-3">
+                                        <div class="mb-1">
+                                            <label class="form-label" style="visibility: hidden;">.</label>
+                                            <div class="diagram-rectangle" data-diagram-id="${diagramId}" data-field="expanded-content">
+                                                <span class="diagram-placeholder">Click to add content...</span>
+                                                <span class="diagram-content" style="display: none;"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Empty space for delete button alignment -->
+                                    <div class="col-md-1 text-center">
+                                        <div style="height: 20px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Expand Bar (always at the bottom of the diagram rectangle) -->
+                            <div class="diagram-expand-bar d-none" data-diagram-id="${diagramId}" title="Click to expand/collapse"></div>
+                        </div>
+                    `;
+                    
+                    container.insertAdjacentHTML('beforeend', diagramSetHTML);
+                    
+                    // Populate the new diagram set with data
+                    populateDiagramRectangle(diagramId, 'ideation', diagram.ideation || '');
+                    populateDiagramRectangle(diagramId, 'planning', diagram.planning || '');
+                    populateDiagramRectangle(diagramId, 'sketch', diagram.sketch || '');
+                    populateDiagramRectangle(diagramId, 'image', diagram.image || '');
+                    populateDiagramRectangle(diagramId, 'expanded-content', diagram.expandedContent || '');
+                }
+            }
+            
+            // Re-initialize feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            
+            // Setup event listeners for all diagram sets
+            setupDiagramEventListeners();
+            
+            // Update arrow styling based on loaded content
+            updateArrowStyling();
+            
+            // Update expand bar visibility for all diagrams
+            updateAllExpandBarVisibility();
+            
+            console.log(`Loaded ${sortedDiagrams.length} diagram sets, maxDiagramId: ${maxDiagramId}`);
+        }
+        
+        // Populate a specific diagram rectangle with content
+        function populateDiagramRectangle(diagramId, field, content) {
+            const rectangle = document.querySelector(`.diagram-rectangle[data-diagram-id="${diagramId}"][data-field="${field}"]`);
+            
+            if (rectangle) {
+                const contentSpan = rectangle.querySelector('.diagram-content');
+                const placeholderSpan = rectangle.querySelector('.diagram-placeholder');
+                
+                if (content && content.trim()) {
+                    contentSpan.textContent = content;
+                    rectangle.classList.add('has-content');
+                    
+                    // Update placeholder text for image fields
+                    if (field === 'image' && placeholderSpan) {
+                        placeholderSpan.textContent = 'Image uploaded';
+                    }
+                } else {
+                    contentSpan.textContent = '';
+                    rectangle.classList.remove('has-content');
+                    
+                    // Reset placeholder text for image fields
+                    if (field === 'image' && placeholderSpan) {
+                        placeholderSpan.textContent = 'Click to add image...';
+                    }
+                }
+            }
+        }
+        
+        // Update visuals session with current form data
+        async function updateVisualsSession() {
+            const sessionId = document.getElementById('sessionId').value;
+            const titleInput = document.getElementById('titleInput');
+            const clientInput = document.getElementById('clientInput');
+            const diagramData = getAllDiagramData();
+            
+            const sessionData = {
+                sessionId: sessionId,
+                data: {
+                    basic: {
+                        title: titleInput ? titleInput.value : '',
+                        client: clientInput ? clientInput.value : ''
+                    },
+                    diagrams: diagramData
+                }
+            };
+            
+            try {
+                const response = await fetch('/update-visuals-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(sessionData)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    console.log('Visuals session updated successfully');
+                } else {
+                    console.error('Error updating visuals session:', result.message);
+                }
+            } catch (error) {
+                console.error('Error updating visuals session:', error);
+            }
+        }
+        
+        // Setup save and delete button event listeners
+        function setupSaveDeleteButtons() {
+            // Save visuals session button event listener
+            const saveVisualsBtn = document.getElementById('saveVisualsBtn');
+            if (saveVisualsBtn) {
+                saveVisualsBtn.addEventListener('click', function() {
+                    saveVisualsSessionToDatabase();
+                });
+            }
+            
+            // Delete visuals session button event listener
+            const deleteVisualsBtn = document.getElementById('deleteVisualsBtn');
+            if (deleteVisualsBtn) {
+                deleteVisualsBtn.addEventListener('click', function() {
+                    if (confirm('Are you sure you want to delete this visuals session? This action cannot be undone.')) {
+                        deleteVisualsSession();
+                    }
+                });
+            }
+        }
+        
+        // Save visuals session to database
+        async function saveVisualsSessionToDatabase() {
+            const sessionId = document.getElementById('sessionId').value;
+            
+            if (!sessionId) {
+                showVisualsMessage('No session ID found. Please refresh the page.', 'error');
+                return;
+            }
+            
+            // Show loading state
+            const saveBtn = document.getElementById('saveVisualsBtn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i data-feather="loader" class="rotating" style="width: 16px; height: 16px; margin-right: 4px;"></i>Saving...';
+            
+            // Replace feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            
+            try {
+                // First, update the current session data
+                await updateVisualsSession();
+                
+                // Now save to database
+                const response = await fetch('/save-visuals-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sessionId: sessionId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showVisualsMessage(`Visuals session saved successfully to database row ${result.row_id}!`, 'success');
+                    console.log('✅ Visuals session saved to database successfully!');
+                    console.log(`Database Row ID: ${result.row_id}`);
+                } else {
+                    showVisualsMessage('Error saving visuals session: ' + result.message, 'error');
+                    console.error('❌ Save error:', result.message);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error in save process:', error);
+                showVisualsMessage('Error saving visuals session: ' + error.message, 'error');
+            } finally {
+                // Reset button state
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+                
+                // Replace feather icons
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+            }
+        }
+        
+        // Delete visuals session
+        async function deleteVisualsSession() {
+            const sessionId = document.getElementById('sessionId').value;
+            
+            if (!sessionId) {
+                showVisualsMessage('No session ID found. Please refresh the page.', 'error');
+                return;
+            }
+            
+            // Show loading state
+            const deleteBtn = document.getElementById('deleteVisualsBtn');
+            const originalText = deleteBtn.innerHTML;
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<i data-feather="loader" class="rotating" style="width: 16px; height: 16px;"></i>';
+            
+            // Replace feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            
+            try {
+                const response = await fetch('/delete-visuals-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sessionId: sessionId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showVisualsMessage('Visuals session deleted successfully! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/solutioning';
+                    }, 2000);
+                } else {
+                    showVisualsMessage('Error deleting visuals session: ' + result.message, 'error');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error deleting visuals session:', error);
+                showVisualsMessage('Error deleting visuals session: ' + error.message, 'error');
+            } finally {
+                // Reset button state
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalText;
+                
+                // Replace feather icons
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+            }
+        }
+        
+        // Show visuals message
+        function showVisualsMessage(message, type) {
+            // Create a temporary message element
+            const messageDiv = document.createElement('div');
+            let alertClass = 'alert-danger'; // default
+            
+            if (type === 'success') {
+                alertClass = 'alert-success';
+            } else if (type === 'warning') {
+                alertClass = 'alert-warning';
+            } else if (type === 'info') {
+                alertClass = 'alert-info';
+            } else if (type === 'error') {
+                alertClass = 'alert-danger';
+            }
+            
+            messageDiv.className = `alert ${alertClass} mt-2`;
+            messageDiv.textContent = message;
+            messageDiv.style.position = 'fixed';
+            messageDiv.style.top = '20px';
+            messageDiv.style.right = '20px';
+            messageDiv.style.zIndex = '9999';
+            messageDiv.style.maxWidth = '400px';
+            
+            document.body.appendChild(messageDiv);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
+        }
+        
+        // Handle ideation → planning arrow click
+        async function handleIdeationToPlanningArrow(arrowButton) {
+            try {
+                // Find the diagram set this arrow belongs to
+                const diagramSet = arrowButton.closest('.diagram-set');
+                const diagramId = diagramSet.getAttribute('data-diagram-id');
+                
+                // Get the ideation content from the same diagram set
+                const ideationRectangle = diagramSet.querySelector('[data-field="ideation"]');
+                const ideationContent = ideationRectangle.querySelector('.diagram-content').textContent.trim();
+                
+                // Check if ideation has content
+                if (!ideationContent) {
+                    showVisualsMessage('Please add ideation content first before generating diagram description.', 'warning');
+                    return;
+                }
+                
+                // Show loading state on arrow button
+                const originalArrowHTML = arrowButton.innerHTML;
+                arrowButton.disabled = true;
+                arrowButton.innerHTML = '<i data-feather="loader" class="rotating"></i>';
+                
+                // Replace feather icons to show spinner
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+                
+                // Get session ID
+                const sessionId = document.getElementById('sessionId').value;
+                
+                // Make API call to generate diagram description
+                const response = await fetch('/generate-diagram-description', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sessionId: sessionId,
+                        diagramId: diagramId,
+                        ideationContent: ideationContent
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Find the planning rectangle in the same diagram set
+                    const planningRectangle = diagramSet.querySelector('[data-field="planning"]');
+                    const planningContentSpan = planningRectangle.querySelector('.diagram-content');
+                    
+                    // Update planning content
+                    planningContentSpan.textContent = result.diagram_description;
+                    planningRectangle.classList.add('has-content');
+                    
+                    // Save the updated session data
+                    await updateVisualsSession();
+                    
+                    showVisualsMessage('Diagram description generated successfully!', 'success');
+                    console.log('✅ Diagram description generated and planning updated');
+                } else {
+                    showVisualsMessage('Error generating diagram description: ' + result.message, 'error');
+                    console.error('❌ Error generating diagram description:', result.message);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error in handleIdeationToPlanningArrow:', error);
+                showVisualsMessage('Error generating diagram description: ' + error.message, 'error');
+            } finally {
+                // Reset arrow button state - ensure we restore the original HTML
+                arrowButton.disabled = false;
+                arrowButton.innerHTML = '<i data-feather="arrow-right"></i>';
+                
+                // Replace feather icons to restore the arrow
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+            }
+        }
+        
+        // Handle planning → sketch arrow click
+        async function handlePlanningToSketchArrow(arrowButton) {
+            try {
+                // Find the diagram set this arrow belongs to
+                const diagramSet = arrowButton.closest('.diagram-set');
+                const diagramId = diagramSet.getAttribute('data-diagram-id');
+                
+                // Get the planning content from the same diagram set
+                const planningRectangle = diagramSet.querySelector('[data-field="planning"]');
+                const planningContent = planningRectangle.querySelector('.diagram-content').textContent.trim();
+                
+                // Check if planning has content
+                if (!planningContent) {
+                    showVisualsMessage('Please add planning content first before generating sketch.', 'warning');
+                    return;
+                }
+                
+                // Show loading state on arrow button
+                const originalArrowHTML = arrowButton.innerHTML;
+                arrowButton.disabled = true;
+                arrowButton.innerHTML = '<i data-feather="loader" class="rotating"></i>';
+                
+                // Replace feather icons to show spinner
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+                
+                // Get session ID
+                const sessionId = document.getElementById('sessionId').value;
+                
+                // Make API call to generate sketch content using OpenAI assistant
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout
+                
+                const response = await fetch('/generate-sketch-content', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sessionId: sessionId,
+                        diagramId: diagramId,
+                        planningContent: planningContent
+                    }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Find the sketch rectangle in the same diagram set
+                    const sketchRectangle = diagramSet.querySelector('[data-field="sketch"]');
+                    const sketchContentSpan = sketchRectangle.querySelector('.diagram-content');
+                    
+                    // Clean up the sketch content by removing XML code block markers
+                    let cleanedSketchContent = result.sketch_content;
+                    cleanedSketchContent = cleanedSketchContent.replace(/```xml/g, '');
+                    cleanedSketchContent = cleanedSketchContent.replace(/```/g, '');
+                    
+                    // Update sketch content
+                    sketchContentSpan.textContent = cleanedSketchContent;
+                    sketchRectangle.classList.add('has-content');
+                    
+                    // Update expand bar visibility since sketch now has content
+                    updateExpandBarVisibility(diagramId);
+                    
+                    // Save the updated session data
+                    await updateVisualsSession();
+                    
+                    showVisualsMessage('Sketch content generated successfully!', 'success');
+                    console.log('✅ Sketch content generated and sketch updated');
+                } else {
+                    showVisualsMessage('Error generating sketch content: ' + result.message, 'error');
+                    console.error('❌ Error generating sketch content:', result.message);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error in handlePlanningToSketchArrow:', error);
+                
+                // Provide specific error messages based on error type
+                let errorMessage = 'Error generating sketch content: ';
+                if (error.name === 'AbortError') {
+                    errorMessage += 'Request timed out after 3 minutes. Please try again with shorter content.';
+                } else if (error.message.includes('fetch')) {
+                    errorMessage += 'Network error. Please check your connection and try again.';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                showVisualsMessage(errorMessage, 'error');
+            } finally {
+                // Reset arrow button state - ensure we restore the original HTML
+                arrowButton.disabled = false;
+                arrowButton.innerHTML = '<i data-feather="arrow-right"></i>';
+                
+                // Replace feather icons to restore the arrow
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+            }
+        }
+        
+        // Handle sketch → expanded arrow click (↓ arrow) - Create XML file and open in new tab
+        async function handleSketchToExpandedArrow(arrowButton, diagramId, sketchContent) {
+            try {
+                // Show loading state on arrow button
+                const originalArrowHTML = arrowButton.innerHTML;
+                arrowButton.disabled = true;
+                arrowButton.innerHTML = '<i data-feather="loader" class="rotating"></i>';
+                
+                // Replace feather icons to show spinner
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+                
+                // Get the glyph from session data (should be available globally)
+                let glyph = '';
+                if (window.visualsSessionData && window.visualsSessionData.badge && window.visualsSessionData.badge.glyph) {
+                    // Extract the glyph part (last part of the glyph string after any prefix)
+                    const fullGlyph = window.visualsSessionData.badge.glyph;
+                    // Take the last 15 characters of the glyph for the file name
+                    glyph = fullGlyph.slice(-15);
+                } else {
+                    // Fallback: use session ID or generate a simple identifier
+                const sessionId = document.getElementById('sessionId').value;
+                    glyph = sessionId.slice(-15);
+                }
+                
+                // Construct the XML file URL using the new route format
+                const xmlFilename = `sketch-${glyph}-${diagramId}.XML`;
+                const xmlUrl = `/visuals/${xmlFilename}`;
+                
+                console.log('🔗 Opening XML file:', xmlFilename);
+                console.log('📄 XML URL:', xmlUrl);
+                
+                // Open the XML file in a new tab/window
+                // The new route will handle generating and serving the XML content
+                    window.open(xmlUrl, '_blank');
+                    
+                showVisualsMessage(`XML file opened: ${xmlFilename}`, 'success');
+                console.log('✅ XML file opened in new tab:', xmlFilename);
+                
+            } catch (error) {
+                console.error('❌ Error in handleSketchToExpandedArrow:', error);
+                showVisualsMessage('Error opening XML file: ' + error.message, 'error');
+            } finally {
+                // Reset arrow button state - ensure we restore the original HTML
+                arrowButton.disabled = false;
+                arrowButton.innerHTML = '<i data-feather="arrow-down"></i>';
+                
+                // Replace feather icons to restore the arrow
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
+            }
+        }
+        
+        // Open diagram in Draw.io with auto-loaded content
+        async function openInDrawIO(diagramId) {
+            try {
+                console.log('🎨 Opening diagram in Draw.io for diagram:', diagramId);
+                
+                // Get the session ID and glyph for URL generation
+                const sessionId = document.getElementById('sessionId').value;
+                if (!sessionId) {
+                    showVisualsMessage('Error: No session ID found. Please refresh the page.', 'error');
+                    return;
+                }
+                
+                // Generate the glyph (using last part of session ID)
+                const glyph = sessionId.split('').slice(-12).join(''); // Last 12 characters
+                
+                // Generate the XML file URL
+                const xmlUrl = `${window.location.origin}/visuals/sketch-${glyph}-${diagramId}.XML`;
+                console.log('📄 Generated XML URL:', xmlUrl);
+                
+                // Encode the URL for Draw.io
+                const encodedUrl = encodeURIComponent(xmlUrl);
+                
+                // Create Draw.io URL with auto-load parameter
+                const drawioUrl = `https://app.diagrams.net/#U${encodedUrl}`;
+                console.log('🔗 Draw.io URL:', drawioUrl);
+                
+                // Show loading message
+                showVisualsMessage('Opening diagram in Draw.io...', 'info');
+                
+                // Open Draw.io in new tab with auto-loaded diagram
+                const newTab = window.open(drawioUrl, '_blank');
+                
+                if (newTab) {
+                    console.log('✅ Successfully opened Draw.io in new tab');
+                    showVisualsMessage('Diagram opened in Draw.io! Switch to the new tab to edit.', 'success');
+                } else {
+                    console.error('❌ Failed to open new tab - popup blocked?');
+                    showVisualsMessage('Failed to open Draw.io. Please check if popups are blocked.', 'error');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error opening in Draw.io:', error);
+                showVisualsMessage('Error opening diagram in Draw.io: ' + error.message, 'error');
+            }
+        }
+        
+        // Global variable to store current image data
+        let currentImageData = null;
+        
+        // Setup image-specific event listeners
+        function setupImageEventListeners() {
+            // Upload button click
+            const uploadBtn = document.getElementById('uploadImageBtn');
+            if (uploadBtn) {
+                uploadBtn.addEventListener('click', function() {
+                    document.getElementById('imageFileInput').click();
+                });
+            }
+            
+            // File input change
+            const fileInput = document.getElementById('imageFileInput');
+            if (fileInput) {
+                fileInput.addEventListener('change', function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        handleImageFile(file);
+                    }
+                });
+            }
+            
+            // Remove image button
+            const removeBtn = document.getElementById('removeImageBtn');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function() {
+                    clearImageModal();
+                });
+            }
+            
+            // Clipboard paste listener (only when modal is open and image section is visible)
+            document.addEventListener('paste', function(event) {
+                const modal = document.getElementById('diagramModal');
+                const imageSection = document.getElementById('imageContentSection');
+                
+                if (modal.classList.contains('show') && !imageSection.classList.contains('d-none')) {
+                    handleClipboardPaste(event);
+                }
+            });
+        }
+        
+        // Handle image file upload
+        function handleImageFile(file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                showVisualsMessage('Please select a valid image file.', 'error');
+                return;
+            }
+            
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                showVisualsMessage('Image file size must be less than 5MB.', 'error');
+                return;
+            }
+            
+            // Read file as base64
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Data = e.target.result;
+                displayImage(base64Data);
+                currentImageData = base64Data;
+                showVisualsMessage('Image loaded successfully!', 'success');
+            };
+            reader.onerror = function() {
+                showVisualsMessage('Error reading image file.', 'error');
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Handle clipboard paste
+        function handleClipboardPaste(event) {
+            const items = event.clipboardData.items;
+            
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                
+                if (item.type.startsWith('image/')) {
+                    event.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) {
+                        handleImageFile(file);
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // Display image in the modal
+        function displayImage(base64Data) {
+            const imagePreview = document.getElementById('imagePreview');
+            const imageUploadPrompt = document.getElementById('imageUploadPrompt');
+            const previewImage = document.getElementById('previewImage');
+            
+            // Show image preview, hide upload prompt
+            imagePreview.classList.remove('d-none');
+            imageUploadPrompt.classList.add('d-none');
+            
+            // Set image source
+            previewImage.src = base64Data;
+            
+            // Replace feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+        }
+        
+        // Clear image modal
+        function clearImageModal() {
+            const imagePreview = document.getElementById('imagePreview');
+            const imageUploadPrompt = document.getElementById('imageUploadPrompt');
+            const previewImage = document.getElementById('previewImage');
+            const fileInput = document.getElementById('imageFileInput');
+            
+            // Hide image preview, show upload prompt
+            imagePreview.classList.add('d-none');
+            imageUploadPrompt.classList.remove('d-none');
+            
+            // Clear image source and file input
+            previewImage.src = '';
+            fileInput.value = '';
+            currentImageData = null;
+            
+            // Replace feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+        }
+        
+        // Load existing image for editing
+        function loadExistingImage(button) {
+            clearImageModal();
+            
+            // Get existing image data from the button's data or content
+            const contentSpan = button.querySelector('.diagram-content');
+            const existingImageData = contentSpan ? contentSpan.textContent : '';
+            
+            if (existingImageData && existingImageData.startsWith('data:image/')) {
+                displayImage(existingImageData);
+                currentImageData = existingImageData;
+            }
+        }
+    </script>
+</body>
+</html> 

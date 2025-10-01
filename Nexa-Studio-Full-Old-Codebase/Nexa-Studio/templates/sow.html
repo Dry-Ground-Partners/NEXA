@@ -1,0 +1,2419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRY GROUND AI - Statement of Work</title>
+    
+    <!-- Inter Font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Header and Footer Styling */
+        .header {
+            background-color: #000;
+            color: #fff;
+            padding: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            position: relative;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+        }
+        
+        .header-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            flex: 1;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            flex: 0 0 auto;
+        }
+        
+        .system-icon {
+            width: 28px;
+            height: 28px;
+            fill: #fff;
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.8s ease;
+        }
+        
+        .system-icon:hover {
+            transform: scale(1.1);
+            opacity: 0.8;
+        }
+        
+        .nav-item {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 16px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .nav-item:hover {
+            color: #fff;
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .nav-item.clickable {
+            position: relative;
+        }
+        
+        .nav-item.clickable:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .nav-item.active {
+            color: #007bff;
+        }
+        
+        .nav-separator {
+            color: #666;
+            font-weight: 300;
+            user-select: none;
+        }
+        
+        .header .logo-img {
+            height: 40px;
+            width: auto;
+            filter: invert(1);
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.8s ease;
+        }
+        
+        .header .logo-img:hover {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+        
+        .chat-btn {
+            background: linear-gradient(45deg, #00ff88, #00ccff, #ff00ff, #ffff00);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: neon-gradient 3s ease-in-out infinite;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            position: relative;
+            user-select: none;
+        }
+        
+        .chat-btn:hover {
+            transform: translateY(-1px);
+            filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5));
+        }
+        
+        @keyframes neon-gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header-center {
+                gap: 12px;
+                position: static;
+                transform: none;
+                flex: 1;
+                margin: 0 20px;
+            }
+            
+            .nav-item {
+                font-size: 14px;
+                padding: 6px 8px;
+            }
+            
+            .chat-btn {
+                font-size: 14px;
+                padding: 6px 12px;
+            }
+            
+            .system-icon {
+                width: 28px;
+                height: 28px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .header-center {
+                gap: 8px;
+            }
+            
+            .nav-item {
+                font-size: 12px;
+                padding: 4px 6px;
+            }
+            
+            .header .logo-img {
+                height: 32px;
+            }
+        }
+        
+        .footer {
+            background-color: #000;
+            color: #fff;
+            padding: 30px 0;
+            margin-top: auto;
+            border-top: 1px solid #333;
+        }
+        
+        .footer .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .footer .footer-links {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .footer .footer-links a {
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer .footer-links a:hover {
+            color: #00ff88;
+        }
+        
+        .footer .copyright {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        /* Main content styling */
+        .main-content {
+            flex: 1;
+            padding: 40px 0;
+            min-height: calc(100vh - 120px);
+        }
+        
+        .page-wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .content-card {
+            background-color: #000000;  /* Pitch black to match main page */
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid #495057;
+        }
+        
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #ffffff;  /* White text for dark theme */
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .page-subtitle {
+            font-size: 1.1rem;
+            color: #ced4da;  /* Light gray for dark theme */
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .coming-soon {
+            text-align: center;
+            padding: 60px 20px;
+            color: #ced4da;  /* Light gray for dark theme */
+        }
+        
+        .coming-soon i {
+            font-size: 4rem;
+            color: #ffffff;  /* White icon for dark theme */
+            margin-bottom: 20px;
+        }
+        
+        .coming-soon h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #ffffff;  /* White heading for dark theme */
+        }
+        
+        .coming-soon p {
+            font-size: 1rem;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* SoW Form Styling */
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+        }
+        
+        .step-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #ffffff;  /* White text for dark theme */
+            border-bottom: 2px solid #495057;  /* Dark border */
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            color: #ced4da;  /* Light gray for dark theme */
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        .form-control {
+            border-radius: 8px;
+            border: 1px solid #495057;  /* Dark border */
+            padding: 0.75rem;
+            font-size: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            background-color: #212529;  /* Dark input background */
+            color: #e9ecef;  /* Light text */
+        }
+        
+        .form-control:focus {
+            border-color: #ffffff;  /* White border on focus */
+            box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.1);
+            outline: none;
+        }
+        
+        .form-control::placeholder {
+            color: #6c757d;  /* Dark gray placeholder */
+        }
+        
+        .form-text {
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            color: #adb5bd;  /* Light gray for form text */
+        }
+        
+        .form-actions {
+            border-top: 1px solid #495057;  /* Dark border */
+            padding-top: 1.5rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            text-decoration: none;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background-color: #ffffff;  /* White background to match main page */
+            border-color: #ffffff;
+            color: #000000;  /* Black text */
+        }
+        
+        .btn-primary:hover {
+            background-color: #f8f9fa;
+            border-color: #f8f9fa;
+            color: #000000;
+        }
+        
+        .btn-outline-primary {
+            background-color: transparent;
+            border-color: #6c757d;
+            color: #ffffff;
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: #495057;
+            border-color: #6c757d;
+            color: #ffffff;
+        }
+        
+        .btn i {
+            width: 16px;
+            height: 16px;
+        }
+        
+        /* Objectives Section Styling */
+        .objective-item {
+            position: relative;
+        }
+        
+        .objective-input {
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        .remove-objective-btn {
+            height: fit-content;
+            padding: 0.5rem;
+            align-self: flex-start;
+        }
+        
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        .btn-outline-secondary {
+            border-color: #6c757d;
+            color: #adb5bd;
+            background-color: transparent;
+        }
+        
+        .btn-outline-secondary:hover {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            color: #fff;
+        }
+        
+        .btn-outline-danger {
+            border-color: #EF4444;
+            color: #EF4444;
+            background-color: transparent;
+        }
+        
+        .btn-outline-danger:hover {
+            background-color: #EF4444;
+            border-color: #EF4444;
+            color: #fff;
+        }
+        
+        /* Deliverables Table Styling */
+        .table-responsive {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .table {
+            margin-bottom: 0;
+            color: #e9ecef;  /* Light text for dark theme */
+        }
+        
+        .table th {
+            background-color: #212529;  /* Dark header background */
+            font-weight: 600;
+            color: #ffffff;  /* White header text */
+            border-bottom: 2px solid #495057;  /* Dark border */
+            padding: 0.75rem;
+        }
+        
+        .table td {
+            vertical-align: middle;
+            padding: 0.5rem;
+            border-color: #495057;  /* Dark border */
+        }
+        
+        .table td textarea {
+            border: none;
+            box-shadow: none;
+            resize: vertical;
+            min-height: 50px;
+            background-color: #212529;  /* Dark textarea background */
+            color: #e9ecef;  /* Light text */
+        }
+        
+        .table td textarea:focus {
+            border: 1px solid #ffffff;
+            box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.1);
+        }
+        
+        .deliverable-row {
+            transition: background-color 0.2s ease;
+            background-color: #1a1a1a;  /* Dark row background */
+        }
+        
+        .deliverable-row:hover {
+            background-color: #2a2a2a;  /* Darker on hover */
+        }
+        
+        .btn-dark {
+            background-color: #495057;
+            border-color: #495057;
+            color: #fff;
+        }
+        
+        .btn-dark:hover {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            color: #fff;
+        }
+        
+        /* Phase Table Styling */
+        .phase-row {
+            transition: background-color 0.2s ease;
+            background-color: #1a1a1a;  /* Dark row background */
+        }
+        
+        .phase-row:hover {
+            background-color: #2a2a2a;  /* Darker on hover */
+        }
+        
+        .weeks-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .weeks-display {
+            font-weight: 600;
+            min-width: 40px;
+            text-align: center;
+            color: #e9ecef;  /* Light text */
+        }
+        
+        .weeks-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .weeks-btn {
+            padding: 2px 6px;
+            font-size: 10px;
+            line-height: 1;
+            border-radius: 3px;
+            border: 1px solid #495057;  /* Dark border */
+            background: #212529;  /* Dark background */
+            color: #e9ecef;  /* Light text */
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .weeks-btn:hover {
+            background-color: #495057;
+            border-color: #6c757d;
+        }
+        
+        .weeks-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .weeks-btn:disabled:hover {
+            background-color: #fff;
+            border-color: #dee2e6;
+        }
+        
+        /* Body styling to match main page */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a;  /* Almost black background */
+            color: #e9ecef;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            margin: 0;
+        }
+        
+        /* Button styling to match main page */
+        .btn-primary {
+            background-color: #ffffff;  /* White background to match main page */
+            border-color: #ffffff;
+            color: #000000;  /* Black text */
+        }
+        
+        .btn-primary:hover {
+            background-color: #f8f9fa;
+            border-color: #f8f9fa;
+            color: #000000;
+        }
+        
+        /* Alert styling for dark theme */
+        .alert-info {
+            background-color: rgba(13, 202, 240, 0.1);
+            color: #0dcaf0;
+            border: 1px solid rgba(13, 202, 240, 0.3);
+        }
+        
+        .alert-danger {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #EF4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .alert-success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: #10B981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        /* Table styling for dark theme */
+        .table {
+            color: #e9ecef;
+        }
+        
+        .table th {
+            background-color: #212529;
+            color: #ffffff;
+            border-bottom: 2px solid #495057;
+        }
+        
+        .table td {
+            border-color: #495057;
+        }
+        
+        .table td textarea {
+            background-color: #212529;
+            color: #e9ecef;
+            border: none;
+        }
+        
+        .table td textarea:focus {
+            border: 1px solid #ffffff;
+            box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.1);
+        }
+        
+        .deliverable-row, .phase-row {
+            background-color: #1a1a1a;
+        }
+        
+        .deliverable-row:hover, .phase-row:hover {
+            background-color: #2a2a2a;
+        }
+        
+        /* Additional text colors */
+        .text-muted {
+            color: #adb5bd !important;
+        }
+    </style>
+</head>
+<body class="page-wrapper">
+    <!-- Black Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-container">
+                <!-- Left: System Icon -->
+                <div class="header-left">
+                    <a href="/sessions">
+                        <svg class="system-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <ellipse cx="12" cy="6" rx="8" ry="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <path d="M4 6v6c0 1.1 3.6 2 8 2s8-.9 8-2V6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <path d="M4 12v6c0 1.1 3.6 2 8 2s8-.9 8-2v-6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                        </svg>
+                    </a>
+                </div>
+                
+                <!-- Center: Navigation -->
+                <div class="header-center">
+                    <a href="/structuring" class="nav-item clickable">Structuring</a>
+                    <span class="nav-separator">|</span>
+                    <a href="/solutioning">
+                        <img src="{{ url_for('static', filename='images/dry_ground_ai_logo.svg') }}" alt="Dry Ground AI Logo" class="logo-img">
+                    </a>
+                    <span class="nav-separator">|</span>
+                    <a href="/visuals" class="nav-item clickable">Visuals</a>
+                    <span class="nav-separator">|</span>
+                    <a href="/sow" class="nav-item clickable active">SoW</a>
+                    <span class="nav-separator">|</span>
+                    <span class="nav-item">LoE</span>
+                </div>
+                
+                <!-- Right: Chat -->
+                <div class="header-right">
+                    <span class="chat-btn">Chat</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 col-md-12">
+                    <main class="content-card">
+                        <h1 class="page-title">Statement of Work</h1>
+                        <p class="page-subtitle">Create and manage Statements of Work for your projects</p>
+                        
+                        <!-- SoW Form -->
+                        <form id="sowForm">
+                            <input type="hidden" id="sessionId" name="sessionId" value="{{ session_id }}">
+                            
+                            <!-- Step 1: Project Details -->
+                            <div id="step1" class="step active">
+                                <h4 class="step-title mb-4">Step 1: Project Details</h4>
+                                
+                                <div class="alert alert-info d-none" id="alertMessageStep1" role="alert"></div>
+                                
+                                <div class="form-group mb-2">
+                                    <input type="text" class="form-control" id="project" name="project" placeholder="Project Name - Enter project name..." required>
+                                </div>
+                                
+                                <div class="form-group mb-2">
+                                    <input type="text" class="form-control" id="client" name="client" placeholder="Client - Enter client name..." required>
+                                </div>
+                                
+                                <div class="form-group mb-2">
+                                    <input type="text" class="form-control" id="preparedBy" name="preparedBy" placeholder="Prepared By - Enter your name..." required>
+                                </div>
+                                
+                                <div class="form-group mb-4">
+                                    <input type="date" class="form-control" id="date" name="date" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="projectPurposeBackground">Project Purpose & Background</label>
+                                    <textarea class="form-control" id="projectPurposeBackground" name="projectPurposeBackground" rows="4" placeholder="Describe the project purpose and background..." required></textarea>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <label class="mb-0">Objectives</label>
+                                        <button type="button" id="addObjectiveBtn" class="btn btn-outline-secondary btn-sm">
+                                            <i data-feather="plus"></i> Add Objective
+                                        </button>
+                                    </div>
+                                    <div id="objectivesContainer">
+                                        <div class="objective-item mb-3">
+                                            <div class="d-flex gap-2">
+                                                <textarea name="objectives[]" class="form-control objective-input" rows="2" placeholder="Enter project objective..." required></textarea>
+                                                <button type="button" class="btn btn-outline-danger btn-sm remove-objective-btn" style="display: none;">
+                                                    <i data-feather="trash-2"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="form-text text-muted">Define the objectives of the project</small>
+                                </div>
+                                
+                                <div class="form-actions mt-4">
+                                    <button type="button" id="nextBtn" class="btn btn-dark">
+                                        <i data-feather="arrow-right"></i> Next
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Step 2: In-Scope Deliverables -->
+                            <div id="step2" class="step">
+                                <h4 class="step-title mb-4">Step 2: In-Scope Deliverables</h4>
+                                
+                                <div class="alert alert-info d-none" id="alertMessageStep2" role="alert"></div>
+                                
+                                <div class="form-group">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <label class="mb-0">Deliverables</label>
+                                        <button type="button" id="addDeliverableBtn" class="btn btn-outline-secondary btn-sm">
+                                            <i data-feather="plus"></i> Add Deliverable
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered" id="deliverablesTable">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 30%;">Deliverable</th>
+                                                    <th style="width: 35%;">Key Features</th>
+                                                    <th style="width: 30%;">Primary Artifacts</th>
+                                                    <th style="width: 5%;">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="deliverablesTableBody">
+                                                <!-- Default deliverable row -->
+                                                <tr class="deliverable-row">
+                                                    <td>
+                                                        <textarea class="form-control deliverable-input" name="deliverables[0][deliverable]" rows="2" placeholder="Enter deliverable name..."></textarea>
+                                                    </td>
+                                                    <td>
+                                                        <textarea class="form-control key-features-input" name="deliverables[0][key_features]" rows="2" placeholder="Describe key features..."></textarea>
+                                                    </td>
+                                                    <td>
+                                                        <textarea class="form-control primary-artifacts-input" name="deliverables[0][primary_artifacts]" rows="2" placeholder="List primary artifacts..."></textarea>
+                                                    </td>
+                                                    <td class="text-center align-middle">
+                                                        <button type="button" class="btn btn-outline-danger btn-sm remove-deliverable-btn" style="display: none;">
+                                                            <i data-feather="trash-2"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <small class="form-text text-muted">Define the key deliverables, their features, and primary artifacts for this project</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="outOfScope">Out-of-Scope</label>
+                                    <textarea class="form-control" id="outOfScope" name="outOfScope" rows="3" placeholder="Define what is explicitly out of scope for this project..."></textarea>
+                                    <small class="form-text text-muted">Clearly define what will not be included in this project</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <label class="mb-0">Functional Requirements</label>
+                                        <button type="button" id="addFunctionalReqBtn" class="btn btn-outline-secondary btn-sm">
+                                            <i data-feather="plus"></i> Add Requirement
+                                        </button>
+                                    </div>
+                                    <div id="functionalRequirementsContainer">
+                                        <div class="functional-req-item mb-3">
+                                            <div class="d-flex gap-2">
+                                                <textarea name="functional_requirements[]" class="form-control functional-req-input" rows="2" placeholder="Enter functional requirement..." required></textarea>
+                                                <button type="button" class="btn btn-outline-danger btn-sm remove-functional-req-btn" style="display: none;">
+                                                    <i data-feather="trash-2"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="form-text text-muted">Define the functional requirements for the project</small>
+                                </div>
+                                
+                                <div class="form-actions mt-4">
+                                    <button type="button" id="prevBtn" class="btn btn-outline-secondary me-2">
+                                        <i data-feather="arrow-left"></i> Previous
+                                    </button>
+                                    <button type="button" id="nextStep2Btn" class="btn btn-dark">
+                                        <i data-feather="arrow-right"></i> Next
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Step 3: Non-Functional Requirements -->
+                            <div id="step3" class="step">
+                                <h4 class="step-title mb-4">Step 3: Non-Functional Requirements</h4>
+                                
+                                <!-- Action Buttons -->
+                                <div class="d-flex gap-2 mb-4">
+                                    <button type="button" id="previewPdfBtn" class="btn btn-info btn-sm" style="width: 32px; height: 32px; padding: 6px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Preview PDF">
+                                        <i data-feather="file-text" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                    <button type="button" id="generatePdfBtn" class="btn btn-success btn-sm" style="width: 32px; height: 32px; padding: 6px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Generate PDF">
+                                        <i data-feather="download" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                    <button type="button" id="saveSowBtn" class="btn btn-dark btn-sm" style="width: 96px; height: 32px; padding: 6px 12px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Save SoW">
+                                        <i data-feather="save" style="width: 16px; height: 16px; margin-right: 4px;"></i>Save
+                                    </button>
+                                    <button type="button" id="saveToDbBtn" class="btn btn-warning btn-sm" style="width: 32px; height: 32px; padding: 6px; display: none;" data-bs-toggle="tooltip" data-bs-placement="top" title="Save to Database">
+                                        <i data-feather="database" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                    <button type="button" id="deleteSowBtn" class="btn btn-danger btn-sm" style="width: 32px; height: 32px; padding: 6px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Delete SoW">
+                                        <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="alert alert-info d-none" id="alertMessageStep3" role="alert"></div>
+                                
+                                <div class="form-group">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <label class="mb-0">Non-Functional Requirements</label>
+                                        <button type="button" id="addNonFunctionalReqBtn" class="btn btn-outline-secondary btn-sm">
+                                            <i data-feather="plus"></i> Add Requirement
+                                        </button>
+                                    </div>
+                                    <div id="nonFunctionalRequirementsContainer">
+                                        <div class="non-functional-req-item mb-3">
+                                            <div class="d-flex gap-2">
+                                                <textarea name="non_functional_requirements[]" class="form-control non-functional-req-input" rows="2" placeholder="Enter non-functional requirement (performance, security, usability, etc.)..." required></textarea>
+                                                <button type="button" class="btn btn-outline-danger btn-sm remove-non-functional-req-btn" style="display: none;">
+                                                    <i data-feather="trash-2"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="form-text text-muted">Define performance, security, scalability, and other non-functional requirements</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <label class="mb-0">Project Phases & Timeline</label>
+                                        <button type="button" id="addPhaseBtn" class="btn btn-outline-secondary btn-sm">
+                                            <i data-feather="plus"></i> Add Phase
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered" id="phasesTable">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 25%;">Phase</th>
+                                                    <th style="width: 45%;">Key Activities</th>
+                                                    <th style="width: 20%;">Weeks</th>
+                                                    <th style="width: 10%;">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="phasesTableBody">
+                                                <!-- Default phase row -->
+                                                <tr class="phase-row" data-phase-index="0">
+                                                    <td>
+                                                        <textarea class="form-control phase-input" name="phases[0][phase]" rows="2" placeholder="Enter phase name..."></textarea>
+                                                    </td>
+                                                    <td>
+                                                        <textarea class="form-control key-activities-input" name="phases[0][key_activities]" rows="2" placeholder="Describe key activities..."></textarea>
+                                                    </td>
+                                                    <td class="text-center align-middle">
+                                                        <div class="weeks-container">
+                                                            <span class="weeks-display">1</span>
+                                                            <div class="weeks-controls">
+                                                                <button type="button" class="weeks-btn weeks-up" title="Increase end week">▲</button>
+                                                                <button type="button" class="weeks-btn weeks-down" title="Decrease end week">▼</button>
+                                                            </div>
+                                                            <input type="hidden" class="weeks-start" value="1">
+                                                            <input type="hidden" class="weeks-end" value="1">
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-center align-middle">
+                                                        <button type="button" class="btn btn-outline-danger btn-sm remove-phase-btn" style="display: none;">
+                                                            <i data-feather="trash-2"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <small class="form-text text-muted">Define project phases, activities, and timeline in weeks</small>
+                                </div>
+                                
+                                <div class="form-actions mt-4">
+                                    <button type="button" id="prevStep3Btn" class="btn btn-outline-secondary me-2">
+                                        <i data-feather="arrow-left"></i> Previous
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </main>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="/solutioning">Home</a>
+                    <a href="/sessions">Sessions</a>
+                    <a href="/sow">SoW</a>
+                    <a href="#">About</a>
+                    <a href="#">Contact</a>
+                </div>
+                <div class="copyright">
+                    <p>&copy; 2024 Dry Ground AI. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize Feather icons
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+        
+        // DOM ready event
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get form elements
+            const nextBtn = document.getElementById('nextBtn');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextStep2Btn = document.getElementById('nextStep2Btn');
+            const addObjectiveBtn = document.getElementById('addObjectiveBtn');
+            const addDeliverableBtn = document.getElementById('addDeliverableBtn');
+            
+            // Step 1 Next button handler
+            if (nextBtn) {
+                nextBtn.addEventListener('click', function() {
+                    console.log('Next button clicked');
+                    if (validateStep1()) {
+                        updateSowSessionStep1().then(() => {
+                            showStep(2);
+                        }).catch(error => {
+                            console.error('Error in updateSowSessionStep1:', error);
+                            showAlert('Error saving data: ' + error.message, 'danger');
+                        });
+                    }
+                });
+            }
+            
+            // Step 2 Previous button handler
+            if (prevBtn) {
+                prevBtn.addEventListener('click', function() {
+                    showStep(1);
+                });
+            }
+            
+            // Step 2 Next button handler
+            if (nextStep2Btn) {
+                nextStep2Btn.addEventListener('click', function() {
+                    console.log('Step 2 Next button clicked');
+                    if (validateStep2()) {
+                        updateSowSessionStep2().then(() => {
+                            showStep(3);
+                        }).catch(error => {
+                            console.error('Error in updateSowSessionStep2:', error);
+                            showAlert('Error saving Step 2 data: ' + error.message, 'danger');
+                        });
+                    }
+                });
+            }
+            
+            // Step 3 Previous button handler
+            const prevStep3Btn = document.getElementById('prevStep3Btn');
+            if (prevStep3Btn) {
+                prevStep3Btn.addEventListener('click', function() {
+                    showStep(2);
+                });
+            }
+            
+            // SoW action buttons handlers
+            const previewPdfBtn = document.getElementById('previewPdfBtn');
+            if (previewPdfBtn) {
+                previewPdfBtn.addEventListener('click', function() {
+                    console.log('Preview PDF button clicked');
+                    updateSowSessionStep3().then(() => {
+                        previewSowPdf();
+                    }).catch(error => {
+                        console.error('Error updating session before preview:', error);
+                        showAlert('Error saving data before preview: ' + error.message, 'danger');
+                    });
+                });
+            }
+            
+            const generatePdfBtn = document.getElementById('generatePdfBtn');
+            if (generatePdfBtn) {
+                generatePdfBtn.addEventListener('click', function() {
+                    console.log('Generate PDF button clicked');
+                    updateSowSessionStep3().then(() => {
+                        generateSowPdf();
+                    }).catch(error => {
+                        console.error('Error updating session before PDF generation:', error);
+                        showAlert('Error saving data before PDF generation: ' + error.message, 'danger');
+                    });
+                });
+            }
+            
+            const saveSowBtn = document.getElementById('saveSowBtn');
+            if (saveSowBtn) {
+                saveSowBtn.addEventListener('click', function() {
+                    console.log('Save SoW button clicked');
+                    updateSowSessionStep3().then(() => {
+                        // Automatically save to database after updating session
+                        return saveSowToDatabase();
+                    }).then(() => {
+                        showAlert('SoW saved successfully!', 'success');
+                    }).catch(error => {
+                        console.error('Error saving SoW:', error);
+                        showAlert('Error saving SoW: ' + error.message, 'danger');
+                    });
+                });
+            }
+            
+            const saveToDbBtn = document.getElementById('saveToDbBtn');
+            if (saveToDbBtn) {
+                saveToDbBtn.addEventListener('click', function() {
+                    console.log('Save to Database button clicked');
+                    updateSowSessionStep3().then(() => {
+                        saveSowToDatabase();
+                    }).catch(error => {
+                        console.error('Error updating session before saving to database:', error);
+                        showAlert('Error saving data before database save: ' + error.message, 'danger');
+                    });
+                });
+            }
+            
+            const deleteSowBtn = document.getElementById('deleteSowBtn');
+            if (deleteSowBtn) {
+                deleteSowBtn.addEventListener('click', function() {
+                    console.log('Delete SoW button clicked');
+                    if (confirm('Are you sure you want to delete this Statement of Work? This action cannot be undone.')) {
+                        deleteSow();
+                    }
+                });
+            }
+            
+            // Add objective button handler
+            if (addObjectiveBtn) {
+                addObjectiveBtn.addEventListener('click', function() {
+                    console.log('Add Objective button clicked');
+                    addObjectiveField();
+                });
+            }
+            
+            // Add deliverable button handler
+            if (addDeliverableBtn) {
+                addDeliverableBtn.addEventListener('click', function() {
+                    console.log('Add Deliverable button clicked');
+                    addDeliverableRow();
+                });
+            }
+            
+            // Add functional requirement button handler
+            const addFunctionalReqBtn = document.getElementById('addFunctionalReqBtn');
+            if (addFunctionalReqBtn) {
+                addFunctionalReqBtn.addEventListener('click', function() {
+                    console.log('Add Functional Requirement button clicked');
+                    addFunctionalRequirement();
+                });
+            }
+            
+            // Add non-functional requirement button handler
+            const addNonFunctionalReqBtn = document.getElementById('addNonFunctionalReqBtn');
+            if (addNonFunctionalReqBtn) {
+                addNonFunctionalReqBtn.addEventListener('click', function() {
+                    console.log('Add Non-Functional Requirement button clicked');
+                    addNonFunctionalRequirement();
+                });
+            }
+            
+            // Add phase button handler
+            const addPhaseBtn = document.getElementById('addPhaseBtn');
+            if (addPhaseBtn) {
+                addPhaseBtn.addEventListener('click', function() {
+                    console.log('Add Phase button clicked');
+                    addPhaseRow();
+                });
+            }
+            
+            // Initialize objective remove buttons
+            updateObjectiveButtons();
+            // Initialize deliverable remove buttons
+            updateDeliverableButtons();
+            // Initialize functional requirement remove buttons
+            updateFunctionalReqButtons();
+            // Initialize non-functional requirement remove buttons
+            updateNonFunctionalReqButtons();
+            // Initialize phase remove buttons
+            updatePhaseButtons();
+            // Initialize week buttons for existing rows
+            initializeWeekButtons();
+            
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle=\"tooltip\"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+            
+            // Check URL parameters to see if this is a loaded session
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionIdFromUrl = urlParams.get('session_id');
+            const loadedParam = urlParams.get('loaded');
+            
+            console.log('URL params - session_id:', sessionIdFromUrl, 'loaded:', loadedParam);
+            console.log('Template session_id:', '{{ session_id }}');
+            
+            if (loadedParam === 'true' && sessionIdFromUrl) {
+                console.log('Loading session data based on URL parameters');
+                loadSessionData();
+            } else {
+                console.log('Not loading session data - not a loaded session');
+            }
+        });
+        
+        // Show specific step
+        function showStep(stepNumber) {
+            // Hide all steps
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.remove('active');
+            });
+            
+            // Show target step
+            const targetStep = document.getElementById(`step${stepNumber}`);
+            if (targetStep) {
+                targetStep.classList.add('active');
+            }
+            
+            // Re-initialize feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+        }
+        
+        // Add new objective field
+        function addObjectiveField(value = '') {
+            const container = document.getElementById('objectivesContainer');
+            const objectiveItem = document.createElement('div');
+            objectiveItem.className = 'objective-item mb-3';
+            
+            objectiveItem.innerHTML = `
+                <div class="d-flex gap-2">
+                    <textarea name="objectives[]" class="form-control objective-input" rows="2" placeholder="Enter project objective..." required></textarea>
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-objective-btn">
+                        <i data-feather="trash-2"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(objectiveItem);
+            
+            // Set the value if provided
+            if (value) {
+                const textarea = objectiveItem.querySelector('.objective-input');
+                if (textarea) textarea.value = value;
+            }
+            
+            // Add event listener for the remove button
+            const removeBtn = objectiveItem.querySelector('.remove-objective-btn');
+            removeBtn.addEventListener('click', function() {
+                removeObjectiveField(objectiveItem);
+            });
+            
+            // Re-initialize feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            
+            // Update button visibility
+            updateObjectiveButtons();
+        }
+        
+        // Remove objective field
+        function removeObjectiveField(objectiveItem) {
+            objectiveItem.remove();
+            updateObjectiveButtons();
+        }
+        
+        // Update objective remove buttons visibility
+        function updateObjectiveButtons() {
+            const objectives = document.querySelectorAll('.objective-item');
+            const removeButtons = document.querySelectorAll('.remove-objective-btn');
+            
+            // Show remove buttons only if there's more than one objective
+            removeButtons.forEach(btn => {
+                if (objectives.length > 1) {
+                    btn.style.display = 'block';
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
+            
+            // Add event listeners to existing remove buttons
+            removeButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const objectiveItem = btn.closest('.objective-item');
+                    removeObjectiveField(objectiveItem);
+                });
+            });
+        }
+        
+        // Add new deliverable row
+        function addDeliverableRow() {
+            const tableBody = document.getElementById('deliverablesTableBody');
+            const rowCount = tableBody.querySelectorAll('.deliverable-row').length;
+            
+            const newRow = document.createElement('tr');
+            newRow.className = 'deliverable-row';
+            
+            newRow.innerHTML = `
+                <td>
+                    <textarea class="form-control deliverable-input" name="deliverables[${rowCount}][deliverable]" rows="2" placeholder="Enter deliverable name..."></textarea>
+                </td>
+                <td>
+                    <textarea class="form-control key-features-input" name="deliverables[${rowCount}][key_features]" rows="2" placeholder="Describe key features..."></textarea>
+                </td>
+                <td>
+                    <textarea class="form-control primary-artifacts-input" name="deliverables[${rowCount}][primary_artifacts]" rows="2" placeholder="List primary artifacts..."></textarea>
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-deliverable-btn">
+                        <i data-feather="trash-2"></i>
+                    </button>
+                </td>
+            `;
+            
+            tableBody.appendChild(newRow);
+            
+            // Add event listener for the remove button
+            const removeBtn = newRow.querySelector('.remove-deliverable-btn');
+            removeBtn.addEventListener('click', function() {
+                removeDeliverableRow(newRow);
+            });
+            
+            // Re-initialize feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            
+            // Update button visibility
+            updateDeliverableButtons();
+        }
+        
+        // Remove deliverable row
+        function removeDeliverableRow(row) {
+            row.remove();
+            updateDeliverableButtons();
+            // Update row indices
+            updateDeliverableIndices();
+        }
+        
+        // Update deliverable remove buttons visibility
+        function updateDeliverableButtons() {
+            const rows = document.querySelectorAll('.deliverable-row');
+            const removeButtons = document.querySelectorAll('.remove-deliverable-btn');
+            
+            // Show remove buttons only if there's more than one row
+            removeButtons.forEach(btn => {
+                if (rows.length > 1) {
+                    btn.style.display = 'block';
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
+            
+            // Add event listeners to existing remove buttons
+            removeButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const row = btn.closest('.deliverable-row');
+                    removeDeliverableRow(row);
+                });
+            });
+        }
+        
+        // Update deliverable row indices after removal
+        function updateDeliverableIndices() {
+            const rows = document.querySelectorAll('.deliverable-row');
+            rows.forEach((row, index) => {
+                const inputs = row.querySelectorAll('textarea');
+                inputs[0].name = `deliverables[${index}][deliverable]`;
+                inputs[1].name = `deliverables[${index}][key_features]`;
+                inputs[2].name = `deliverables[${index}][primary_artifacts]`;
+            });
+        }
+        
+        // Add new functional requirement field
+        function addFunctionalRequirement() {
+            const container = document.getElementById('functionalRequirementsContainer');
+            const functionalReqItem = document.createElement('div');
+            functionalReqItem.className = 'functional-req-item mb-3';
+            
+            functionalReqItem.innerHTML = `
+                <div class="d-flex gap-2">
+                    <textarea name="functional_requirements[]" class="form-control functional-req-input" rows="2" placeholder="Enter functional requirement..." required></textarea>
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-functional-req-btn">
+                        <i data-feather="trash-2"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(functionalReqItem);
+            
+            // Add event listener for the remove button
+            const removeBtn = functionalReqItem.querySelector('.remove-functional-req-btn');
+            removeBtn.addEventListener('click', function() {
+                removeFunctionalRequirement(functionalReqItem);
+            });
+            
+            // Re-initialize feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+        }
+        
+            // Update button visibility
+            updateFunctionalReqButtons();
+        }
+        
+        // Remove functional requirement field
+        function removeFunctionalRequirement(functionalReqItem) {
+            functionalReqItem.remove();
+            updateFunctionalReqButtons();
+        }
+        
+        // Update functional requirement remove buttons visibility
+        function updateFunctionalReqButtons() {
+            const functionalReqs = document.querySelectorAll('.functional-req-item');
+            const removeButtons = document.querySelectorAll('.remove-functional-req-btn');
+            
+            // Show remove buttons only if there's more than one functional requirement
+            removeButtons.forEach(btn => {
+                if (functionalReqs.length > 1) {
+                    btn.style.display = 'block';
+            } else {
+                    btn.style.display = 'none';
+                }
+            });
+                
+            // Add event listeners to existing remove buttons
+            removeButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const functionalReqItem = btn.closest('.functional-req-item');
+                    removeFunctionalRequirement(functionalReqItem);
+                        });
+                });
+            }
+            
+        // Add new non-functional requirement field
+        function addNonFunctionalRequirement() {
+            const container = document.getElementById('nonFunctionalRequirementsContainer');
+            const nonFunctionalReqItem = document.createElement('div');
+            nonFunctionalReqItem.className = 'non-functional-req-item mb-3';
+            
+            nonFunctionalReqItem.innerHTML = `
+                <div class="d-flex gap-2">
+                    <textarea name="non_functional_requirements[]" class="form-control non-functional-req-input" rows="2" placeholder="Enter non-functional requirement (performance, security, usability, etc.)..." required></textarea>
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-non-functional-req-btn">
+                        <i data-feather="trash-2"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(nonFunctionalReqItem);
+            
+            // Add event listener for the remove button
+            const removeBtn = nonFunctionalReqItem.querySelector('.remove-non-functional-req-btn');
+            removeBtn.addEventListener('click', function() {
+                removeNonFunctionalRequirement(nonFunctionalReqItem);
+            });
+            
+            // Re-initialize feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            
+            // Update button visibility
+            updateNonFunctionalReqButtons();
+        }
+        
+        // Remove non-functional requirement field
+        function removeNonFunctionalRequirement(nonFunctionalReqItem) {
+            nonFunctionalReqItem.remove();
+            updateNonFunctionalReqButtons();
+        }
+        
+        // Update non-functional requirement remove buttons visibility
+        function updateNonFunctionalReqButtons() {
+            const nonFunctionalReqs = document.querySelectorAll('.non-functional-req-item');
+            const removeButtons = document.querySelectorAll('.remove-non-functional-req-btn');
+            
+            // Show remove buttons only if there's more than one non-functional requirement
+            removeButtons.forEach(btn => {
+                if (nonFunctionalReqs.length > 1) {
+                    btn.style.display = 'block';
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
+            
+            // Add event listeners to existing remove buttons
+            removeButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const nonFunctionalReqItem = btn.closest('.non-functional-req-item');
+                    removeNonFunctionalRequirement(nonFunctionalReqItem);
+                });
+            });
+        }
+        
+        // Add new phase row
+        function addPhaseRow() {
+            const tableBody = document.getElementById('phasesTableBody');
+            const rowCount = tableBody.querySelectorAll('.phase-row').length;
+            
+            // Calculate weeks for new row
+            const lastRow = tableBody.querySelector('.phase-row:last-child');
+            let startWeek = 1;
+            if (lastRow && rowCount > 0) {
+                const lastEndWeek = parseInt(lastRow.querySelector('.weeks-end').value);
+                startWeek = lastEndWeek + 1;
+            }
+            
+            const newRow = document.createElement('tr');
+            newRow.className = 'phase-row';
+            newRow.setAttribute('data-phase-index', rowCount);
+            
+            newRow.innerHTML = `
+                <td>
+                    <textarea class="form-control phase-input" name="phases[${rowCount}][phase]" rows="2" placeholder="Enter phase name..."></textarea>
+                </td>
+                <td>
+                    <textarea class="form-control key-activities-input" name="phases[${rowCount}][key_activities]" rows="2" placeholder="Describe key activities..."></textarea>
+                </td>
+                <td class="text-center align-middle">
+                    <div class="weeks-container">
+                        <span class="weeks-display">${startWeek}</span>
+                        <div class="weeks-controls">
+                            <button type="button" class="weeks-btn weeks-up" title="Increase end week">▲</button>
+                            <button type="button" class="weeks-btn weeks-down" title="Decrease end week">▼</button>
+                        </div>
+                        <input type="hidden" class="weeks-start" value="${startWeek}">
+                        <input type="hidden" class="weeks-end" value="${startWeek}">
+                    </div>
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-phase-btn">
+                        <i data-feather="trash-2"></i>
+                    </button>
+                </td>
+            `;
+            
+            tableBody.appendChild(newRow);
+            
+            // Add event listeners for the new row
+            const removeBtn = newRow.querySelector('.remove-phase-btn');
+            removeBtn.addEventListener('click', function() {
+                removePhaseRow(newRow);
+            });
+            
+            const upBtn = newRow.querySelector('.weeks-up');
+            const downBtn = newRow.querySelector('.weeks-down');
+            
+            upBtn.addEventListener('click', function() {
+                adjustWeeks(newRow, 1);
+            });
+            
+            downBtn.addEventListener('click', function() {
+                adjustWeeks(newRow, -1);
+            });
+            
+            // Re-initialize feather icons
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+            
+            // Update button visibility
+            updatePhaseButtons();
+        }
+        
+        // Remove phase row
+        function removePhaseRow(row) {
+            row.remove();
+            updatePhaseButtons();
+            updatePhaseIndices();
+            recalculateAllPhaseWeeks();
+        }
+        
+        // Update phase remove buttons visibility
+        function updatePhaseButtons() {
+            const rows = document.querySelectorAll('.phase-row');
+            const removeButtons = document.querySelectorAll('.remove-phase-btn');
+            
+            // Show remove buttons only if there's more than one row
+            removeButtons.forEach(btn => {
+                if (rows.length > 1) {
+                    btn.style.display = 'block';
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
+            
+            // Add event listeners to existing remove buttons (only if they don't have them)
+            removeButtons.forEach(btn => {
+                if (!btn.hasAttribute('data-listener-added')) {
+                btn.addEventListener('click', function() {
+                        const row = btn.closest('.phase-row');
+                        removePhaseRow(row);
+                    });
+                    btn.setAttribute('data-listener-added', 'true');
+                }
+            });
+        }
+        
+        // Initialize week buttons for existing rows
+        function initializeWeekButtons() {
+            const rows = document.querySelectorAll('.phase-row');
+            rows.forEach(row => {
+                const upBtn = row.querySelector('.weeks-up');
+                const downBtn = row.querySelector('.weeks-down');
+                
+                if (upBtn && downBtn && !upBtn.hasAttribute('data-listener-added')) {
+                    upBtn.addEventListener('click', function() {
+                        adjustWeeks(row, 1);
+                });
+                    
+                    downBtn.addEventListener('click', function() {
+                        adjustWeeks(row, -1);
+                    });
+                    
+                    upBtn.setAttribute('data-listener-added', 'true');
+                    downBtn.setAttribute('data-listener-added', 'true');
+                }
+            });
+        }
+        
+        // Update phase row indices after removal
+        function updatePhaseIndices() {
+            const rows = document.querySelectorAll('.phase-row');
+            rows.forEach((row, index) => {
+                row.setAttribute('data-phase-index', index);
+                const inputs = row.querySelectorAll('textarea');
+                inputs[0].name = `phases[${index}][phase]`;
+                inputs[1].name = `phases[${index}][key_activities]`;
+            });
+        }
+        
+        // Adjust weeks for a specific row
+        function adjustWeeks(row, direction) {
+            const startInput = row.querySelector('.weeks-start');
+            const endInput = row.querySelector('.weeks-end');
+            const display = row.querySelector('.weeks-display');
+            
+            const startWeek = parseInt(startInput.value);
+            let endWeek = parseInt(endInput.value);
+            
+            // Adjust end week
+            endWeek += direction;
+            
+            // Don't allow end week to go below start week
+            if (endWeek < startWeek) {
+                endWeek = startWeek;
+            }
+            
+            // Update the values
+            endInput.value = endWeek;
+            
+            // Update display
+            if (startWeek === endWeek) {
+                display.textContent = startWeek.toString();
+            } else {
+                display.textContent = `${startWeek}-${endWeek}`;
+            }
+            
+            // Recalculate subsequent rows
+            recalculateSubsequentPhaseWeeks(row);
+        }
+        
+        // Recalculate weeks for all rows starting from a specific row
+        function recalculateSubsequentPhaseWeeks(changedRow) {
+            const rows = document.querySelectorAll('.phase-row');
+            const changedIndex = parseInt(changedRow.getAttribute('data-phase-index'));
+            
+            // Get the end week of the changed row
+            const changedEndWeek = parseInt(changedRow.querySelector('.weeks-end').value);
+            
+            // Update subsequent rows
+            for (let i = changedIndex + 1; i < rows.length; i++) {
+                const row = rows[i];
+                const startInput = row.querySelector('.weeks-start');
+                const endInput = row.querySelector('.weeks-end');
+                const display = row.querySelector('.weeks-display');
+                
+                // Calculate new start week (previous row's end + 1)
+                const prevRow = rows[i - 1];
+                const prevEndWeek = parseInt(prevRow.querySelector('.weeks-end').value);
+                const newStartWeek = prevEndWeek + 1;
+                
+                // Keep the same duration if possible
+                const currentStart = parseInt(startInput.value);
+                const currentEnd = parseInt(endInput.value);
+                const currentDuration = currentEnd - currentStart;
+                
+                startInput.value = newStartWeek;
+                endInput.value = newStartWeek + currentDuration;
+                
+                // Update display
+                const newEndWeek = newStartWeek + currentDuration;
+                if (newStartWeek === newEndWeek) {
+                    display.textContent = newStartWeek.toString();
+                } else {
+                    display.textContent = `${newStartWeek}-${newEndWeek}`;
+                }
+            }
+        }
+        
+        // Recalculate all phase weeks from scratch
+        function recalculateAllPhaseWeeks() {
+            const rows = document.querySelectorAll('.phase-row');
+            
+            rows.forEach((row, index) => {
+                const startInput = row.querySelector('.weeks-start');
+                const endInput = row.querySelector('.weeks-end');
+                const display = row.querySelector('.weeks-display');
+                
+                if (index === 0) {
+                    // First row is always week 1
+                    startInput.value = 1;
+                    endInput.value = 1;
+                    display.textContent = '1';
+                } else {
+                    // Calculate based on previous row
+                    const prevRow = rows[index - 1];
+                    const prevEndWeek = parseInt(prevRow.querySelector('.weeks-end').value);
+                    const newStartWeek = prevEndWeek + 1;
+                    
+                    // Keep the same duration if possible
+                    const currentStart = parseInt(startInput.value);
+                    const currentEnd = parseInt(endInput.value);
+                    const currentDuration = Math.max(0, currentEnd - currentStart);
+                    
+                    startInput.value = newStartWeek;
+                    endInput.value = newStartWeek + currentDuration;
+                    
+                    // Update display
+                    const newEndWeek = newStartWeek + currentDuration;
+                    if (newStartWeek === newEndWeek) {
+                        display.textContent = newStartWeek.toString();
+                    } else {
+                        display.textContent = `${newStartWeek}-${newEndWeek}`;
+                    }
+                }
+            });
+        }
+        
+        // Validate Step 1 form
+        function validateStep1() {
+            const project = document.getElementById('project').value.trim();
+            const client = document.getElementById('client').value.trim();
+            const preparedBy = document.getElementById('preparedBy').value.trim();
+            const date = document.getElementById('date').value.trim();
+            const projectPurposeBackground = document.getElementById('projectPurposeBackground').value.trim();
+            
+            if (!project) {
+                showAlert('Project name is required.', 'warning');
+                document.getElementById('project').focus();
+                return false;
+            }
+            
+            if (!client) {
+                showAlert('Client name is required.', 'warning');
+                document.getElementById('client').focus();
+                return false;
+            }
+            
+            if (!preparedBy) {
+                showAlert('Prepared by field is required.', 'warning');
+                document.getElementById('preparedBy').focus();
+                return false;
+            }
+            
+            if (!date) {
+                showAlert('Date is required.', 'warning');
+                document.getElementById('date').focus();
+                return false;
+            }
+            
+            if (!projectPurposeBackground) {
+                showAlert('Project purpose & background is required.', 'warning');
+                document.getElementById('projectPurposeBackground').focus();
+                return false;
+            }
+            
+            // Validate objectives
+            const objectives = document.querySelectorAll('.objective-input');
+            let hasValidObjective = false;
+            
+            for (let objective of objectives) {
+                if (objective.value.trim()) {
+                    hasValidObjective = true;
+                    break;
+                }
+            }
+            
+            if (!hasValidObjective) {
+                showAlert('At least one objective is required.', 'warning');
+                objectives[0].focus();
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Validate Step 2 form
+        function validateStep2() {
+            const deliverableRows = document.querySelectorAll('.deliverable-row');
+            let hasValidDeliverable = false;
+            
+            for (let row of deliverableRows) {
+                const deliverable = row.querySelector('.deliverable-input').value.trim();
+                const keyFeatures = row.querySelector('.key-features-input').value.trim();
+                const primaryArtifacts = row.querySelector('.primary-artifacts-input').value.trim();
+                
+                if (deliverable || keyFeatures || primaryArtifacts) {
+                    hasValidDeliverable = true;
+                    break;
+                }
+            }
+            
+            if (!hasValidDeliverable) {
+                showAlert('At least one deliverable is required.', 'warning');
+                return false;
+            }
+            
+            // Validate functional requirements
+            const functionalReqs = document.querySelectorAll('.functional-req-input');
+            let hasValidFunctionalReq = false;
+            
+            for (let req of functionalReqs) {
+                if (req.value.trim()) {
+                    hasValidFunctionalReq = true;
+                    break;
+                }
+            }
+            
+            if (!hasValidFunctionalReq) {
+                showAlert('At least one functional requirement is required.', 'warning');
+                functionalReqs[0].focus();
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Validate Step 3 form
+        function validateStep3() {
+            // Validate non-functional requirements
+            const nonFunctionalReqs = document.querySelectorAll('.non-functional-req-input');
+            let hasValidNonFunctionalReq = false;
+            
+            for (let req of nonFunctionalReqs) {
+                if (req.value.trim()) {
+                    hasValidNonFunctionalReq = true;
+                    break;
+                }
+            }
+            
+            if (!hasValidNonFunctionalReq) {
+                showAlert('At least one non-functional requirement is required.', 'warning');
+                nonFunctionalReqs[0].focus();
+                return false;
+            }
+            
+            // Validate phases
+            const phaseRows = document.querySelectorAll('.phase-row');
+            let hasValidPhase = false;
+            
+            for (let row of phaseRows) {
+                const phase = row.querySelector('.phase-input').value.trim();
+                const keyActivities = row.querySelector('.key-activities-input').value.trim();
+                
+                if (phase || keyActivities) {
+                    hasValidPhase = true;
+                    break;
+                }
+            }
+            
+            if (!hasValidPhase) {
+                showAlert('At least one project phase is required.', 'warning');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Update SoW session for Step 1
+        async function updateSowSessionStep1() {
+            const sessionIdElement = document.getElementById('sessionId');
+            if (!sessionIdElement) {
+                console.error('Session ID element not found!');
+                showAlert('Session error - please refresh the page', 'danger');
+                return;
+            }
+            
+            const objectiveInputs = document.querySelectorAll('.objective-input');
+            const objectives = Array.from(objectiveInputs)
+                .map(input => input.value.trim())
+                .filter(value => value.length > 0);
+            
+            const formData = {
+                sessionId: sessionIdElement.value,
+                step: 1,
+                data: {
+                    project: document.getElementById('project').value.trim(),
+                    client: document.getElementById('client').value.trim(),
+                    prepared_by: document.getElementById('preparedBy').value.trim(),
+                    date: document.getElementById('date').value.trim(),
+                    project_purpose_background: document.getElementById('projectPurposeBackground').value.trim(),
+                    objectives: objectives
+                }
+            };
+            
+            try {
+                const response = await fetch('/update-sow-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('Step 1 completed successfully!', 'success');
+                } else {
+                    showAlert('Error saving Step 1: ' + result.message, 'danger');
+                }
+            } catch (error) {
+                console.error('Error updating SoW session:', error);
+                showAlert('Error saving Step 1 data.', 'danger');
+            }
+        }
+        
+        // Update SoW session for Step 2
+        async function updateSowSessionStep2() {
+            const sessionIdElement = document.getElementById('sessionId');
+            if (!sessionIdElement) {
+                console.error('Session ID element not found!');
+                showAlert('Session error - please refresh the page', 'danger');
+                return;
+            }
+            
+            const deliverableRows = document.querySelectorAll('.deliverable-row');
+            const deliverables = Array.from(deliverableRows).map(row => ({
+                deliverable: row.querySelector('.deliverable-input').value.trim(),
+                key_features: row.querySelector('.key-features-input').value.trim(),
+                primary_artifacts: row.querySelector('.primary-artifacts-input').value.trim()
+            })).filter(item => item.deliverable || item.key_features || item.primary_artifacts);
+            
+            const functionalReqInputs = document.querySelectorAll('.functional-req-input');
+            const functionalRequirements = Array.from(functionalReqInputs)
+                .map(input => input.value.trim())
+                .filter(value => value.length > 0);
+            
+            const formData = {
+                sessionId: sessionIdElement.value,
+                step: 2,
+                data: {
+                    in_scope_deliverables: deliverables,
+                    out_of_scope: document.getElementById('outOfScope').value.trim(),
+                    functional_requirements: functionalRequirements
+                }
+            };
+            
+            try {
+                const response = await fetch('/update-sow-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('Step 2 completed successfully!', 'success');
+                } else {
+                    showAlert('Error saving Step 2: ' + result.message, 'danger');
+                }
+            } catch (error) {
+                console.error('Error updating SoW session:', error);
+                showAlert('Error saving Step 2 data.', 'danger');
+            }
+        }
+        
+        // Update SoW session for Step 3
+        async function updateSowSessionStep3() {
+            const sessionIdElement = document.getElementById('sessionId');
+            if (!sessionIdElement) {
+                console.error('Session ID element not found!');
+                showAlert('Session error - please refresh the page', 'danger');
+                return;
+            }
+            
+            const nonFunctionalReqInputs = document.querySelectorAll('.non-functional-req-input');
+            const nonFunctionalRequirements = Array.from(nonFunctionalReqInputs)
+                .map(input => input.value.trim())
+                .filter(value => value.length > 0);
+            
+            const phaseRows = document.querySelectorAll('.phase-row');
+            const phases = Array.from(phaseRows).map(row => ({
+                phase: row.querySelector('.phase-input').value.trim(),
+                key_activities: row.querySelector('.key-activities-input').value.trim(),
+                weeks_start: parseInt(row.querySelector('.weeks-start').value),
+                weeks_end: parseInt(row.querySelector('.weeks-end').value),
+                weeks_display: row.querySelector('.weeks-display').textContent
+            })).filter(item => item.phase || item.key_activities);
+            
+            const formData = {
+                sessionId: sessionIdElement.value,
+                step: 3,
+                data: {
+                    non_functional_requirements: nonFunctionalRequirements,
+                    project_phases_timeline: {
+                        phases: phases
+                    }
+                }
+            };
+            
+            try {
+                const response = await fetch('/update-sow-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showAlert('Step 3 completed successfully!', 'success');
+                } else {
+                    showAlert('Error saving Step 3: ' + result.message, 'danger');
+                }
+            } catch (error) {
+                console.error('Error updating SoW session:', error);
+                showAlert('Error saving Step 3 data.', 'danger');
+            }
+        }
+        
+        // Show alert message (updated to handle all step alerts)
+        function showAlert(message, type = 'info') {
+            // Determine which alert container to use based on current step
+            const currentStep = document.querySelector('.step.active');
+            let alertContainer;
+            
+            if (currentStep && currentStep.id === 'step3') {
+                alertContainer = document.getElementById('alertMessageStep3');
+            } else if (currentStep && currentStep.id === 'step2') {
+                alertContainer = document.getElementById('alertMessageStep2');
+            } else {
+                alertContainer = document.getElementById('alertMessageStep1');
+            }
+            
+            if (alertContainer) {
+                alertContainer.className = `alert alert-${type}`;
+                alertContainer.textContent = message;
+                alertContainer.classList.remove('d-none');
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    alertContainer.classList.add('d-none');
+                }, 5000);
+            }
+        }
+        
+        // Generate SoW PDF for download
+        function generateSowPdf() {
+            const sessionIdElement = document.getElementById('sessionId');
+            if (!sessionIdElement) {
+                console.error('Session ID element not found!');
+                showAlert('Session error - please refresh the page', 'danger');
+                return;
+            }
+            
+            const sessionId = sessionIdElement.value;
+            if (!sessionId) {
+                showAlert('Session ID is required', 'danger');
+                return;
+            }
+            
+            console.log('Generating SoW PDF for session:', sessionId);
+            showAlert('Generating SoW PDF...', 'info');
+            
+            // Create a form and submit it to trigger PDF generation
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/generate-sow-pdf';
+            form.style.display = 'none';
+            
+            const sessionInput = document.createElement('input');
+            sessionInput.type = 'hidden';
+            sessionInput.name = 'sessionId';
+            sessionInput.value = sessionId;
+            form.appendChild(sessionInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+        }
+        
+        // Preview SoW PDF in browser
+        function previewSowPdf() {
+            const sessionIdElement = document.getElementById('sessionId');
+            if (!sessionIdElement) {
+                console.error('Session ID element not found!');
+                showAlert('Session error - please refresh the page', 'danger');
+                return;
+            }
+            
+            const sessionId = sessionIdElement.value;
+            if (!sessionId) {
+                showAlert('Session ID is required', 'danger');
+                return;
+            }
+            
+            console.log('Previewing SoW PDF for session:', sessionId);
+            showAlert('Generating SoW PDF preview...', 'info');
+            
+            // Open PDF preview in new window
+            const previewUrl = `/preview-sow-pdf?sessionId=${encodeURIComponent(sessionId)}`;
+            window.open(previewUrl, '_blank');
+        }
+        
+        // Delete SoW session
+        async function deleteSow() {
+            const sessionIdElement = document.getElementById('sessionId');
+            if (!sessionIdElement) {
+                console.error('Session ID element not found!');
+                showAlert('Session error - please refresh the page', 'danger');
+                return;
+            }
+            
+            const sessionId = sessionIdElement.value;
+            if (!sessionId) {
+                showAlert('Session ID is required', 'danger');
+                return;
+            }
+            
+            console.log('Deleting SoW session:', sessionId);
+            showAlert('Deleting SoW...', 'info');
+            
+            try {
+                const response = await fetch('/delete-sow-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ sessionId: sessionId })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('SoW session deleted successfully! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/solutioning';
+                    }, 2000);
+                } else {
+                    showAlert('Error deleting SoW: ' + result.message, 'danger');
+                }
+            } catch (error) {
+                console.error('Error deleting SoW:', error);
+                showAlert('Error deleting SoW.', 'danger');
+            }
+        }
+        
+        // Save SoW session to database
+        async function saveSowToDatabase() {
+            const sessionIdElement = document.getElementById('sessionId');
+            if (!sessionIdElement) {
+                console.error('Session ID element not found!');
+                throw new Error('Session error - please refresh the page');
+            }
+            
+            const sessionId = sessionIdElement.value;
+            if (!sessionId) {
+                throw new Error('Session ID is required');
+            }
+            
+            console.log('Saving SoW session to database:', sessionId);
+            
+            try {
+                const response = await fetch('/save-sow-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ sessionId: sessionId })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    console.log(`SoW saved to database successfully! Row ID: ${result.row_id}`);
+                    return result; // Return the result instead of showing alert here
+                } else {
+                    throw new Error(result.message || 'Unknown error saving to database');
+                }
+            } catch (error) {
+                console.error('Error saving SoW to database:', error);
+                throw error; // Re-throw to be handled by calling function
+            }
+        }
+        
+        // Load and populate form with session data
+        async function loadSessionData() {
+            try {
+                console.log('Loading session data for session:', '{{ session_id }}');
+                console.log('is_loaded_session:', {{ 'true' if is_loaded_session else 'false' }});
+                
+                const response = await fetch('/sow/debug/{{ session_id }}');
+                console.log('Debug response status:', response.status);
+                
+                const result = await response.json();
+                console.log('Debug response result:', result);
+                
+                if (result.success && result.data) {
+                    const data = result.data;
+                    console.log('Session data loaded:', data);
+                    
+                    // Populate Step 1 fields
+                    const projectField = document.getElementById('project');
+                    const clientField = document.getElementById('client');
+                    const preparedByField = document.getElementById('preparedBy');
+                    const dateField = document.getElementById('date');
+                    const purposeField = document.getElementById('projectPurposeBackground');
+                    
+                    if (projectField) projectField.value = data.project || '';
+                    if (clientField) clientField.value = data.client || '';
+                    if (preparedByField) preparedByField.value = data.prepared_by || '';
+                    if (dateField) dateField.value = data.date || '';
+                    if (purposeField) purposeField.value = data.project_purpose_background || '';
+                    
+                    // Populate objectives
+                    if (data.objectives && data.objectives.length > 0) {
+                        const objectivesContainer = document.getElementById('objectivesContainer');
+                        if (objectivesContainer) {
+                            // Clear existing objectives
+                            objectivesContainer.innerHTML = '';
+                            
+                            // Add each objective
+                            data.objectives.forEach((objective, index) => {
+                                if (objective && objective.trim()) {
+                                    addObjectiveField(objective);
+                                }
+                            });
+                        }
+                    }
+                    
+                    // Populate Step 2 fields
+                    // Populate deliverables
+                    if (data.in_scope_deliverables && data.in_scope_deliverables.length > 0) {
+                        const deliverablesTableBody = document.querySelector('#deliverablesTable tbody');
+                        if (deliverablesTableBody) {
+                            // Clear existing rows (except the first empty row)
+                            const rows = deliverablesTableBody.querySelectorAll('tr');
+                            for (let i = 1; i < rows.length; i++) {
+                                rows[i].remove();
+                            }
+                            
+                            // Populate the first row and add additional rows as needed
+                            data.in_scope_deliverables.forEach((deliverable, index) => {
+                                if (deliverable && deliverable.deliverable && deliverable.deliverable.trim()) {
+                                    if (index === 0) {
+                                        // Use the first existing row
+                                        const firstRow = deliverablesTableBody.querySelector('tr');
+                                        if (firstRow) {
+                                            const deliverableInput = firstRow.querySelector('.deliverable-input');
+                                            const keyFeaturesInput = firstRow.querySelector('.key-features-input');
+                                            const primaryArtifactsInput = firstRow.querySelector('.primary-artifacts-input');
+                                            
+                                            if (deliverableInput) deliverableInput.value = deliverable.deliverable || '';
+                                            if (keyFeaturesInput) keyFeaturesInput.value = deliverable.key_features || '';
+                                            if (primaryArtifactsInput) primaryArtifactsInput.value = deliverable.primary_artifacts || '';
+                                        }
+                                    } else {
+                                        // Add new row first
+                                        addDeliverableRow();
+                                        
+                                        // Then populate the newly added row
+                                        const newRow = deliverablesTableBody.querySelector('tr:last-child');
+                                        if (newRow) {
+                                            const deliverableInput = newRow.querySelector('.deliverable-input');
+                                            const keyFeaturesInput = newRow.querySelector('.key-features-input');
+                                            const primaryArtifactsInput = newRow.querySelector('.primary-artifacts-input');
+                                            
+                                            if (deliverableInput) deliverableInput.value = deliverable.deliverable || '';
+                                            if (keyFeaturesInput) keyFeaturesInput.value = deliverable.key_features || '';
+                                            if (primaryArtifactsInput) primaryArtifactsInput.value = deliverable.primary_artifacts || '';
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    
+                    // Populate out of scope
+                    const outOfScopeField = document.getElementById('outOfScope');
+                    if (outOfScopeField) outOfScopeField.value = data.out_of_scope || '';
+                    
+                    // Populate functional requirements
+                    if (data.functional_requirements && data.functional_requirements.length > 0) {
+                        const functionalReqContainer = document.getElementById('functionalRequirementsContainer');
+                        if (functionalReqContainer) {
+                            // Clear existing requirements
+                            functionalReqContainer.innerHTML = '';
+                            
+                            // Add each requirement
+                            data.functional_requirements.forEach((requirement, index) => {
+                                if (requirement && requirement.trim()) {
+                                    addFunctionalRequirement();
+                                    
+                                    // Populate the newly added requirement
+                                    const newReqItem = functionalReqContainer.querySelector('.functional-req-item:last-child');
+                                    if (newReqItem) {
+                                        const textarea = newReqItem.querySelector('.functional-req-input');
+                                        if (textarea) textarea.value = requirement;
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    
+                    // Populate Step 3 fields
+                    // Populate non-functional requirements
+                    if (data.non_functional_requirements && data.non_functional_requirements.length > 0) {
+                        const nonFunctionalReqContainer = document.getElementById('nonFunctionalRequirementsContainer');
+                        if (nonFunctionalReqContainer) {
+                            // Clear existing requirements
+                            nonFunctionalReqContainer.innerHTML = '';
+                            
+                            // Add each requirement
+                            data.non_functional_requirements.forEach((requirement, index) => {
+                                if (requirement && requirement.trim()) {
+                                    addNonFunctionalRequirement();
+                                    
+                                    // Populate the newly added requirement
+                                    const newReqItem = nonFunctionalReqContainer.querySelector('.non-functional-req-item:last-child');
+                                    if (newReqItem) {
+                                        const textarea = newReqItem.querySelector('.non-functional-req-input');
+                                        if (textarea) textarea.value = requirement;
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    
+                    // Populate project phases timeline
+                    if (data.project_phases_timeline) {
+                        const timelineWeeksField = document.getElementById('timelineWeeks');
+                        if (timelineWeeksField) {
+                            timelineWeeksField.value = data.project_phases_timeline.timeline_weeks || '';
+                        }
+                        
+                        // Populate phases
+                        if (data.project_phases_timeline.phases && data.project_phases_timeline.phases.length > 0) {
+                            const phasesTableBody = document.querySelector('#phasesTable tbody');
+                            if (phasesTableBody) {
+                                // Clear existing phases (except the first empty row)
+                                const rows = phasesTableBody.querySelectorAll('tr');
+                                for (let i = 1; i < rows.length; i++) {
+                                    rows[i].remove();
+                                }
+                                
+                                // Populate phases
+                                data.project_phases_timeline.phases.forEach((phase, index) => {
+                                    console.log(`Processing phase ${index}:`, phase);
+                                    if (phase && phase.phase && phase.phase.trim()) {
+                                        if (index === 0) {
+                                            // Use the first existing row
+                                            const firstRow = phasesTableBody.querySelector('tr');
+                                            if (firstRow) {
+                                                console.log('Found first row, populating...');
+                                                const phaseInput = firstRow.querySelector('.phase-input');
+                                                const activitiesInput = firstRow.querySelector('.key-activities-input');
+                                                const weeksStartInput = firstRow.querySelector('.weeks-start');
+                                                const weeksEndInput = firstRow.querySelector('.weeks-end');
+                                                const weeksDisplay = firstRow.querySelector('.weeks-display');
+                                                
+                                                console.log('Elements found:', {
+                                                    phaseInput: !!phaseInput,
+                                                    activitiesInput: !!activitiesInput,
+                                                    weeksStartInput: !!weeksStartInput,
+                                                    weeksEndInput: !!weeksEndInput,
+                                                    weeksDisplay: !!weeksDisplay
+                                                });
+                                                
+                                                if (phaseInput) phaseInput.value = phase.phase;
+                                                if (activitiesInput) {
+                                                    console.log('Setting key_activities:', phase.key_activities);
+                                                    activitiesInput.value = phase.key_activities || '';
+                                                }
+                                                
+                                                // Set weeks data
+                                                const startWeek = parseInt(phase.weeks_start) || 1;
+                                                const endWeek = parseInt(phase.weeks_end) || startWeek;
+                                                
+                                                console.log('Setting weeks:', { startWeek, endWeek, weeks_start: phase.weeks_start, weeks_end: phase.weeks_end });
+                                                
+                                                if (weeksStartInput) weeksStartInput.value = startWeek;
+                                                if (weeksEndInput) weeksEndInput.value = endWeek;
+                                                if (weeksDisplay) {
+                                                    weeksDisplay.textContent = startWeek === endWeek ? startWeek.toString() : `${startWeek}-${endWeek}`;
+                                                }
+                                            }
+                                        } else {
+                                            // Add new row first
+                                            addPhaseRow();
+                                            
+                                            // Then populate the newly added row
+                                            const newRow = phasesTableBody.querySelector('tr:last-child');
+                                            if (newRow) {
+                                                console.log(`Populating new row ${index}...`);
+                                                const phaseInput = newRow.querySelector('.phase-input');
+                                                const activitiesInput = newRow.querySelector('.key-activities-input');
+                                                const weeksStartInput = newRow.querySelector('.weeks-start');
+                                                const weeksEndInput = newRow.querySelector('.weeks-end');
+                                                const weeksDisplay = newRow.querySelector('.weeks-display');
+                                                
+                                                if (phaseInput) phaseInput.value = phase.phase;
+                                                if (activitiesInput) {
+                                                    console.log(`Setting key_activities for row ${index}:`, phase.key_activities);
+                                                    activitiesInput.value = phase.key_activities || '';
+                                                }
+                                                
+                                                // Set weeks data
+                                                const startWeek = parseInt(phase.weeks_start) || 1;
+                                                const endWeek = parseInt(phase.weeks_end) || startWeek;
+                                                
+                                                console.log(`Setting weeks for row ${index}:`, { startWeek, endWeek });
+                                                
+                                                if (weeksStartInput) weeksStartInput.value = startWeek;
+                                                if (weeksEndInput) weeksEndInput.value = endWeek;
+                                                if (weeksDisplay) {
+                                                    weeksDisplay.textContent = startWeek === endWeek ? startWeek.toString() : `${startWeek}-${endWeek}`;
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                                
+                                // Recalculate all phase weeks to ensure consistency
+                                setTimeout(() => {
+                                    recalculateAllPhaseWeeks();
+                                }, 100);
+                            }
+                        }
+                    }
+                    
+                    console.log('Form populated successfully with session data');
+                    showAlert('Session loaded successfully!', 'success');
+                    
+                } else {
+                    console.error('Failed to load session data:', result.message);
+                    showAlert('Failed to load session data: ' + (result.message || 'Unknown error'), 'danger');
+                }
+                
+            } catch (error) {
+                console.error('Error loading session data:', error);
+                showAlert('Error loading session data: ' + error.message, 'danger');
+            }
+        }
+    </script>
+</body>
+</html>
