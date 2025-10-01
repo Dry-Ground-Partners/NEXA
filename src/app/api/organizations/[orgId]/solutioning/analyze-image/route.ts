@@ -63,12 +63,12 @@ export async function POST(
 
     console.log('🔍 API: Starting vision analysis...')
     
-    // Call the vision analysis function
+    // Call the vision analysis function with organization preferences
     const result = await analyzeImageWithVision({
       imageUrl,
       imageData,
       additionalContext
-    })
+    }, orgId)
 
     if (!result.success) {
       console.error('❌ API: Vision analysis failed:', result.error)

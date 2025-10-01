@@ -84,8 +84,8 @@ export async function POST(
       sessionId: body.sessionId
     }
     
-    // Call LangChain analysis
-    const result = await analyzePainPoints(analysisRequest)
+    // Call LangChain analysis with organization preferences
+    const result = await analyzePainPoints(analysisRequest, orgId)
     
     if (!result.success) {
       console.log('❌ API: LangChain analysis failed:', result.error)

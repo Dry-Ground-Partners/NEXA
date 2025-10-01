@@ -61,11 +61,11 @@ export async function POST(
 
     console.log(`💰 Usage tracked: ${trackingResult.creditsConsumed} credits consumed, ${trackingResult.remainingCredits} remaining`)
     
-    // Call the solution structuring function
+    // Call the solution structuring function with organization preferences
     const result = await structureSolutionWithLangSmith({ 
       aiAnalysis: aiAnalysis || '',
       solutionExplanation: solutionExplanation || ''
-    })
+    }, orgId)
 
     if (!result.success) {
       return NextResponse.json(

@@ -16,19 +16,30 @@ def generate_sow_pdf_from_json(sow_data):
         # Get current directory for assets
         curr_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Read the dg.png file for the header (same as solution pages)
-        dg_logo_path = os.path.join(curr_dir, '../public/dg.png')
-        if not os.path.exists(dg_logo_path):
-            # Fallback to pdf-service directory
-            dg_logo_path = os.path.join(curr_dir, 'dg.png')
+        # Logo handling - PHASE 4: Use organization logos from database
+        # Check if organization secondary logo is provided in the JSON
+        second_logo_from_db = sow_data.get('secondLogo', '')
         
-        if os.path.exists(dg_logo_path):
-            with open(dg_logo_path, 'rb') as f:
-                dg_logo_data = f.read()
-                dg_logo_base64 = base64.b64encode(dg_logo_data).decode('utf-8')
+        # DG logo for page headers
+        if second_logo_from_db:
+            # Organization provided custom secondary logo (already base64 from DB)
+            print("🎨 SOW: Using organization secondary logo from database", file=sys.stderr)
+            dg_logo_base64 = second_logo_from_db
         else:
-            # Fallback to empty base64 if logo not found
-            dg_logo_base64 = ""
+            # Fallback to default DG logo
+            print("📸 SOW: Using default header logo (no organization secondary logo set)", file=sys.stderr)
+            dg_logo_path = os.path.join(curr_dir, '../public/dg.png')
+            if not os.path.exists(dg_logo_path):
+                # Fallback to pdf-service directory
+                dg_logo_path = os.path.join(curr_dir, 'dg.png')
+            
+            if os.path.exists(dg_logo_path):
+                with open(dg_logo_path, 'rb') as f:
+                    dg_logo_data = f.read()
+                    dg_logo_base64 = base64.b64encode(dg_logo_data).decode('utf-8')
+            else:
+                # Fallback to empty base64 if logo not found
+                dg_logo_base64 = ""
         
         # Format date for display
         date_str = sow_data.get('date', '')

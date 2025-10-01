@@ -93,3 +93,7 @@ COMMENT ON COLUMN organization_preferences.main_logo IS 'Base64 encoded primary 
 COMMENT ON COLUMN organization_preferences.general_approach IS 'General approach text applied to all AI prompts';
 COMMENT ON COLUMN organization_preferences.structuring_preferences IS 'Stage-specific preferences for structuring workflow';
 COMMENT ON COLUMN organization_preferences.change_history IS 'Audit trail of all changes to preferences';
+
+
+
+

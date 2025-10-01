@@ -45,12 +45,27 @@ import {
   Calendar,
   MoreHorizontal,
   CheckCircle,
-  XCircle
+  XCircle,
+  Save,
+  AlertCircle
 } from 'lucide-react'
 import type { SessionSummary } from '@/lib/sessions'
+import { useUser } from '@/contexts/user-context'
+import { usePreferences } from '@/hooks/use-preferences'
+import { fileToBase64, validateImageFile, createPreviewUrl, revokePreviewUrl } from '@/lib/preferences/image-utils'
 
 export default function GridPage() {
   const router = useRouter()
+  const { selectedOrganization, user } = useUser()
+  const { preferences, loading: prefsLoading, saving, error: prefsError, updatePreferences } = usePreferences()
+  
+  // Debug: Log organization state
+  console.log('🔍 Grid Debug - selectedOrganization:', selectedOrganization?.id, selectedOrganization?.organization?.name)
+  console.log('🔍 Grid Debug - user memberships:', user?.organizationMemberships?.map(m => ({ 
+    id: m.organization.id, 
+    name: m.organization.name, 
+    role: m.role 
+  })))
   
   // Tab state
   const [activeTab, setActiveTab] = useState('sessions')
@@ -117,8 +132,71 @@ export default function GridPage() {
   // Logo upload state
   const [mainLogo, setMainLogo] = useState<File | null>(null)
   const [secondLogo, setSecondLogo] = useState<File | null>(null)
+  const [mainLogoPreview, setMainLogoPreview] = useState<string | null>(null)
+  const [secondLogoPreview, setSecondLogoPreview] = useState<string | null>(null)
+  const [logoError, setLogoError] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  
+  // Check if user can edit (owner or admin)
+  const canEdit = selectedOrganization?.role === 'owner' || selectedOrganization?.role === 'admin'
   
   
+  
+  // Sync backdrop data with preferences when loaded
+  useEffect(() => {
+    if (preferences) {
+      setBackdropData({
+        general: preferences.generalApproach || '',
+        structuring: {
+          activeTab: 'diagnose',
+          diagnose: preferences.structuring?.diagnose || '',
+          echo: preferences.structuring?.echo || '',
+          traceback: preferences.structuring?.traceback || '',
+          solution: preferences.structuring?.solution || ''
+        },
+        visuals: {
+          activeTab: 'ideation',
+          ideation: preferences.visuals?.ideation || '',
+          planning: preferences.visuals?.planning || '',
+          sketching: preferences.visuals?.sketching || ''
+        },
+        solutioning: {
+          activeTab: 'structure',
+          structure: preferences.solutioning?.structure || '',
+          analysis: preferences.solutioning?.analysis || '',
+          stack: preferences.solutioning?.stack || '',
+          enhance: preferences.solutioning?.enhance || '',
+          formatting: preferences.solutioning?.formatting || ''
+        },
+        pushing: {
+          structuringToVisuals: preferences.pushing?.structuringToVisuals || '',
+          visualsToSolutioning: preferences.pushing?.visualsToSolutioning || '',
+          solutioningToSOW: preferences.pushing?.solutioningToSOW || '',
+          sowToLOE: preferences.pushing?.sowToLOE || ''
+        }
+      })
+      
+      // Set logo previews from existing data
+      if (preferences.mainLogo?.data) {
+        setMainLogoPreview(preferences.mainLogo.data)
+      }
+      if (preferences.secondLogo?.data) {
+        setSecondLogoPreview(preferences.secondLogo.data)
+      }
+    }
+  }, [preferences])
+  
+  // Cleanup preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (mainLogoPreview && mainLogoPreview.startsWith('blob:')) {
+        revokePreviewUrl(mainLogoPreview)
+      }
+      if (secondLogoPreview && secondLogoPreview.startsWith('blob:')) {
+        revokePreviewUrl(secondLogoPreview)
+      }
+    }
+  }, [mainLogoPreview, secondLogoPreview])
   
   // Toggle section expansion
   const toggleSection = (section: keyof typeof expandedSections) => {
@@ -128,12 +206,135 @@ export default function GridPage() {
     }))
   }
   
-  // Handle logo upload
-  const handleLogoUpload = (file: File, type: 'main' | 'second') => {
+  // Handle logo upload with validation
+  const handleLogoUpload = async (file: File, type: 'main' | 'second') => {
+    setLogoError(null)
+    
+    // Validate file
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      setLogoError(validation.error || 'Invalid file')
+      return
+    }
+    
+    // Create preview URL
+    const previewUrl = createPreviewUrl(file)
+    
     if (type === 'main') {
+      // Clean up old preview if it exists
+      if (mainLogoPreview && mainLogoPreview.startsWith('blob:')) {
+        revokePreviewUrl(mainLogoPreview)
+      }
       setMainLogo(file)
+      setMainLogoPreview(previewUrl)
     } else {
+      // Clean up old preview if it exists
+      if (secondLogoPreview && secondLogoPreview.startsWith('blob:')) {
+        revokePreviewUrl(secondLogoPreview)
+      }
       setSecondLogo(file)
+      setSecondLogoPreview(previewUrl)
+    }
+  }
+  
+  // Handle remove logo
+  const handleRemoveLogo = (type: 'main' | 'second') => {
+    if (type === 'main') {
+      if (mainLogoPreview && mainLogoPreview.startsWith('blob:')) {
+        revokePreviewUrl(mainLogoPreview)
+      }
+      setMainLogo(null)
+      setMainLogoPreview(null)
+    } else {
+      if (secondLogoPreview && secondLogoPreview.startsWith('blob:')) {
+        revokePreviewUrl(secondLogoPreview)
+      }
+      setSecondLogo(null)
+      setSecondLogoPreview(null)
+    }
+  }
+  
+  // Save preferences
+  const handleSavePreferences = async () => {
+    try {
+      setSaveSuccess(false)
+      setLogoError(null)
+      
+      // Convert logos to Base64 if they're new files
+      let mainLogoData = null
+      let secondLogoData = null
+      
+      if (mainLogo) {
+        mainLogoData = await fileToBase64(mainLogo)
+      } else if (!mainLogoPreview && preferences?.mainLogo) {
+        // User removed the logo
+        mainLogoData = null
+      } else if (mainLogoPreview && preferences?.mainLogo?.data === mainLogoPreview) {
+        // Logo unchanged, don't include in update
+        mainLogoData = undefined
+      }
+      
+      if (secondLogo) {
+        secondLogoData = await fileToBase64(secondLogo)
+      } else if (!secondLogoPreview && preferences?.secondLogo) {
+        // User removed the logo
+        secondLogoData = null
+      } else if (secondLogoPreview && preferences?.secondLogo?.data === secondLogoPreview) {
+        // Logo unchanged, don't include in update
+        secondLogoData = undefined
+      }
+      
+      const updateData: any = {
+        generalApproach: backdropData.general,
+        structuring: {
+          diagnose: backdropData.structuring.diagnose,
+          echo: backdropData.structuring.echo,
+          traceback: backdropData.structuring.traceback,
+          solution: backdropData.structuring.solution
+        },
+        visuals: {
+          ideation: backdropData.visuals.ideation,
+          planning: backdropData.visuals.planning,
+          sketching: backdropData.visuals.sketching
+        },
+        solutioning: {
+          structure: backdropData.solutioning.structure,
+          analysis: backdropData.solutioning.analysis,
+          stack: backdropData.solutioning.stack,
+          enhance: backdropData.solutioning.enhance,
+          formatting: backdropData.solutioning.formatting
+        },
+        pushing: {
+          structuringToVisuals: backdropData.pushing.structuringToVisuals,
+          visualsToSolutioning: backdropData.pushing.visualsToSolutioning,
+          solutioningToSOW: backdropData.pushing.solutioningToSOW,
+          sowToLOE: backdropData.pushing.sowToLOE
+        }
+      }
+      
+      // Only include logo data if it changed
+      if (mainLogoData !== undefined) {
+        updateData.mainLogo = mainLogoData
+      }
+      if (secondLogoData !== undefined) {
+        updateData.secondLogo = secondLogoData
+      }
+      
+      const result = await updatePreferences(updateData)
+      
+      if (result.success) {
+        setSaveSuccess(true)
+        // Clear the File objects since we've saved
+        setMainLogo(null)
+        setSecondLogo(null)
+        // Success message will auto-hide after 3 seconds
+        setTimeout(() => setSaveSuccess(false), 3000)
+      } else {
+        setLogoError(result.error || 'Failed to save preferences')
+      }
+    } catch (err) {
+      console.error('Error saving preferences:', err)
+      setLogoError(err instanceof Error ? err.message : 'Failed to save preferences')
     }
   }
   
@@ -753,11 +954,73 @@ export default function GridPage() {
               {/* Backdrop Tab Content */}
               <TabsContent value="backdrop" className="mt-0">
                 <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <Settings className="h-6 w-6 text-white" />
-                  <h3 className="text-lg font-semibold text-white">Backdrop</h3>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Settings className="h-6 w-6 text-white" />
+                      <h3 className="text-lg font-semibold text-white">Backdrop</h3>
+                    </div>
+                    
+                    {/* Save Button - Only visible to owner/admin */}
+                    {canEdit && (
+                      <button
+                        onClick={handleSavePreferences}
+                        disabled={saving || prefsLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-600/60 to-blue-600/60 hover:from-slate-500/70 hover:to-blue-500/70 disabled:from-slate-700/40 disabled:to-slate-700/40 border border-slate-500/50 hover:border-slate-400/60 disabled:border-slate-600/30 text-white rounded-lg transition-all duration-200 disabled:cursor-not-allowed"
+                      >
+                        {saving ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4" />
+                            Save Preferences
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                   
+                  {/* Loading State */}
+                  {prefsLoading && (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="flex items-center gap-3 text-nexa-muted">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Loading preferences...</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Error Message */}
+                  {(prefsError || logoError) && (
+                    <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-400/30 rounded-lg">
+                      <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
+                      <p className="text-sm text-red-300">{prefsError || logoError}</p>
+                    </div>
+                  )}
+                  
+                  {/* Success Message */}
+                  {saveSuccess && (
+                    <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-400/30 rounded-lg">
+                      <CheckCircle className="h-5 w-5 text-green-400 flex-shrink-0" />
+                      <p className="text-sm text-green-300">Preferences saved successfully!</p>
+                    </div>
+                  )}
+                  
+                  {/* Read-only Notice */}
+                  {!canEdit && (
+                    <div className="flex items-center gap-3 p-4 bg-yellow-500/10 border border-yellow-400/30 rounded-lg">
+                      <Lock className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-yellow-300">View Only</p>
+                        <p className="text-xs text-yellow-400/80">Only organization owners and admins can edit preferences</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!prefsLoading && (
+                    <>
                   {/* Logo Upload Section */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     {/* Main Logo Upload */}
@@ -767,28 +1030,53 @@ export default function GridPage() {
                         <h4 className="text-md font-medium text-white">Main Logo</h4>
                       </div>
                       <div className="relative backdrop-blur-md bg-gradient-to-br from-slate-900/40 to-blue-900/20 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/60 transition-all duration-300">
-                        <input
-                          type="file"
-                          id="main-logo"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) handleLogoUpload(file, 'main')
-                          }}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
+                        {canEdit && (
+                          <input
+                            type="file"
+                            id="main-logo"
+                            accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleLogoUpload(file, 'main')
+                            }}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          />
+                        )}
                         <div className="text-center space-y-3">
-                          {mainLogo ? (
-                            <div>
-                              <Image className="h-8 w-8 text-green-400 mx-auto mb-2" />
-                              <p className="text-sm text-white font-medium">{mainLogo.name}</p>
-                              <p className="text-xs text-nexa-muted">Click to change</p>
+                          {mainLogoPreview ? (
+                            <div className="relative">
+                              <img 
+                                src={mainLogoPreview} 
+                                alt="Main logo preview" 
+                                className="max-h-32 mx-auto object-contain mb-2"
+                              />
+                              <p className="text-sm text-white font-medium">
+                                {mainLogo?.name || 'Current logo'}
+                              </p>
+                              {canEdit && (
+                                <>
+                                  <p className="text-xs text-nexa-muted mb-2">Click to change</p>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleRemoveLogo('main')
+                                    }}
+                                    className="relative z-20 mt-2 px-3 py-1 bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 text-red-300 text-xs rounded-lg transition-all"
+                                  >
+                                    Remove Logo
+                                  </button>
+                                </>
+                              )}
                             </div>
                           ) : (
                             <div>
                               <Upload className="h-8 w-8 text-nexa-muted mx-auto mb-2" />
-                              <p className="text-sm text-white">Upload Main Logo</p>
-                              <p className="text-xs text-nexa-muted">Click or drag to upload</p>
+                              <p className="text-sm text-white">
+                                {canEdit ? 'Upload Main Logo' : 'No logo uploaded'}
+                              </p>
+                              {canEdit && (
+                                <p className="text-xs text-nexa-muted">PNG, JPEG, WebP, SVG (max 5MB)</p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -799,31 +1087,56 @@ export default function GridPage() {
                     <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <Image className="h-5 w-5 text-white" />
-                        <h4 className="text-md font-medium text-white">Second Logo</h4>
+                        <h4 className="text-md font-medium text-white">Second Logo (Optional)</h4>
                       </div>
                       <div className="relative backdrop-blur-md bg-gradient-to-br from-slate-900/40 to-blue-900/20 border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/60 transition-all duration-300">
-                        <input
-                          type="file"
-                          id="second-logo"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) handleLogoUpload(file, 'second')
-                          }}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
+                        {canEdit && (
+                          <input
+                            type="file"
+                            id="second-logo"
+                            accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleLogoUpload(file, 'second')
+                            }}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          />
+                        )}
                         <div className="text-center space-y-3">
-                          {secondLogo ? (
-                            <div>
-                              <Image className="h-8 w-8 text-green-400 mx-auto mb-2" />
-                              <p className="text-sm text-white font-medium">{secondLogo.name}</p>
-                              <p className="text-xs text-nexa-muted">Click to change</p>
+                          {secondLogoPreview ? (
+                            <div className="relative">
+                              <img 
+                                src={secondLogoPreview} 
+                                alt="Second logo preview" 
+                                className="max-h-32 mx-auto object-contain mb-2"
+                              />
+                              <p className="text-sm text-white font-medium">
+                                {secondLogo?.name || 'Current logo'}
+                              </p>
+                              {canEdit && (
+                                <>
+                                  <p className="text-xs text-nexa-muted mb-2">Click to change</p>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleRemoveLogo('second')
+                                    }}
+                                    className="relative z-20 mt-2 px-3 py-1 bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 text-red-300 text-xs rounded-lg transition-all"
+                                  >
+                                    Remove Logo
+                                  </button>
+                                </>
+                              )}
                             </div>
                           ) : (
                             <div>
                               <Upload className="h-8 w-8 text-nexa-muted mx-auto mb-2" />
-                              <p className="text-sm text-white">Upload Second Logo</p>
-                              <p className="text-xs text-nexa-muted">Click or drag to upload</p>
+                              <p className="text-sm text-white">
+                                {canEdit ? 'Upload Second Logo' : 'No logo uploaded'}
+                              </p>
+                              {canEdit && (
+                                <p className="text-xs text-nexa-muted">PNG, JPEG, WebP, SVG (max 5MB)</p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -854,10 +1167,13 @@ export default function GridPage() {
                         <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-500/50 to-transparent mb-4"></div>
                         <textarea
                           value={backdropData.general}
-                          onChange={(e) => updateBackdropGeneral(e.target.value)}
-                          placeholder="Define your overall methodology and principles that will guide all workflows..."
+                          onChange={(e) => canEdit && updateBackdropGeneral(e.target.value)}
+                          placeholder={canEdit ? "Define your overall methodology and principles that will guide all workflows..." : "No general approach defined"}
                           rows={6}
-                          className="w-full p-4 bg-white/5 border border-white/10 rounded-lg text-white placeholder-nexa-muted focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all resize-none"
+                          readOnly={!canEdit}
+                          className={`w-full p-4 bg-white/5 border border-white/10 rounded-lg text-white placeholder-nexa-muted focus:outline-none transition-all resize-none ${
+                            canEdit ? 'focus:border-white/30 focus:ring-1 focus:ring-white/20 cursor-text' : 'cursor-not-allowed opacity-70'
+                          }`}
                         />
                       </div>
                     )}
@@ -942,10 +1258,13 @@ export default function GridPage() {
                               <div key={tab.id}>
                                 <textarea
                                   value={backdropData[backdropStage][tab.id as keyof typeof backdropData[typeof backdropStage]] as string}
-                                  onChange={(e) => updateBackdropStageData(backdropStage, tab.id, e.target.value)}
-                                  placeholder={`Define your ${tab.label.toLowerCase()} approach, preferred tools, techniques, or specific considerations...`}
+                                  onChange={(e) => canEdit && updateBackdropStageData(backdropStage, tab.id, e.target.value)}
+                                  placeholder={canEdit ? `Define your ${tab.label.toLowerCase()} approach, preferred tools, techniques, or specific considerations...` : `No ${tab.label.toLowerCase()} preferences defined`}
                                   rows={6}
-                                  className="w-full p-4 bg-white/5 border border-white/10 rounded-lg text-white placeholder-nexa-muted focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all resize-none"
+                                  readOnly={!canEdit}
+                                  className={`w-full p-4 bg-white/5 border border-white/10 rounded-lg text-white placeholder-nexa-muted focus:outline-none transition-all resize-none ${
+                                    canEdit ? 'focus:border-white/30 focus:ring-1 focus:ring-white/20 cursor-text' : 'cursor-not-allowed opacity-70'
+                                  }`}
                                 />
                               </div>
                             )
@@ -1009,10 +1328,13 @@ export default function GridPage() {
                                 </div>
                                 <textarea
                                   value={backdropData.pushing[push.id as keyof typeof backdropData.pushing]}
-                                  onChange={(e) => updateBackdropPushingData(push.id, e.target.value)}
-                                  placeholder={`${push.description}. Define transformation rules, key data points to preserve, and quality criteria...`}
+                                  onChange={(e) => canEdit && updateBackdropPushingData(push.id, e.target.value)}
+                                  placeholder={canEdit ? `${push.description}. Define transformation rules, key data points to preserve, and quality criteria...` : `No ${push.label.toLowerCase()} preferences defined`}
                                   rows={4}
-                                  className="w-full p-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-nexa-muted focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all resize-none text-sm"
+                                  readOnly={!canEdit}
+                                  className={`w-full p-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-nexa-muted focus:outline-none transition-all resize-none text-sm ${
+                                    canEdit ? 'focus:border-white/30 focus:ring-1 focus:ring-white/20 cursor-text' : 'cursor-not-allowed opacity-70'
+                                  }`}
                                 />
                               </div>
                             )
@@ -1021,6 +1343,8 @@ export default function GridPage() {
                       </div>
                     )}
                   </div>
+                    </>
+                  )}
 
                 </div>
               </TabsContent>

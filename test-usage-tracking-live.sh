@@ -112,3 +112,6 @@ echo "   6. Then navigate to /organizations → Usage tab"
 echo "   7. Verify events appear in dashboard and history"
 echo ""
 echo "✅ The system is ready for testing!"
+
+
+

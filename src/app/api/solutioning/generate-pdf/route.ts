@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
+import { getUserRoleFromRequest } from '@/lib/api-rbac'
+import { getOrganizationPreferences } from '@/lib/preferences/preferences-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +21,30 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // PHASE 4: Fetch organization preferences for logos
+    let mainLogo = ''
+    let secondLogo = ''
+    
+    try {
+      const roleInfo = await getUserRoleFromRequest(request)
+      if (roleInfo && roleInfo.user && roleInfo.user.organizationMemberships && roleInfo.user.organizationMemberships.length > 0) {
+        const orgId = roleInfo.user.organizationMemberships[0].organization.id
+        console.log(`🎨 Fetching logo preferences for organization: ${orgId}`)
+        
+        const preferences = await getOrganizationPreferences(orgId)
+        mainLogo = preferences.mainLogo || ''
+        secondLogo = preferences.secondLogo || ''
+        
+        if (mainLogo || secondLogo) {
+          console.log(`✅ PDF: Found organization logos (main: ${!!mainLogo}, secondary: ${!!secondLogo})`)
+        } else {
+          console.log('📸 PDF: No organization logos set, will use defaults')
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ PDF: Could not fetch organization preferences, using default logos:', error)
+    }
+    
     // Transform data to match Python script expectations
     const pythonData = {
       basic: {
@@ -35,7 +61,10 @@ export async function POST(request: NextRequest) {
         layout: solution.structure?.layout || 1,
         imageData: solution.additional?.imageData || null
       })),
-      sessionProtocol: sessionId ? sessionId.split('-')[0].toUpperCase() : 'SH123'
+      sessionProtocol: sessionId ? sessionId.split('-')[0].toUpperCase() : 'SH123',
+      // PHASE 4: Add organization logos
+      mainLogo: mainLogo,
+      secondLogo: secondLogo
     }
     
     // Generate filename

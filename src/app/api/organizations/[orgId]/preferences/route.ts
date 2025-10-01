@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireOrganizationAccess } from '@/lib/api-rbac'
+import { getUserRoleFromRequest } from '@/lib/api-rbac'
 import {
   getOrganizationPreferences,
   updateOrganizationPreferences,
@@ -20,11 +20,20 @@ export async function GET(
   try {
     const { orgId } = params
 
-    // RBAC: Check organization access (any role can view)
-    const roleInfo = await requireOrganizationAccess(request, orgId)
-    if (!roleInfo) {
+    // RBAC: Check organization membership (any role can view)
+    const roleInfo = await getUserRoleFromRequest(request, orgId)
+    
+    console.log('🔍 Preferences GET - roleInfo:', {
+      role: roleInfo.role,
+      userId: roleInfo.userId,
+      organizationId: roleInfo.organizationId,
+      hasUser: !!roleInfo.user,
+      membershipCount: roleInfo.user?.organizationMemberships?.length || 0
+    })
+    
+    if (!roleInfo.role || !roleInfo.userId) {
       return NextResponse.json(
-        { error: 'Access denied - Organization access required' },
+        { error: 'Access denied - Organization membership required' },
         { status: 403 }
       )
     }
@@ -85,11 +94,20 @@ export async function PUT(
   try {
     const { orgId } = params
 
-    // RBAC: Check organization access and role
-    const roleInfo = await requireOrganizationAccess(request, orgId)
-    if (!roleInfo) {
+    // RBAC: Check organization membership
+    const roleInfo = await getUserRoleFromRequest(request, orgId)
+    
+    console.log('🔍 Preferences PUT - roleInfo:', {
+      role: roleInfo.role,
+      userId: roleInfo.userId,
+      organizationId: roleInfo.organizationId,
+      hasUser: !!roleInfo.user,
+      membershipCount: roleInfo.user?.organizationMemberships?.length || 0
+    })
+    
+    if (!roleInfo.role || !roleInfo.userId) {
       return NextResponse.json(
-        { error: 'Access denied - Organization access required' },
+        { error: 'Access denied - Organization membership required' },
         { status: 403 }
       )
     }

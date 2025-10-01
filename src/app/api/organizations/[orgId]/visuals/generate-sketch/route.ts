@@ -54,8 +54,8 @@ export async function POST(
 
     console.log(`💰 Usage tracked: ${trackingResult.creditsConsumed} credits consumed, ${trackingResult.remainingCredits} remaining`)
 
-    // Call LangChain visuals sketch function
-    const result = await generateSketchFromPlanning({ planning })
+    // Call LangChain visuals sketch function with organization preferences
+    const result = await generateSketchFromPlanning({ planning }, orgId)
 
     console.log('📊 API: LangChain result:', {
       success: result.success,

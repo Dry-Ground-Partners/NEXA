@@ -1,6 +1,7 @@
 // LangChain visuals module using LangSmith prompts
 import * as hub from "langchain/hub/node"
 import { JsonOutputParser } from "@langchain/core/output_parsers"
+import { getCachedPreferences } from './preferences-cache'
 
 // Types for visuals planning
 export interface VisualsIdeationRequest {
@@ -33,7 +34,10 @@ const sketchParser = new JsonOutputParser<{ sketch: string }>()
 /**
  * Generate planning content from ideation using LangSmith
  */
-export async function generatePlanningFromIdeation(request: VisualsIdeationRequest): Promise<VisualsIdeationResponse> {
+export async function generatePlanningFromIdeation(
+  request: VisualsIdeationRequest,
+  organizationId?: string
+): Promise<VisualsIdeationResponse> {
   try {
     console.log('🎨 Starting visuals planning generation with LangChain...')
     
@@ -62,8 +66,16 @@ export async function generatePlanningFromIdeation(request: VisualsIdeationReque
     console.log('🎯 Variables being sent to LangSmith:')
     console.log(`- solution: ${request.solution.length} chars`)
 
+    // Fetch organization preferences (cached)
+    const prefs = organizationId 
+      ? await getCachedPreferences(organizationId)
+      : { generalApproach: '', visuals: { ideation: '', planning: '' } }
+
     const result = await promptWithModel.invoke({
-      solution: request.solution
+      solution: request.solution,
+      general_approach: prefs.generalApproach || '',
+      ideation_preferences: prefs.visuals?.ideation || '',
+      planning_preferences: prefs.visuals?.planning || ''
     })
 
     console.log('🔍 Raw LangChain result:', result)
@@ -114,7 +126,10 @@ export async function generatePlanningFromIdeation(request: VisualsIdeationReque
 /**
  * Generate sketch content from planning using LangSmith
  */
-export async function generateSketchFromPlanning(request: VisualsSketchRequest): Promise<VisualsSketchResponse> {
+export async function generateSketchFromPlanning(
+  request: VisualsSketchRequest,
+  organizationId?: string
+): Promise<VisualsSketchResponse> {
   try {
     console.log('🎨 Starting sketch generation from planning with LangChain...')
     
@@ -143,8 +158,15 @@ export async function generateSketchFromPlanning(request: VisualsSketchRequest):
     console.log('🎯 Variables being sent to LangSmith:')
     console.log(`- planning: ${request.planning.length} chars`)
 
+    // Fetch organization preferences (cached)
+    const prefs = organizationId 
+      ? await getCachedPreferences(organizationId)
+      : { generalApproach: '', visuals: { sketching: '' } }
+
     const result = await promptWithModel.invoke({
-      planning: request.planning
+      planning: request.planning,
+      general_approach: prefs.generalApproach || '',
+      sketching_preferences: prefs.visuals?.sketching || ''
     })
 
     console.log('🔍 Raw LangChain result:', result)

@@ -2,6 +2,7 @@
 import * as hub from "langchain/hub/node"
 import { JsonOutputParser } from "@langchain/core/output_parsers"
 import type { PainPointAnalysis, StructuringRequest, StructuringResponse, GenerateSolutionRequest, GenerateSolutionResponse } from './types'
+import { getCachedPreferences } from './preferences-cache'
 
 // JSON output parsers for structured responses
 const painPointParser = new JsonOutputParser<PainPointAnalysis>()
@@ -10,7 +11,10 @@ const solutionParser = new JsonOutputParser<GenerateSolutionResponse>()
 /**
  * Analyze content using the LangSmith prompt and return pain points
  */
-export async function analyzePainPoints(request: StructuringRequest): Promise<StructuringResponse<PainPointAnalysis>> {
+export async function analyzePainPoints(
+  request: StructuringRequest,
+  organizationId?: string
+): Promise<StructuringResponse<PainPointAnalysis>> {
   try {
     console.log('🔍 Starting pain point analysis with LangChain...')
     
@@ -54,9 +58,17 @@ export async function analyzePainPoints(request: StructuringRequest): Promise<St
 
     console.log('🤖 Executing LangChain analysis...')
 
-    // Execute the chain with the transcript variable
+    // Fetch organization preferences (cached)
+    const prefs = organizationId 
+      ? await getCachedPreferences(organizationId)
+      : { generalApproach: '', structuring: { diagnose: '', echo: '' } }
+
+    // Execute the chain with the transcript variable + preferences
     const result = await chain.invoke({
-      transcript: combinedContent
+      transcript: combinedContent,
+      general_approach: prefs.generalApproach || '',
+      diagnose_preferences: prefs.structuring?.diagnose || '',
+      echo_preferences: prefs.structuring?.echo || ''
     })
 
     console.log('✅ Pain point analysis completed successfully')
@@ -104,7 +116,10 @@ export async function analyzePainPoints(request: StructuringRequest): Promise<St
 /**
  * Generate solutions using the LangSmith prompt and return structured solutions
  */
-export async function generateSolution(request: GenerateSolutionRequest): Promise<StructuringResponse<GenerateSolutionResponse>> {
+export async function generateSolution(
+  request: GenerateSolutionRequest,
+  organizationId?: string
+): Promise<StructuringResponse<GenerateSolutionResponse>> {
   try {
     console.log('🔍 Starting solution generation with LangChain...')
     
@@ -159,11 +174,20 @@ export async function generateSolution(request: GenerateSolutionRequest): Promis
     console.log('   - report (analysis report):', request.report.length, 'chars')
     console.log('   - Context Echo toggle:', request.content !== " " ? 'ON' : 'OFF')
     
-    // Send pain points and content separately 
+    // Fetch organization preferences (cached)
+    const prefs = organizationId 
+      ? await getCachedPreferences(organizationId)
+      : { generalApproach: '', structuring: { solution: '', echo: '', traceback: '' } }
+    
+    // Send pain points and content separately + preferences
     const result = await chain.invoke({
       content: request.content,           // Content tabs (controlled by Context Echo)
       painpoints: combinedSolutionContent, // Pain points from solution tabs
-      report: request.report              // Report data (controlled by Traceback Report)
+      report: request.report,             // Report data (controlled by Traceback Report)
+      general_approach: prefs.generalApproach || '',
+      solution_preferences: prefs.structuring?.solution || '',
+      echo_preferences: prefs.structuring?.echo || '',
+      traceback_preferences: prefs.structuring?.traceback || ''
     })
 
     console.log('✅ Solution generation completed successfully')

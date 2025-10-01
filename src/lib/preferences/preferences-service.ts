@@ -3,7 +3,7 @@
  * Handles CRUD operations for organization-level preferences that influence AI prompts
  */
 
-import { prisma } from '@/lib/db'
+import { prisma } from '@/lib/prisma'
 import type { OrganizationPreference } from '@prisma/client'
 
 export interface PreferenceData {
@@ -103,7 +103,7 @@ export async function getOrganizationPreferences(
 
 /**
  * Update organization preferences
- * Automatically tracks changes in the audit trail
+ * Automatically tracks changes in the audit trail and clears cache
  */
 export async function updateOrganizationPreferences(
   organizationId: string,
@@ -280,6 +280,15 @@ export async function updateOrganizationPreferences(
     where: { organizationId },
     data: updateData,
   })
+
+  // Clear LangChain preferences cache for this organization
+  try {
+    const { clearPreferencesCache } = await import('@/lib/langchain/preferences-cache')
+    clearPreferencesCache(organizationId)
+  } catch (error) {
+    // Cache module might not be available, continue without clearing
+    console.warn('Could not clear preferences cache:', error)
+  }
 
   return updated
 }

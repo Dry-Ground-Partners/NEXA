@@ -92,8 +92,8 @@ export async function POST(
     
     console.log(`🔧 Calling generateSolution with ${validSolutionContent.length} pain points`)
     
-    // Call LangChain solution generation
-    const result = await generateSolution(solutionRequest)
+    // Call LangChain solution generation with organization preferences
+    const result = await generateSolution(solutionRequest, orgId)
     
     if (!result.success) {
       console.log('❌ API: LangChain solution generation failed:', result.error)

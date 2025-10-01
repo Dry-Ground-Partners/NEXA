@@ -1,8 +1,5 @@
 import { NextRequest } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { verifyAuth, User } from '@/lib/auth'
-
-const prisma = new PrismaClient()
 
 export type UserRole = 'owner' | 'admin' | 'member' | 'viewer' | 'billing'
 
@@ -45,10 +42,20 @@ export async function getUserRoleFromRequest(
       return { role: null, organizationId: null, userId: user.id, user }
     }
 
+    // Debug: Log membership data
+    console.log('🔍 RBAC Debug - Looking for org:', targetOrgId)
+    console.log('🔍 RBAC Debug - User memberships:', user.organizationMemberships?.map(m => ({
+      orgId: m.organization.id,
+      role: m.role,
+      status: m.status
+    })))
+
     // Find user's membership in the target organization
     const membership = user.organizationMemberships?.find(
       m => m.organization.id === targetOrgId && m.status === 'active'
     )
+
+    console.log('🔍 RBAC Debug - Found membership:', membership ? { role: membership.role, status: membership.status } : null)
 
     return {
       role: membership?.role as UserRole || null,
@@ -138,12 +145,6 @@ export const requireAccessManagement = requirePermission(canSeeAccess)
 export const requireRoleManagement = requirePermission(canSeeRoleManagement)
 export const requireMemberManagement = requirePermission(canSeeMemberManagement)
 
-/**
- * Clean up database connections
- */
-export async function disconnectRbacDatabase() {
-  await prisma.$disconnect()
-}
 
 
 

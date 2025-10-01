@@ -1,5 +1,6 @@
 import * as hub from 'langchain/hub/node'
 import { OpenAI } from 'openai'
+import { getCachedPreferences } from './preferences-cache'
 
 // Interfaces for vision analysis
 export interface VisionAnalysisRequest {
@@ -78,7 +79,10 @@ export interface LOEGenerationResponse {
 /**
  * Analyze an image using LangSmith nexa-solutioning-vision prompt with OpenAI Vision API
  */
-export async function analyzeImageWithVision(request: VisionAnalysisRequest): Promise<VisionAnalysisResponse> {
+export async function analyzeImageWithVision(
+  request: VisionAnalysisRequest,
+  organizationId?: string
+): Promise<VisionAnalysisResponse> {
   try {
     console.log('🔍 Starting vision analysis with LangSmith prompt...')
     
@@ -139,6 +143,18 @@ export async function analyzeImageWithVision(request: VisionAnalysisRequest): Pr
     console.log('🎯 Final prompt to be used:', finalPrompt.substring(0, 200) + '...')
     console.log('📸 Image URL length:', imageUrl.length, 'characters')
 
+    // Fetch organization preferences (cached)
+    const prefs = organizationId 
+      ? await getCachedPreferences(organizationId)
+      : { generalApproach: '', solutioning: { analysis: '' } }
+
+    // Prepend preferences to prompt if available
+    const promptWithPrefs = [
+      prefs.generalApproach || '',
+      prefs.solutioning?.analysis ? `Analysis Approach: ${prefs.solutioning.analysis}` : '',
+      finalPrompt
+    ].filter(Boolean).join('\n\n')
+
     // Make OpenAI Vision API call
     console.log('🤖 Executing OpenAI Vision analysis...')
     const response = await openai.chat.completions.create({
@@ -149,7 +165,7 @@ export async function analyzeImageWithVision(request: VisionAnalysisRequest): Pr
           content: [
             {
               type: 'text',
-              text: finalPrompt
+              text: promptWithPrefs
             },
             {
               type: 'image_url',
@@ -191,16 +207,27 @@ export async function analyzeImageWithVision(request: VisionAnalysisRequest): Pr
 /**
  * Enhance text using LangSmith nexa-solutioning-enhance prompt
  */
-export async function enhanceTextWithLangSmith(request: TextEnhancementRequest): Promise<TextEnhancementResponse> {
+export async function enhanceTextWithLangSmith(
+  request: TextEnhancementRequest,
+  organizationId?: string
+): Promise<TextEnhancementResponse> {
   try {
     // Pull the prompt from LangSmith hub
     const promptTemplate = await hub.pull('nexa-solutioning-enhance', {
       includeModel: true
     })
 
-    // Invoke the prompt with the explanation
+    // Fetch organization preferences (cached)
+    const prefs = organizationId 
+      ? await getCachedPreferences(organizationId)
+      : { generalApproach: '', solutioning: { enhance: '', formatting: '' } }
+
+    // Invoke the prompt with the explanation + preferences
     const result = await promptTemplate.invoke({
-      explanation: request.text
+      explanation: request.text,
+      general_approach: prefs.generalApproach || '',
+      enhance_preferences: prefs.solutioning?.enhance || '',
+      formatting_preferences: prefs.solutioning?.formatting || ''
     })
 
     // Extract the text content from the result
@@ -236,17 +263,27 @@ export async function enhanceTextWithLangSmith(request: TextEnhancementRequest):
 /**
  * Structure a solution using LangSmith nexa-solutioning-structure prompt
  */
-export async function structureSolutionWithLangSmith(request: SolutionStructureRequest): Promise<SolutionStructureResponse> {
+export async function structureSolutionWithLangSmith(
+  request: SolutionStructureRequest,
+  organizationId?: string
+): Promise<SolutionStructureResponse> {
   try {
     // Pull the prompt from LangSmith hub
     const promptTemplate = await hub.pull('nexa-solutioning-structure', {
       includeModel: true
     })
 
-    // Invoke the prompt with the AI analysis and solution explanation
+    // Fetch organization preferences (cached)
+    const prefs = organizationId 
+      ? await getCachedPreferences(organizationId)
+      : { generalApproach: '', solutioning: { structure: '' } }
+
+    // Invoke the prompt with the AI analysis and solution explanation + preferences
     const result = await promptTemplate.invoke({
       ai_analysis: request.aiAnalysis,
-      solution_explanation: request.solutionExplanation
+      solution_explanation: request.solutionExplanation,
+      general_approach: prefs.generalApproach || '',
+      structure_preferences: prefs.solutioning?.structure || ''
     })
 
     // Extract the JSON content from the result
@@ -299,16 +336,26 @@ export async function structureSolutionWithLangSmith(request: SolutionStructureR
 /**
  * Analyze per-node stack using LangSmith nexa-solutioning-pernode prompt
  */
-export async function analyzePerNodeStackWithLangSmith(request: PerNodeStackRequest): Promise<PerNodeStackResponse> {
+export async function analyzePerNodeStackWithLangSmith(
+  request: PerNodeStackRequest,
+  organizationId?: string
+): Promise<PerNodeStackResponse> {
   try {
     // Pull the prompt from LangSmith hub
     const promptTemplate = await hub.pull('nexa-solutioning-pernode', {
       includeModel: true
     })
 
-    // Invoke the prompt with the context (AI analysis + solution steps)
+    // Fetch organization preferences (cached)
+    const prefs = organizationId 
+      ? await getCachedPreferences(organizationId)
+      : { generalApproach: '', solutioning: { stack: '' } }
+
+    // Invoke the prompt with the context (AI analysis + solution steps) + preferences
     const result = await promptTemplate.invoke({
-      context: request.context
+      context: request.context,
+      general_approach: prefs.generalApproach || '',
+      stack_preferences: prefs.solutioning?.stack || ''
     })
 
     // Extract the text content from the result
@@ -353,7 +400,10 @@ export async function analyzePerNodeStackWithLangSmith(request: PerNodeStackRequ
 /**
  * Generate SOW using LangSmith nexa-push-tosow prompt
  */
-export async function generateSOWWithLangSmith(request: SOWGenerationRequest): Promise<SOWGenerationResponse> {
+export async function generateSOWWithLangSmith(
+  request: SOWGenerationRequest,
+  organizationId?: string
+): Promise<SOWGenerationResponse> {
   try {
     console.log('📋 Starting SOW generation with LangSmith prompt...')
     console.log(`   - Content length: ${request.solutioningData.length} characters`)
@@ -365,9 +415,16 @@ export async function generateSOWWithLangSmith(request: SOWGenerationRequest): P
     })
     console.log('✅ Successfully pulled SOW generation prompt from LangSmith')
 
-    // Invoke the prompt with the solutioning data
+    // Fetch organization preferences (cached)
+    const prefs = organizationId 
+      ? await getCachedPreferences(organizationId)
+      : { generalApproach: '', pushing: { solutioningToSOW: '' } }
+
+    // Invoke the prompt with the solutioning data + preferences
     const result = await promptTemplate.invoke({
-      SOLUTIONING_DATA_WILL_BE_INSERTED_HERE: request.solutioningData
+      SOLUTIONING_DATA_WILL_BE_INSERTED_HERE: request.solutioningData,
+      general_approach: prefs.generalApproach || '',
+      solutioning_to_sow_preferences: prefs.pushing?.solutioningToSOW || ''
     })
 
     // Extract the JSON content from the result
@@ -425,7 +482,10 @@ export async function generateSOWWithLangSmith(request: SOWGenerationRequest): P
 /**
  * Generate LOE using LangSmith nexa-push-toloe prompt
  */
-export async function generateLOEWithLangSmith(request: LOEGenerationRequest): Promise<LOEGenerationResponse> {
+export async function generateLOEWithLangSmith(
+  request: LOEGenerationRequest,
+  organizationId?: string
+): Promise<LOEGenerationResponse> {
   try {
     console.log('📊 Starting LOE generation with LangSmith prompt...')
     console.log(`   - Content length: ${request.sowData.length} characters`)
@@ -437,9 +497,16 @@ export async function generateLOEWithLangSmith(request: LOEGenerationRequest): P
     })
     console.log('✅ Successfully pulled LOE generation prompt from LangSmith')
 
-    // Invoke the prompt with the SOW data
+    // Fetch organization preferences (cached)
+    const prefs = organizationId 
+      ? await getCachedPreferences(organizationId)
+      : { generalApproach: '', pushing: { sowToLOE: '' } }
+
+    // Invoke the prompt with the SOW data + preferences
     const result = await promptTemplate.invoke({
-      SOW_DATA_WILL_BE_INSERTED_HERE: request.sowData
+      SOW_DATA_WILL_BE_INSERTED_HERE: request.sowData,
+      general_approach: prefs.generalApproach || '',
+      sow_to_loe_preferences: prefs.pushing?.sowToLOE || ''
     })
 
     // Extract the JSON content from the result

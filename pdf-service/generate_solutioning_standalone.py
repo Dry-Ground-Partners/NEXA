@@ -11,28 +11,47 @@ from jinja2 import Template
 def generate_solutioning_pdf_from_json(solutioning_data):
     """Generate Solutioning PDF from JSON data and return PDF bytes."""
     try:
-        # Logo handling (same as SOW/LOE)
+        # Logo handling - PHASE 4: Use organization logos from database
         curr_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Main logo for cover page
-        logo_path = os.path.join(curr_dir, '../public/Dry Ground AI_Full Logo_Black_RGB.png')
-        if not os.path.exists(logo_path):
-            logo_path = os.path.join(curr_dir, 'Dry Ground AI_Full Logo_Black_RGB.png')
+        # Check if organization logos are provided in the JSON
+        # mainLogo is for cover page, secondLogo is for page headers
+        main_logo_from_db = solutioning_data.get('mainLogo', '')
+        second_logo_from_db = solutioning_data.get('secondLogo', '')
         
-        logo_base64 = ""
-        if os.path.exists(logo_path):
-            with open(logo_path, 'rb') as f:
-                logo_base64 = base64.b64encode(f.read()).decode('utf-8')
+        # Main logo for cover page
+        if main_logo_from_db:
+            # Organization provided custom main logo (already base64 from DB)
+            print("🎨 Using organization main logo from database", file=sys.stderr)
+            logo_base64 = main_logo_from_db
+        else:
+            # Fallback to default Dry Ground AI logo
+            print("📸 Using default main logo (no organization logo set)", file=sys.stderr)
+            logo_path = os.path.join(curr_dir, '../public/Dry Ground AI_Full Logo_Black_RGB.png')
+            if not os.path.exists(logo_path):
+                logo_path = os.path.join(curr_dir, 'Dry Ground AI_Full Logo_Black_RGB.png')
+            
+            logo_base64 = ""
+            if os.path.exists(logo_path):
+                with open(logo_path, 'rb') as f:
+                    logo_base64 = base64.b64encode(f.read()).decode('utf-8')
         
         # DG logo for page headers
-        dg_logo_path = os.path.join(curr_dir, '../public/dg.png')
-        if not os.path.exists(dg_logo_path):
-            dg_logo_path = os.path.join(curr_dir, 'dg.png')
-        
-        dg_logo_base64 = ""
-        if os.path.exists(dg_logo_path):
-            with open(dg_logo_path, 'rb') as f:
-                dg_logo_base64 = base64.b64encode(f.read()).decode('utf-8')
+        if second_logo_from_db:
+            # Organization provided custom secondary logo (already base64 from DB)
+            print("🎨 Using organization secondary logo from database", file=sys.stderr)
+            dg_logo_base64 = second_logo_from_db
+        else:
+            # Fallback to default DG logo
+            print("📸 Using default header logo (no organization secondary logo set)", file=sys.stderr)
+            dg_logo_path = os.path.join(curr_dir, '../public/dg.png')
+            if not os.path.exists(dg_logo_path):
+                dg_logo_path = os.path.join(curr_dir, 'dg.png')
+            
+            dg_logo_base64 = ""
+            if os.path.exists(dg_logo_path):
+                with open(dg_logo_path, 'rb') as f:
+                    dg_logo_base64 = base64.b64encode(f.read()).decode('utf-8')
         
         # Extract and transform data
         basic_info = {

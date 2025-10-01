@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
+import { getUserRoleFromRequest } from '@/lib/api-rbac'
+import { getOrganizationPreferences } from '@/lib/preferences/preferences-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +16,28 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Missing session data' },
         { status: 400 }
       )
+    }
+    
+    // PHASE 4: Fetch organization preferences for logo
+    let secondLogo = ''
+    
+    try {
+      const roleInfo = await getUserRoleFromRequest(request)
+      if (roleInfo && roleInfo.user && roleInfo.user.organizationMemberships && roleInfo.user.organizationMemberships.length > 0) {
+        const orgId = roleInfo.user.organizationMemberships[0].organization.id
+        console.log(`🎨 SOW: Fetching logo preferences for organization: ${orgId}`)
+        
+        const preferences = await getOrganizationPreferences(orgId)
+        secondLogo = preferences.secondLogo || ''
+        
+        if (secondLogo) {
+          console.log('✅ SOW PDF: Found organization secondary logo')
+        } else {
+          console.log('📸 SOW PDF: No organization logo set, will use default')
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ SOW PDF: Could not fetch organization preferences, using default logo:', error)
     }
     
     // Transform SOW session data to Python script format (matching original system structure)
@@ -52,7 +76,9 @@ export async function POST(request: NextRequest) {
           weeks_end: phase.weeksEnd || 4,
           weeks_display: `${phase.weeksStart || 1}-${phase.weeksEnd || 4}`
         }))
-      }
+      },
+      // PHASE 4: Add organization logo
+      secondLogo: secondLogo
     }
     
     console.log('📊 SOW PDF Download: Python data:', pythonData)

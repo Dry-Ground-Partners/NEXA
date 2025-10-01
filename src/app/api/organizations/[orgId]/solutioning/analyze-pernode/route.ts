@@ -56,10 +56,10 @@ export async function POST(
 
     console.log(`💰 Usage tracked: ${trackingResult.creditsConsumed} credits consumed, ${trackingResult.remainingCredits} remaining`)
     
-    // Call the per-node stack analysis function
+    // Call the per-node stack analysis function with organization preferences
     const result = await analyzePerNodeStackWithLangSmith({ 
       context: context.trim()
-    })
+    }, orgId)
 
     if (!result.success) {
       return NextResponse.json(

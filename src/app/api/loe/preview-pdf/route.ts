@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
+import { getUserRoleFromRequest } from '@/lib/api-rbac'
+import { getOrganizationPreferences } from '@/lib/preferences/preferences-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +17,28 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📊 LOE PDF Preview: Received data for project:', loeData.info?.project || 'Unknown')
+
+    // PHASE 4: Fetch organization preferences for logo
+    let secondLogo = ''
+    
+    try {
+      const roleInfo = await getUserRoleFromRequest(request)
+      if (roleInfo && roleInfo.user && roleInfo.user.organizationMemberships && roleInfo.user.organizationMemberships.length > 0) {
+        const orgId = roleInfo.user.organizationMemberships[0].organization.id
+        console.log(`🎨 LOE Preview: Fetching logo preferences for organization: ${orgId}`)
+        
+        const preferences = await getOrganizationPreferences(orgId)
+        secondLogo = preferences.secondLogo || ''
+        
+        if (secondLogo) {
+          console.log('✅ LOE Preview: Found organization secondary logo')
+        } else {
+          console.log('📸 LOE Preview: No organization logo set, will use default')
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ LOE Preview: Could not fetch organization preferences, using default logo:', error)
+    }
 
     // Transform LOE page data to match Python script expected format
     const pythonData = {
@@ -32,7 +56,9 @@ export async function POST(request: NextRequest) {
         .map((a: any) => a.text)
         .filter(Boolean),
       goodOptions: loeData.variations?.goodOptions || [],
-      bestOptions: loeData.variations?.bestOptions || []
+      bestOptions: loeData.variations?.bestOptions || [],
+      // PHASE 4: Add organization logo
+      secondLogo: secondLogo
     }
 
     console.log('🔄 LOE PDF Preview: Transformed data structure:', {

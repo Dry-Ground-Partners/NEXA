@@ -56,8 +56,8 @@ export async function POST(
 
     console.log(`💰 Usage tracked: ${trackingResult.creditsConsumed} credits consumed, ${trackingResult.remainingCredits} remaining`)
     
-    // Call the text enhancement function
-    const result = await enhanceTextWithLangSmith({ text })
+    // Call the text enhancement function with organization preferences
+    const result = await enhanceTextWithLangSmith({ text }, orgId)
 
     if (!result.success) {
       return NextResponse.json(

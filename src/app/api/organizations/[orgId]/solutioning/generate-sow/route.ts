@@ -55,10 +55,10 @@ export async function POST(
 
     console.log(`💰 Usage tracked: ${trackingResult.creditsConsumed} credits consumed, ${trackingResult.remainingCredits} remaining`)
     
-    // Call LangSmith with the specialized prompt
+    // Call LangSmith with the specialized prompt and organization preferences
     const result = await generateSOWWithLangSmith({
       solutioningData: concatenatedContent
-    })
+    }, orgId)
 
     if (!result.success) {
       console.error('❌ SOW generation failed:', result.error)

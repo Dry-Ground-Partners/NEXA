@@ -196,3 +196,6 @@ export class EventRegistry {
 // Singleton instance
 export const eventRegistry = new EventRegistry()
 
+
+
+

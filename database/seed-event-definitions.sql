@@ -163,3 +163,6 @@ INSERT INTO event_definitions (event_type, config) VALUES
 -- Create index for faster lookups by category
 CREATE INDEX IF NOT EXISTS idx_event_definitions_category ON event_definitions USING GIN ((config->>'category'));
 
+
+
+

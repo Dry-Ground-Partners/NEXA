@@ -111,3 +111,6 @@ INSERT INTO plan_definitions (plan_name, config) VALUES
 -- Create index for faster lookups by pricing
 CREATE INDEX IF NOT EXISTS idx_plan_definitions_pricing ON plan_definitions USING GIN ((config->'pricing'));
 
+
+
+

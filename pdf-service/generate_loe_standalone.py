@@ -19,18 +19,29 @@ def generate_loe_pdf_from_json(loe_data):
     try:
         curr_dir = os.path.dirname(os.path.abspath(__file__))
 
-        # Read the dg.png file for the header (same as solution pages)
-        dg_logo_path = os.path.join(curr_dir, '../public/dg.png')
-        if not os.path.exists(dg_logo_path):
-            dg_logo_path = os.path.join(curr_dir, 'dg.png')
-
-        dg_logo_base64 = ""
-        if os.path.exists(dg_logo_path):
-            with open(dg_logo_path, 'rb') as f:
-                dg_logo_data = f.read()
-                dg_logo_base64 = base64.b64encode(dg_logo_data).decode('utf-8')
+        # Logo handling - PHASE 4: Use organization logos from database
+        # Check if organization secondary logo is provided in the JSON
+        second_logo_from_db = loe_data.get('secondLogo', '')
+        
+        # DG logo for page headers
+        if second_logo_from_db:
+            # Organization provided custom secondary logo (already base64 from DB)
+            print("🎨 LOE: Using organization secondary logo from database", file=sys.stderr)
+            dg_logo_base64 = second_logo_from_db
         else:
-            print(f"Warning: Logo file not found at {dg_logo_path}", file=sys.stderr)
+            # Fallback to default DG logo
+            print("📸 LOE: Using default header logo (no organization secondary logo set)", file=sys.stderr)
+            dg_logo_path = os.path.join(curr_dir, '../public/dg.png')
+            if not os.path.exists(dg_logo_path):
+                dg_logo_path = os.path.join(curr_dir, 'dg.png')
+
+            dg_logo_base64 = ""
+            if os.path.exists(dg_logo_path):
+                with open(dg_logo_path, 'rb') as f:
+                    dg_logo_data = f.read()
+                    dg_logo_base64 = base64.b64encode(dg_logo_data).decode('utf-8')
+            else:
+                print(f"Warning: Logo file not found at {dg_logo_path}", file=sys.stderr)
 
         # Format date for display
         date_str = loe_data.get('basic', {}).get('date', '')
