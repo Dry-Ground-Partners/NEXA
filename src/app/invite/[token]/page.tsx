@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -55,7 +55,8 @@ const roleDescriptions = {
   billing: 'Access to billing and subscription management'
 }
 
-export default function InvitePage({ params }: { params: { token: string } }) {
+export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = use(params)
   const router = useRouter()
   const [invitation, setInvitation] = useState<InvitationData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -67,11 +68,11 @@ export default function InvitePage({ params }: { params: { token: string } }) {
 
   useEffect(() => {
     loadInvitation()
-  }, [params.token])
+  }, [token])
 
   const loadInvitation = async () => {
     try {
-      const response = await fetch(`/api/invitations/${params.token}`)
+      const response = await fetch(`/api/invitations/${token}`)
       const data = await response.json()
 
       if (!response.ok) {
@@ -111,7 +112,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
     setError(null)
 
     try {
-      const response = await fetch(`/api/invitations/${params.token}`, {
+      const response = await fetch(`/api/invitations/${token}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
