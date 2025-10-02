@@ -119,9 +119,10 @@ export async function GET(request: NextRequest) {
 
     // In a real application, this would query the database for user's organizations
     // For now, return the mock organizations from the user object
+    const organizations = (user as any).organizations || []
     return NextResponse.json({
       success: true,
-      data: user.organizations || []
+      data: organizations
     })
 
   } catch (error) {
