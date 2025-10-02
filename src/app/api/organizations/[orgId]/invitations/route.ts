@@ -6,10 +6,10 @@ import { requireMemberManagement } from '@/lib/api-rbac'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
     const body = await request.json()
     const { email, firstName, lastName, role, personalMessage } = body
 
@@ -248,10 +248,10 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
 
     // RBAC: Only Owners can view invitations
     const roleInfo = await requireMemberManagement(request, orgId)

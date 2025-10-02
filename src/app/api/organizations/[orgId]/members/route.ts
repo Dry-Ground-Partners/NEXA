@@ -5,10 +5,10 @@ import { requireOrganizationAccess } from '@/lib/api-rbac'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
     
     // RBAC: Require organization access (excludes Member/Viewer)
     const roleInfo = await requireOrganizationAccess(request, orgId)

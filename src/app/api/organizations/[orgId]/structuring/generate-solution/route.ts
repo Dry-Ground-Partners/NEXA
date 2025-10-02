@@ -6,10 +6,10 @@ import type { GenerateSolutionRequest } from '@/lib/langchain/types'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
     console.log(`📡 API: Generate solution request for org ${orgId}`)
     
     // RBAC: Check organization access

@@ -5,10 +5,10 @@ import { requireAccessManagement } from '@/lib/api-rbac'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
 
     // RBAC: Require Access Management permission (excludes Billing users)
     const roleInfo = await requireAccessManagement(request, orgId)

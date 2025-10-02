@@ -15,10 +15,10 @@ import {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
 
     // RBAC: Check organization membership (any role can view)
     const roleInfo = await getUserRoleFromRequest(request, orgId)
@@ -89,10 +89,10 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
 
     // RBAC: Check organization membership
     const roleInfo = await getUserRoleFromRequest(request, orgId)

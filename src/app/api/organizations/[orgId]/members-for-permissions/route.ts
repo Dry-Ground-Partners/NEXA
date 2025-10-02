@@ -9,10 +9,10 @@ import { requireMemberManagement } from '@/lib/api-rbac'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
 
     // RBAC: Only Owners can assign permissions
     const roleInfo = await requireMemberManagement(request, orgId)

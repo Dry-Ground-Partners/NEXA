@@ -9,7 +9,7 @@ import type { AccessControlConfig } from '@/lib/session-access-control'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { uuid: string } }
+  { params }: { params: Promise<{ uuid: string }> }
 ) {
   try {
     const user = await getCurrentUser()
@@ -115,7 +115,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { uuid: string } }
+  { params }: { params: Promise<{ uuid: string }> }
 ) {
   try {
     const user = await getCurrentUser()

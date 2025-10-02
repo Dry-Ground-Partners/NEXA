@@ -8,7 +8,7 @@ import { getCurrentUser } from '@/lib/auth'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { uuid: string } }
+  { params }: { params: Promise<{ uuid: string }> }
 ) {
   try {
     const user = await getCurrentUser()
@@ -19,7 +19,8 @@ export async function GET(
       )
     }
 
-    const sessionId = params.uuid
+    const { uuid } = await params
+    const sessionId = uuid
     
     // Check all access levels
     const [canRead, canWrite, canDelete] = await Promise.all([

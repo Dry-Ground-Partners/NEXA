@@ -5,10 +5,10 @@ import { eventRegistry } from '@/lib/config/event-registry'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
     const url = new URL(request.url)
     
     // Parse query parameters

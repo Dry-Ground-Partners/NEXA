@@ -5,10 +5,10 @@ import { requireMemberManagement } from '@/lib/api-rbac'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { orgId: string; memberId: string } }
+  { params }: { params: Promise<{ orgId: string; memberId: string }> }
 ) {
   try {
-    const { orgId, memberId } = params
+    const { orgId, memberId } = await params
     const body = await request.json()
     const { action, role, reason } = body
 
@@ -265,10 +265,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { orgId: string; memberId: string } }
+  { params }: { params: Promise<{ orgId: string; memberId: string }> }
 ) {
   try {
-    const { orgId, memberId } = params
+    const { orgId, memberId } = await params
 
     // RBAC: Only Owners can remove members
     const roleInfo = await requireMemberManagement(request, orgId)

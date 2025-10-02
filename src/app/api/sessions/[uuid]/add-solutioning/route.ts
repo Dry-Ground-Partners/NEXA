@@ -3,7 +3,7 @@ import { updateSessionWithSolutioning } from '@/lib/sessions-server'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { uuid: string } }
+  { params }: { params: Promise<{ uuid: string }> }
 ) {
   try {
     const body = await request.json()

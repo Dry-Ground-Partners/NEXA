@@ -6,10 +6,10 @@ import type { StructuringRequest } from '@/lib/langchain/types'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
     console.log(`📡 API: Pain point analysis request for org ${orgId}`)
     
     // RBAC: Check organization access
@@ -132,10 +132,10 @@ export async function POST(
 // Health check endpoint
 export async function GET(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
     
     // RBAC: Check organization access
     const roleInfo = await requireOrganizationAccess(request, orgId)

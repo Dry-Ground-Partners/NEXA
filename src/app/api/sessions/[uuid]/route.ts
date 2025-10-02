@@ -14,7 +14,7 @@ import type { StructuringSessionData, VisualsSessionData, SolutioningSessionData
 // GET /api/sessions/[uuid] - Get session by UUID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { uuid: string } }
+  { params }: { params: Promise<{ uuid: string }> }
 ) {
   try {
     // Extract requested data type from query parameter
@@ -61,7 +61,7 @@ export async function GET(
 // PUT /api/sessions/[uuid] - Update session
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { uuid: string } }
+  { params }: { params: Promise<{ uuid: string }> }
 ) {
   try {
     console.log(`📡 API: Update session request for UUID: ${params.uuid}`)
@@ -169,7 +169,7 @@ export async function PUT(
 // DELETE /api/sessions/[uuid] - Delete session
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { uuid: string } }
+  { params }: { params: Promise<{ uuid: string }> }
 ) {
   try {
     console.log(`📡 API: Delete session request for UUID: ${params.uuid}`)

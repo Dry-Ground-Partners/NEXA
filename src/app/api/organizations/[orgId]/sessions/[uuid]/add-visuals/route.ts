@@ -5,10 +5,10 @@ import { requireOrganizationAccess } from '@/lib/api-rbac'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { orgId: string; uuid: string } }
+  { params }: { params: Promise<{ orgId: string; uuid: string }> }
 ) {
   try {
-    const { orgId, uuid } = params
+    const { orgId, uuid } = await params
     console.log(`📝 Push: Structuring → Visuals for org ${orgId}, session ${uuid}`)
     
     // RBAC: Check organization access

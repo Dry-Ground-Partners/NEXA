@@ -7,10 +7,10 @@ import { requireOrganizationAccess } from '@/lib/api-rbac'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { orgId } = params
+    const { orgId } = await params
     console.log(`🎨 Auto-Format: Request for org ${orgId}`)
     
     // RBAC: Check organization access
