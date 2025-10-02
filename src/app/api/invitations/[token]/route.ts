@@ -190,8 +190,6 @@ export async function POST(
       ipAddress = forwardedFor.split(',')[0].trim()
     } else if (realIp) {
       ipAddress = realIp
-    } else if (request.ip) {
-      ipAddress = request.ip
     }
     
     // Ensure it's a valid IPv4/IPv6 format for PostgreSQL inet type

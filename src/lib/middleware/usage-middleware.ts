@@ -281,8 +281,8 @@ function getClientIP(request: NextRequest): string {
     return cfConnectingIP
   }
   
-  // Fallback to connection remote address
-  return request.ip || 'unknown'
+  // Fallback
+  return 'unknown'
 }
 
 /**
