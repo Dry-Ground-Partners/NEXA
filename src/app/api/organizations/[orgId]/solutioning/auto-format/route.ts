@@ -121,12 +121,13 @@ Remember: Only add HTML formatting tags, do not change the actual text content.
 
     // Extract the content from the result
     const content = result.content || result
+    const contentString = typeof content === 'string' ? content : String(content)
 
     // Try to parse JSON response
     let formattedContent
     try {
       // Clean the content if it has markdown code blocks
-      const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      const cleanContent = contentString.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
       formattedContent = JSON.parse(cleanContent)
       
       console.log('✅ Auto-Format: Successfully parsed JSON response')
