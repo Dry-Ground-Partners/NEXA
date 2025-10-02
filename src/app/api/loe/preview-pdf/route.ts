@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Return PDF for preview (inline display)
-    return new NextResponse(result, {
+    return new NextResponse(new Uint8Array(result), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

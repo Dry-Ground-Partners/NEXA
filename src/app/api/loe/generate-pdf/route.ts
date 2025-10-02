@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     const filename = `LOE_${projectName}_${currentDate}.pdf`
 
     // Return PDF for download (attachment)
-    return new NextResponse(result, {
+    return new NextResponse(new Uint8Array(result), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
