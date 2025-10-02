@@ -115,10 +115,10 @@ export function checkPasswordStrength(password: string): {
 
 // Type-safe error message extraction
 export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return getErrorMessage(error)
+  if (error instanceof Error) return error.message
   if (typeof error === 'string') return error
   if (error && typeof error === 'object' && 'message' in error) {
-    return String(getErrorMessage(error))
+    return String(error.message)
   }
   return 'An unknown error occurred'
 }

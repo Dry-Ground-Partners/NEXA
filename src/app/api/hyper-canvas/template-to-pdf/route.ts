@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Template-to-PDF: Converted successfully, size:', pdfBuffer.length, 'bytes')
     
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ SOW PDF Preview: PDF generated, size:', pdfBuffer.length, 'bytes')
     
     // Return PDF blob
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'inline',
