@@ -1,5 +1,6 @@
 // LangChain structuring module using LangSmith prompts
 import * as hub from "langchain/hub/node"
+import { getErrorMessage } from '@/lib/utils'
 import { JsonOutputParser } from "@langchain/core/output_parsers"
 import type { PainPointAnalysis, StructuringRequest, StructuringResponse, GenerateSolutionRequest, GenerateSolutionResponse } from './types'
 import { getCachedPreferences } from './preferences-cache'
@@ -84,21 +85,21 @@ export async function analyzePainPoints(
     
     // Handle specific error types
     if (error instanceof Error) {
-      if (error.message.includes('API key')) {
+      if (getErrorMessage(error).includes('API key')) {
         return {
           success: false,
           error: 'OpenAI API key not configured properly'
         }
       }
       
-      if (error.message.includes('LangSmith') || error.message.includes('hub')) {
+      if (getErrorMessage(error).includes('LangSmith') || getErrorMessage(error).includes('hub')) {
         return {
           success: false,
           error: 'Failed to pull prompt from LangSmith. Check LANGSMITH_API_KEY.'
         }
       }
       
-      if (error.message.includes('JSON')) {
+      if (getErrorMessage(error).includes('JSON')) {
         return {
           success: false,
           error: 'AI response was not in valid JSON format'
@@ -108,7 +109,7 @@ export async function analyzePainPoints(
 
     return {
       success: false,
-      error: `Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      error: `Analysis failed: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}`
     }
   }
 }
@@ -249,21 +250,21 @@ export async function generateSolution(
     
     // Handle specific error types
     if (error instanceof Error) {
-      if (error.message.includes('API key')) {
+      if (getErrorMessage(error).includes('API key')) {
         return {
           success: false,
           error: 'OpenAI API key not configured properly'
         }
       }
       
-      if (error.message.includes('LangSmith') || error.message.includes('hub')) {
+      if (getErrorMessage(error).includes('LangSmith') || getErrorMessage(error).includes('hub')) {
         return {
           success: false,
           error: 'Failed to pull solution generation prompt from LangSmith. Check LANGSMITH_API_KEY.'
         }
       }
       
-      if (error.message.includes('JSON')) {
+      if (getErrorMessage(error).includes('JSON')) {
         return {
           success: false,
           error: 'AI response was not in valid JSON format'
@@ -273,7 +274,7 @@ export async function generateSolution(
 
     return {
       success: false,
-      error: `Solution generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      error: `Solution generation failed: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}`
     }
   }
 }
@@ -295,7 +296,7 @@ export async function healthCheck(): Promise<{ success: boolean; message: string
   } catch (error) {
     return {
       success: false,
-      message: `Integration check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      message: `Integration check failed: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}`
     }
   }
 }

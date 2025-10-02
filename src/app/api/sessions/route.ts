@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { 
   createStructuringSession,
   createVisualsSession,
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false, 
-        error: `Failed to get sessions: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Failed to get sessions: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false, 
-        error: `Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Failed to create session: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { 
   getSession,
   getStructuringSession, 
@@ -51,7 +52,7 @@ export async function GET(
     return NextResponse.json(
       { 
         success: false, 
-        error: `Failed to get session: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Failed to get session: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )
@@ -159,7 +160,7 @@ export async function PUT(
     return NextResponse.json(
       { 
         success: false, 
-        error: `Failed to update session: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Failed to update session: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )
@@ -200,7 +201,7 @@ export async function DELETE(
     return NextResponse.json(
       { 
         success: false, 
-        error: `Failed to delete session: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Failed to delete session: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { generateLOEWithLangSmith } from '@/lib/langchain/solutioning'
 
 export async function POST(request: NextRequest) {
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Error in LOE generation:', error)
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
+      { success: false, error: error instanceof Error ? getErrorMessage(error) : 'Unknown error' },
       { status: 500 }
     )
   }

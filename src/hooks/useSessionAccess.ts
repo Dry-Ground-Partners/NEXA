@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
 export interface SessionAccessState {
@@ -81,7 +82,7 @@ export function useSessionAccess(sessionId?: string) {
         setAccessState(prev => ({
           ...prev,
           loading: false,
-          error: error instanceof Error ? error.message : 'Failed to check access',
+          error: error instanceof Error ? getErrorMessage(error) : 'Failed to check access',
           canRead: false,
           canWrite: false,
           canDelete: false

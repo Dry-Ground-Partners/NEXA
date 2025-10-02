@@ -6,6 +6,7 @@
  */
 
 import { usageTracker } from '@/lib/usage/usage-tracker'
+import { getErrorMessage } from '@/lib/utils'
 import { prisma } from '@/lib/prisma'
 import { eventRegistry } from '@/lib/config/event-registry'
 
@@ -372,7 +373,7 @@ async function main() {
       }
     } catch (error) {
       failed++
-      console.log(`\n❌ ${test.name} - ERROR: ${error.message}`)
+      console.log(`\n❌ ${test.name} - ERROR: ${getErrorMessage(error)}`)
     }
 
     // Small delay between tests

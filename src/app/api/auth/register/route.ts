@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { generateVerificationToken, sendVerificationEmail, extractDomain, isValidEmail, isFreeEmailDomain } from '@/lib/email'
@@ -233,7 +234,7 @@ export async function POST(request: NextRequest) {
     
     // Handle specific Prisma errors
     if (error instanceof Error) {
-      if (error.message.includes('Unique constraint')) {
+      if (getErrorMessage(error).includes('Unique constraint')) {
         return NextResponse.json(
           { success: false, error: 'Email already registered' },
           { status: 400 }

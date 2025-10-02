@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { generateSolution, healthCheck } from '@/lib/langchain/structuring'
 import type { GenerateSolutionRequest } from '@/lib/langchain/types'
 
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error('API Error:', error)
-    return NextResponse.json({ success: false, error: `API processing failed: ${error instanceof Error ? error.message : 'Unknown error'}` }, { status: 500 })
+    return NextResponse.json({ success: false, error: `API processing failed: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` }, { status: 500 })
   }
 }
 

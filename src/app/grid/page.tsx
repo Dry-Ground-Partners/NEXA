@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { getErrorMessage } from '@/lib/utils'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -334,7 +335,7 @@ export default function GridPage() {
       }
     } catch (err) {
       console.error('Error saving preferences:', err)
-      setLogoError(err instanceof Error ? err.message : 'Failed to save preferences')
+      setLogoError(getErrorMessage(err))
     }
   }
   

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { useUser } from '@/contexts/user-context'
@@ -248,7 +249,7 @@ export default function OrganizationsPage() {
 
     } catch (error: any) {
       console.error('❌ Error updating session permissions:', error)
-      setPermissionsError(error.message || 'Failed to update permissions')
+      setPermissionsError(getErrorMessage(error) || 'Failed to update permissions')
     } finally {
       setPermissionsLoading(false)
     }
@@ -280,7 +281,7 @@ export default function OrganizationsPage() {
       console.log('✅ Role updated successfully')
     } catch (error: any) {
       console.error('❌ Failed to update role:', error)
-      alert(`Failed to update role: ${error.message}`)
+      alert(`Failed to update role: ${getErrorMessage(error)}`)
     }
   }
 
@@ -327,7 +328,7 @@ export default function OrganizationsPage() {
       console.log('✅ Member offboarded successfully:', data.message)
     } catch (error: any) {
       console.error('❌ Failed to offboard member:', error)
-      alert(`Failed to offboard member: ${error.message}`)
+      alert(`Failed to offboard member: ${getErrorMessage(error)}`)
     } finally {
       setOffboardLoading(false)
     }

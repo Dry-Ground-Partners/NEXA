@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { updateSolutioningSession, getSession } from '@/lib/sessions-server'
 
 export async function PUT(request: NextRequest) {
@@ -74,7 +75,7 @@ export async function PUT(request: NextRequest) {
     console.error('❌ API: Error updating solution:', error)
     return NextResponse.json({ 
       success: false, 
-      error: `Internal server error: ${error.message}` 
+      error: `Internal server error: ${getErrorMessage(error)}` 
     }, { status: 500 })
   }
 }

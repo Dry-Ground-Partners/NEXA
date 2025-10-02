@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { eventRegistry } from '@/lib/config/event-registry'
 import { planRegistry } from '@/lib/config/plan-registry'
 import { getUserRoleFromRequest } from '@/lib/api-rbac'
+import { getErrorMessage } from '@/lib/utils'
 
 /**
  * Admin API for managing configuration
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Config update error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to update configuration' },
+      { error: getErrorMessage(error) || 'Failed to update configuration' },
       { status: 500 }
     )
   }

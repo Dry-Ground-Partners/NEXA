@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -245,7 +246,7 @@ export default function SOWPage() {
       
     } catch (error: any) {
       console.error('❌ Error transitioning to LOE:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      const errorMessage = error instanceof Error ? getErrorMessage(error) : 'Unknown error occurred'
       alert(`Error transitioning to LOE: ${errorMessage}`)
     } finally {
       setSaving(false)

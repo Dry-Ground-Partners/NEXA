@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { prisma } from '@/lib/prisma'
 import { verifyAuth } from '@/lib/auth'
 import { requireMemberManagement } from '@/lib/api-rbac'
@@ -257,7 +258,7 @@ export async function PATCH(
   } catch (error: any) {
     console.error('Error updating member:', error)
     return NextResponse.json(
-      { error: `Internal server error: ${error.message}` },
+      { error: `Internal server error: ${getErrorMessage(error)}` },
       { status: 500 }
     )
   }
@@ -385,7 +386,7 @@ export async function DELETE(
   } catch (error: any) {
     console.error('Error removing member:', error)
     return NextResponse.json(
-      { error: `Internal server error: ${error.message}` },
+      { error: `Internal server error: ${getErrorMessage(error)}` },
       { status: 500 }
     )
   }

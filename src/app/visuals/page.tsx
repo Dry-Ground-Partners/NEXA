@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -946,7 +947,7 @@ export default function VisualsPage() {
         console.error(`❌ Error processing solution ${solutionId}:`, error)
         // Log specific error details for debugging
         if (error instanceof Error) {
-          console.error(`   Error details: ${error.message}`)
+          console.error(`   Error details: ${getErrorMessage(error)}`)
         }
         // Continue with next solution but track the failure
         throw error // Re-throw to stop automation on first failure for better debugging

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getErrorMessage } from '@/lib/utils'
 import * as hub from "langchain/hub"
 import { ChatOpenAI } from "@langchain/openai"
 import { ChatPromptTemplate } from "@langchain/core/prompts"
@@ -116,7 +117,7 @@ Remember: Only add HTML formatting tags, do not change the actual text content.
     
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Auto-formatting failed'
+      error: error instanceof Error ? getErrorMessage(error) : 'Auto-formatting failed'
     }, { status: 500 })
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { usageTracker } from '@/lib/usage/usage-tracker'
 import { getUserRoleFromRequest } from '@/lib/api-rbac'
 
@@ -108,7 +109,7 @@ export function trackUsageAsync(
       console.log(`✅ Async usage tracked: ${options.eventType} - ${result.creditsConsumed} credits`)
     })
     .catch((error) => {
-      console.error(`❌ Async usage tracking failed: ${error.message}`)
+      console.error(`❌ Async usage tracking failed: ${getErrorMessage(error)}`)
     })
 }
 
@@ -152,7 +153,7 @@ export function createUsageTrackingHandler<T extends any[]>(
       
       // If tracking fails, we should still execute the handler but log the error
       // Comment out the following lines if you want tracking to be mandatory
-      if (error.message.includes('tracking')) {
+      if (getErrorMessage(error).includes('tracking')) {
         console.warn('⚠️ Proceeding without usage tracking due to error')
         return handler(...args)
       }
@@ -252,7 +253,7 @@ export async function checkUsageLimits(
   } catch (error) {
     return {
       allowed: false,
-      reason: error.message,
+      reason: getErrorMessage(error),
       remainingCredits: 0,
       percentageUsed: 0
     }

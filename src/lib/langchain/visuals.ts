@@ -1,5 +1,6 @@
 // LangChain visuals module using LangSmith prompts
 import * as hub from "langchain/hub/node"
+import { getErrorMessage } from '@/lib/utils'
 import { JsonOutputParser } from "@langchain/core/output_parsers"
 import { getCachedPreferences } from './preferences-cache'
 
@@ -118,7 +119,7 @@ export async function generatePlanningFromIdeation(
     console.error('❌ Error in visuals planning generation:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? getErrorMessage(error) : 'Unknown error occurred'
     }
   }
 }
@@ -232,7 +233,7 @@ export async function generateSketchFromPlanning(
     console.error('❌ Error in visuals sketch generation:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? getErrorMessage(error) : 'Unknown error occurred'
     }
   }
 }

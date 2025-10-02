@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 import { useUser } from '@/contexts/user-context'
 import type { PreferenceData } from '@/lib/preferences/preferences-service'
 
@@ -91,7 +92,7 @@ export function usePreferences() {
       setPreferences(data)
     } catch (err) {
       console.error('Error fetching preferences:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch preferences')
+      setError(getErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -132,7 +133,7 @@ export function usePreferences() {
       }
     } catch (err) {
       console.error('Error updating preferences:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update preferences'
+      const errorMessage = getErrorMessage(err)
       setError(errorMessage)
       return { success: false, error: errorMessage }
     } finally {

@@ -6,6 +6,7 @@
  */
 
 import { eventRegistry } from '@/lib/config/event-registry'
+import { getErrorMessage } from '@/lib/utils'
 import { planRegistry } from '@/lib/config/plan-registry'
 
 async function testConfigurationSystem() {
@@ -273,7 +274,7 @@ async function main() {
       }
     } catch (error) {
       failed++
-      console.log(`\n❌ ${test.name} - ERROR: ${error.message}`)
+      console.log(`\n❌ ${test.name} - ERROR: ${getErrorMessage(error)}`)
     }
   }
 

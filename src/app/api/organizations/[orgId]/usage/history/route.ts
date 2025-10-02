@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { requireOrganizationAccess } from '@/lib/api-rbac'
 import { prisma } from '@/lib/prisma'
 import { eventRegistry } from '@/lib/config/event-registry'
@@ -204,7 +205,7 @@ export async function GET(
   } catch (error) {
     console.error('❌ Usage history error:', error)
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: getErrorMessage(error) },
       { status: 500 }
     )
   }

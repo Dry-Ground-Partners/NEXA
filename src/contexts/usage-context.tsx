@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 import { useUser } from '@/contexts/user-context'
 
 export interface UsageData {
@@ -176,7 +177,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       console.error('Error fetching usage:', err)
-      setUsageError(err instanceof Error ? err.message : 'Unknown error')
+      setUsageError(getErrorMessage(err))
     } finally {
       setUsageLoading(false)
     }
@@ -222,7 +223,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       console.error('Error fetching usage history:', err)
-      setHistoryError(err instanceof Error ? err.message : 'Unknown error')
+      setHistoryError(getErrorMessage(err))
     } finally {
       setHistoryLoading(false)
     }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { prisma } from '@/lib/prisma'
 import { verifyAuth } from '@/lib/auth'
 import { requireAccessManagement } from '@/lib/api-rbac'
@@ -69,7 +70,7 @@ export async function GET(
   } catch (error) {
     console.error('Error fetching organization sessions:', error)
     return NextResponse.json(
-      { error: `Internal server error: ${error.message}` },
+      { error: `Internal server error: ${getErrorMessage(error)}` },
       { status: 500 }
     )
   }

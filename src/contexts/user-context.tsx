@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 
 interface User {
   id: string
@@ -90,7 +91,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err) {
       console.error('Error fetching user:', err)
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setError(getErrorMessage(err))
       setUser(null)
       setSelectedOrganization(null)
       hasAutoSelected.current = false

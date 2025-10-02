@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { sessionAccessControl } from '@/lib/session-access-control'
 import { getCurrentUser } from '@/lib/auth'
 
@@ -54,7 +55,7 @@ export async function GET(
     return NextResponse.json(
       { 
         success: false, 
-        error: `Failed to check session access: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Failed to check session access: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )

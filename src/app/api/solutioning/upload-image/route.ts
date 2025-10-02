@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? getErrorMessage(error) : 'Unknown error' 
       },
       { status: 500 }
     )

@@ -27,7 +27,7 @@ export default function DebugAuthPage() {
           allCookies,
           authToken: authToken ? authToken.substring(0, 20) + '...' : 'None',
           authTokenLength: authToken?.length || 0,
-          apiError: err.message,
+          apiError: err instanceof Error ? err.message : 'Unknown error',
           timestamp: new Date().toISOString()
         })
       })

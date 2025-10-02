@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { getCurrentUser, generateToken, getUserById } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
 
@@ -303,7 +304,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false, 
-        error: `Failed to create workspace: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Failed to create workspace: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )

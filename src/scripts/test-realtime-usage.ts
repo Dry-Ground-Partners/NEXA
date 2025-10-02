@@ -6,6 +6,7 @@
  */
 
 import { eventRegistry } from '@/lib/config/event-registry'
+import { getErrorMessage } from '@/lib/utils'
 import { usageTracker } from '@/lib/usage/usage-tracker'
 import { prisma } from '@/lib/prisma'
 
@@ -107,7 +108,7 @@ async function simulateRealTimeUsage(users: TestUser[], organizations: TestOrgan
       }
 
     } catch (error) {
-      console.error(`❌ ${new Date().toLocaleTimeString()} | Error:`, error.message)
+      console.error(`❌ ${new Date().toLocaleTimeString()} | Error:`, getErrorMessage(error))
     }
 
     // Random delay between 2-4 seconds
@@ -145,7 +146,7 @@ async function testDashboardAPIs(organizations: TestOrganization[]): Promise<voi
       console.log(`      - Users: ${Object.keys(breakdown.userBreakdown).length}`)
 
     } catch (error) {
-      console.error(`   ❌ API test failed:`, error.message)
+      console.error(`   ❌ API test failed:`, getErrorMessage(error))
     }
   }
 }
@@ -208,7 +209,7 @@ async function generateUsageReport(organizations: TestOrganization[]): Promise<v
       }
 
     } catch (error) {
-      console.error(`   ❌ Report error:`, error.message)
+      console.error(`   ❌ Report error:`, getErrorMessage(error))
     }
   }
 }
@@ -264,7 +265,7 @@ async function cleanupTestData(): Promise<void> {
     console.log(`✅ Cleaned up ${deleted.count} test events`)
 
   } catch (error) {
-    console.error('⚠️ Cleanup error (non-critical):', error.message)
+    console.error('⚠️ Cleanup error (non-critical):', getErrorMessage(error))
   }
 }
 

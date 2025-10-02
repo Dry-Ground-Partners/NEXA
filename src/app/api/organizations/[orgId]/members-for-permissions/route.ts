@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { requireMemberManagement } from '@/lib/api-rbac'
@@ -71,7 +72,7 @@ export async function GET(
     return NextResponse.json(
       { 
         success: false, 
-        error: `Failed to get members: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Failed to get members: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )

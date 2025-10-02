@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { spawn } from 'child_process'
 import path from 'path'
 
@@ -82,7 +83,7 @@ async function convertHtmlToPdf(htmlTemplate: string): Promise<Buffer | null> {
       
       python.on('error', (error) => {
         console.error('❌ Failed to start Python process:', error)
-        reject(new Error(`Failed to start Python process: ${error.message}`))
+        reject(new Error(`Failed to start Python process: ${getErrorMessage(error)}`))
       })
       
       // Send HTML template to Python script

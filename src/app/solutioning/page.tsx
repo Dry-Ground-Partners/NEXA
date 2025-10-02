@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -551,7 +552,7 @@ export default function SolutioningPage() {
       }
     } catch (error) {
       console.error('Error transitioning to SOW:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const errorMessage = error instanceof Error ? getErrorMessage(error) : 'Unknown error'
       alert(`Error transitioning to SOW: ${errorMessage}`)
     } finally {
       setSaving(false)

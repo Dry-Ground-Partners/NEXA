@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { spawn } from 'child_process'
 import path from 'path'
 import { getUserRoleFromRequest } from '@/lib/api-rbac'
@@ -141,7 +142,7 @@ async function callPythonScript(data: any): Promise<Buffer | null> {
       
       python.on('error', (error) => {
         console.error('❌ Failed to start Python process:', error)
-        reject(new Error(`Failed to start Python process: ${error.message}`))
+        reject(new Error(`Failed to start Python process: ${getErrorMessage(error)}`))
       })
       
       // Send JSON data to Python script

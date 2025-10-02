@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { generateSketchFromPlanning } from '@/lib/langchain/visuals'
 
 export async function POST(request: NextRequest) {
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown server error' 
+        error: error instanceof Error ? getErrorMessage(error) : 'Unknown server error' 
       },
       { status: 500 }
     )

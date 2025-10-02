@@ -1,4 +1,5 @@
 import { ConversationSummaryBufferMemory } from 'langchain/memory'
+import { getErrorMessage } from '@/lib/utils'
 import { ChatOpenAI } from '@langchain/openai'
 import { PromptTemplate } from '@langchain/core/prompts'
 import { RunnableWithMessageHistory } from '@langchain/core/runnables'
@@ -301,7 +302,7 @@ export async function chatTurn(
     // Fallback response
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? getErrorMessage(error) : 'Unknown error',
       response: {
         maestro: false,
         message_to_maestro: null,
@@ -534,7 +535,7 @@ export async function maestroTurn(
     
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown maestro error',
+      error: error instanceof Error ? getErrorMessage(error) : 'Unknown maestro error',
       modified_template: null,
       explanation: 'I encountered an issue while modifying the document. Please try again.'
     }

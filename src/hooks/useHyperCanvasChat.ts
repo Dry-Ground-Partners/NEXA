@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { getErrorMessage } from '@/lib/utils'
 
 export interface ChatMessage {
   id: string
@@ -158,7 +159,7 @@ export function useHyperCanvasChat(
       setChatState(prev => ({
         ...prev,
         isInitializing: false,
-        error: error instanceof Error ? error.message : 'Failed to initialize chat'
+        error: error instanceof Error ? getErrorMessage(error) : 'Failed to initialize chat'
       }))
     }
   }, [sessionId, userId, organizationId, chatState.threadId])
@@ -504,7 +505,7 @@ export function useHyperCanvasChat(
             : msg
         ),
         isTyping: false,
-        error: error instanceof Error ? error.message : 'Network error'
+        error: error instanceof Error ? getErrorMessage(error) : 'Network error'
       }))
       
       isProcessing.current = false

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { analyzePainPoints } from '@/lib/langchain/structuring'
 import { withUsageTracking, calculateComplexityFromInput } from '@/lib/middleware/usage-middleware'
 import { requireOrganizationAccess } from '@/lib/api-rbac'
@@ -122,7 +123,7 @@ export async function POST(
     return NextResponse.json(
       { 
         success: false, 
-        error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Internal server error: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )
@@ -160,7 +161,7 @@ export async function GET(
       { 
         status: 'API endpoint active', 
         langchain: { success: false, message: 'Health check failed' },
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? getErrorMessage(error) : 'Unknown error',
         timestamp: new Date().toISOString()
       },
       { status: 500 }

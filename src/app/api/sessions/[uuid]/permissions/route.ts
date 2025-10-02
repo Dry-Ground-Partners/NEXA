@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import type { AccessControlConfig } from '@/lib/session-access-control'
@@ -102,7 +103,7 @@ export async function GET(
     return NextResponse.json(
       { 
         success: false, 
-        error: `Failed to get session permissions: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Failed to get session permissions: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )
@@ -282,7 +283,7 @@ export async function PUT(
     return NextResponse.json(
       { 
         success: false, 
-        error: `Failed to update session permissions: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Failed to update session permissions: ${error instanceof Error ? getErrorMessage(error) : 'Unknown error'}` 
       },
       { status: 500 }
     )

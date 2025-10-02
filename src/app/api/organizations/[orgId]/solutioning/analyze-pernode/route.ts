@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { analyzePerNodeStackWithLangSmith } from '@/lib/langchain/solutioning'
 import { withUsageTracking, calculateComplexityFromInput } from '@/lib/middleware/usage-middleware'
 import { requireOrganizationAccess } from '@/lib/api-rbac'
@@ -95,7 +96,7 @@ export async function POST(
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? getErrorMessage(error) : 'Unknown error' 
       },
       { status: 500 }
     )

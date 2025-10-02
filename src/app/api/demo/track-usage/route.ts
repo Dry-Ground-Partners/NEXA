@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getErrorMessage } from '@/lib/utils'
 import { withUsageTracking } from '@/lib/middleware/usage-middleware'
 import { getUserRoleFromRequest } from '@/lib/api-rbac'
 
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Demo API error:', error)
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: getErrorMessage(error) || 'Internal server error' },
       { status: 500 }
     )
   }

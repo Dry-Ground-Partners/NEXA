@@ -1,4 +1,5 @@
 import * as hub from 'langchain/hub/node'
+import { getErrorMessage } from '@/lib/utils'
 import { OpenAI } from 'openai'
 import { getCachedPreferences } from './preferences-cache'
 
@@ -199,7 +200,7 @@ export async function analyzeImageWithVision(
     console.error('❌ Vision analysis failed:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? getErrorMessage(error) : 'Unknown error occurred'
     }
   }
 }
@@ -255,7 +256,7 @@ export async function enhanceTextWithLangSmith(
     console.error('❌ Error in text enhancement:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? getErrorMessage(error) : 'Unknown error occurred'
     }
   }
 }
@@ -328,7 +329,7 @@ export async function structureSolutionWithLangSmith(
     console.error('❌ Error in solution structuring:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? getErrorMessage(error) : 'Unknown error occurred'
     }
   }
 }
@@ -392,7 +393,7 @@ export async function analyzePerNodeStackWithLangSmith(
     console.error('❌ Error in per-node stack analysis:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? getErrorMessage(error) : 'Unknown error occurred'
     }
   }
 }
@@ -474,7 +475,7 @@ export async function generateSOWWithLangSmith(
     console.error('❌ Error in SOW generation:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? getErrorMessage(error) : 'Unknown error occurred'
     }
   }
 }
@@ -556,7 +557,7 @@ export async function generateLOEWithLangSmith(
     console.error('❌ Error in LOE generation:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error instanceof Error ? getErrorMessage(error) : 'Unknown error occurred'
     }
   }
 }
