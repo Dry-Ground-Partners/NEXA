@@ -85,7 +85,7 @@ export async function GET(
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error validating invitation:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -256,7 +256,7 @@ export async function POST(
 
     return response
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error accepting invitation:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

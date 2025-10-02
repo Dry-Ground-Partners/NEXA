@@ -82,7 +82,7 @@ export function useHyperCanvasChat(
         console.error('❌ Failed to extract template via API')
         throw new Error('Failed to extract template')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error extracting template:', error)
       throw error
     }
@@ -110,7 +110,7 @@ export function useHyperCanvasChat(
       } else {
         console.error('❌ Failed to convert template to PDF')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Failed to refresh document preview:', error)
     }
   }, [onDocumentUpdate])
@@ -153,7 +153,7 @@ export function useHyperCanvasChat(
       } else {
         throw new Error(data.error || 'Failed to create thread')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Chat initialization failed:', error)
       setChatState(prev => ({
         ...prev,
@@ -492,7 +492,7 @@ export function useHyperCanvasChat(
         isProcessing.current = false
       }
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Send message error:', error)
       
       // Handle network/request error

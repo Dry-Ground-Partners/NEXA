@@ -88,7 +88,7 @@ export function DrawioEditor({
           default:
             console.log('ℹ️ Unhandled event:', message.event)
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('❌ Error processing draw.io message:', error)
         setError('Failed to process editor message')
       }

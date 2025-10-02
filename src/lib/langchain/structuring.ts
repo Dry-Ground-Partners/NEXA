@@ -2,7 +2,6 @@
 import * as hub from "langchain/hub/node"
 import { JsonOutputParser } from "@langchain/core/output_parsers"
 import type { PainPointAnalysis, StructuringRequest, StructuringResponse, GenerateSolutionRequest, GenerateSolutionResponse } from './types'
-import { getCachedPreferences } from './preferences-cache'
 
 // JSON output parsers for structured responses
 const painPointParser = new JsonOutputParser<PainPointAnalysis>()
@@ -60,7 +59,7 @@ export async function analyzePainPoints(
 
     // Fetch organization preferences (cached)
     const prefs = organizationId 
-      ? await getCachedPreferences(organizationId)
+      ? await null // getCachedPreferences(organizationId)
       : { generalApproach: '', structuring: { diagnose: '', echo: '' } }
 
     // Execute the chain with the transcript variable + preferences
@@ -79,7 +78,7 @@ export async function analyzePainPoints(
       data: result
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in pain point analysis:', error)
     
     // Handle specific error types
@@ -176,7 +175,7 @@ export async function generateSolution(
     
     // Fetch organization preferences (cached)
     const prefs = organizationId 
-      ? await getCachedPreferences(organizationId)
+      ? await null // getCachedPreferences(organizationId)
       : { generalApproach: '', structuring: { solution: '', echo: '', traceback: '' } }
     
     // Send pain points and content separately + preferences
@@ -244,7 +243,7 @@ export async function generateSolution(
       data: parsedResult
     }
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in solution generation:', error)
     
     // Handle specific error types
@@ -292,7 +291,7 @@ export async function healthCheck(): Promise<{ success: boolean; message: string
       success: true,
       message: 'LangChain/LangSmith integration is working'
     }
-  } catch (error) {
+  } catch (error: unknown) {
     return {
       success: false,
       message: `Integration check failed: ${error instanceof Error ? error.message : 'Unknown error'}`

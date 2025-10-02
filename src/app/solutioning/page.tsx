@@ -139,7 +139,7 @@ export default function SolutioningPage() {
       } else {
         console.error('❌ Hyper-Canvas: Failed to generate preview blob')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Hyper-Canvas: Error generating preview blob:', error)
     } finally {
       setPreviewLoading(false)
@@ -177,7 +177,7 @@ export default function SolutioningPage() {
       await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate save
       setLastSaved(new Date())
       console.log('✅ Session saved successfully')
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Failed to save session:', error)
     } finally {
       setSaving(false)
@@ -274,7 +274,7 @@ export default function SolutioningPage() {
               window.history.replaceState({}, '', '/solutioning')
             }
           }
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('💥 Error loading session:', error)
           window.history.replaceState({}, '', '/solutioning')
         }
@@ -293,7 +293,7 @@ export default function SolutioningPage() {
         } else {
           window.location.href = '/auth/login'
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching user:', error)
         window.location.href = '/auth/login'
       } finally {
@@ -350,7 +350,7 @@ export default function SolutioningPage() {
       } else {
         console.error('❌ Auto-save failed:', result.error)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Auto-save error:', error)
     }
   }, [sessionId, saving, hasUnsavedChanges, collectCurrentData])
@@ -419,7 +419,7 @@ export default function SolutioningPage() {
           alert(`Failed to save session: ${result.error}`)
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Save error:', error)
       alert('An error occurred while saving the session')
     } finally {
@@ -549,7 +549,7 @@ export default function SolutioningPage() {
       } else {
         alert('Failed to add SOW data to session. Please try again.')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error transitioning to SOW:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       alert(`Error transitioning to SOW: ${errorMessage}`)
@@ -724,7 +724,7 @@ export default function SolutioningPage() {
         }
       }))
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Auto vision analysis failed:', error)
       // Set error state for visual feedback
       setSessionData(prev => ({
@@ -833,7 +833,7 @@ export default function SolutioningPage() {
 
       showAnimatedNotification('Content formatted successfully with HTML enhancements!', 'success')
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Auto-formatting failed:', error)
       showAnimatedNotification('Auto-formatting failed. Please try again.', 'error')
     } finally {
@@ -917,7 +917,7 @@ export default function SolutioningPage() {
         setActiveSubTab('structured')
       }, 1000)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Solution structuring failed:', error)
       showAnimatedNotification('Solution structuring failed. Please try again.', 'error')
     } finally {
@@ -992,7 +992,7 @@ export default function SolutioningPage() {
       
       showAnimatedNotification('Text enhanced successfully!', 'success')
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Text enhancement failed:', error)
       showAnimatedNotification('Text enhancement failed. Please try again.', 'error')
     } finally {
@@ -1076,7 +1076,7 @@ export default function SolutioningPage() {
 
       showAnimatedNotification('Per-node stack analysis generated successfully!', 'success')
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Per-node stack analysis failed:', error)
       showAnimatedNotification('Per-node stack analysis failed. Please try again.', 'error')
     } finally {
@@ -1196,7 +1196,7 @@ export default function SolutioningPage() {
         console.error('❌ PDF Preview: Error response:', errorData)
         showAnimatedNotification('Failed to generate PDF preview. Please try again.', 'error')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ PDF Preview: Error:', error)
       showAnimatedNotification('Failed to generate PDF preview. Please check the console for details.', 'error')
     } finally {
@@ -1246,7 +1246,7 @@ export default function SolutioningPage() {
         console.error('❌ PDF Generate: Error response:', errorData)
         showAnimatedNotification('Failed to generate PDF. Please try again.', 'error')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ PDF Generate: Error:', error)
       showAnimatedNotification('Failed to generate PDF. Please check the console for details.', 'error')
     } finally {
@@ -1328,7 +1328,7 @@ export default function SolutioningPage() {
       }
       reader.readAsDataURL(file)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Image upload failed:', error)
       showAnimatedNotification('Image upload failed. Please try again.', 'error')
     } finally {

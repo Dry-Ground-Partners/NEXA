@@ -76,7 +76,7 @@ export async function PUT(
         { status: 500 }
       )
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 Error pushing to visuals:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       message: 'Organization created successfully'
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Organization creation error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
@@ -121,10 +121,10 @@ export async function GET(request: NextRequest) {
     // For now, return the mock organizations from the user object
     return NextResponse.json({
       success: true,
-      data: user.organizations || []
+      data: (user as any).organizations || []
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Organizations fetch error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

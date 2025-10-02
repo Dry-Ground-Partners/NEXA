@@ -237,7 +237,7 @@ export async function POST(
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending invitation:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -316,7 +316,7 @@ export async function GET(
       })
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching invitations:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

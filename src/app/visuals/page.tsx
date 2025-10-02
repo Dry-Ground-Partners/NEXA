@@ -162,7 +162,7 @@ export default function VisualsPage() {
       // Close modal
       closeModal()
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error processing image:', error)
       alert('Failed to process image. Please try again.')
     } finally {
@@ -281,7 +281,7 @@ export default function VisualsPage() {
                 console.log('❌ Failed to load session, removing from URL')
                 window.history.replaceState({}, '', '/visuals')
               }
-            } catch (error) {
+            } catch (error: unknown) {
               console.error('💥 Error loading session:', error)
               window.history.replaceState({}, '', '/visuals')
             } finally {
@@ -291,7 +291,7 @@ export default function VisualsPage() {
         } else {
           window.location.href = '/auth/login'
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching user:', error)
         window.location.href = '/auth/login'
       } finally {
@@ -339,7 +339,7 @@ export default function VisualsPage() {
       } else {
         console.error('❌ Auto-save failed:', result.error)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Auto-save error:', error)
     }
   }, [sessionId, saving, hasUnsavedChanges, diagramSets, date, engineer, title, client, activeDiagramTab, activeMainTab])
@@ -565,7 +565,7 @@ export default function VisualsPage() {
       // Update the planning field with the generated content
       updateDiagramSet(diagramId, 'planning', result.data)
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error generating planning:', error)
       alert('Failed to generate planning. Please try again.')
     } finally {
@@ -645,7 +645,7 @@ export default function VisualsPage() {
       updateDiagramSet(diagramId, 'isExpanded', true)
       console.log('✅ Diagram set updated')
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error generating sketch:', error)
       alert('Failed to generate sketch. Please try again.')
     } finally {
@@ -741,7 +741,7 @@ export default function VisualsPage() {
           alert(`Failed to save session: ${result.error}`)
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Error saving session:', error)
       alert('Failed to save session. Please try again.')
     } finally {
@@ -942,11 +942,11 @@ export default function VisualsPage() {
         
         console.log(`✅ Solution ${solutionId} processed and saved successfully!`)
         
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(`❌ Error processing solution ${solutionId}:`, error)
         // Log specific error details for debugging
         if (error instanceof Error) {
-          console.error(`   Error details: ${error.message}`)
+          console.error(`   Error details: ${error instanceof Error ? error.message : "Unknown error"}`)
         }
         // Continue with next solution but track the failure
         throw error // Re-throw to stop automation on first failure for better debugging
@@ -1030,7 +1030,7 @@ export default function VisualsPage() {
       } else {
         alert('Failed to add solutioning data to session. Please try again.')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error transitioning to solutioning:', error)
       alert('Error transitioning to solutioning. Please try again.')
     } finally {
@@ -1074,7 +1074,7 @@ export default function VisualsPage() {
       
       console.log('✅ XML file download triggered successfully')
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error downloading XML file:', error)
       alert('Failed to download XML file. Please try again.')
     }

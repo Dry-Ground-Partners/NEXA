@@ -53,7 +53,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       } else {
         console.error("Logout failed:", data.message);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Logout error:", error);
     } finally {
       setIsLoggingOut(false);

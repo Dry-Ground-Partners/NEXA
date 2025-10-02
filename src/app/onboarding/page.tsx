@@ -57,7 +57,7 @@ export default function OnboardingPage() {
           router.push('/auth/login')
           return
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching user:', error)
         router.push('/auth/login')
         return
@@ -100,7 +100,7 @@ export default function OnboardingPage() {
         alert(`Failed to create workspace: ${result.error}`)
         setStep('choice')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Error creating personal workspace:', error)
       alert('Failed to create workspace. Please try again.')
       setStep('choice')
@@ -144,7 +144,7 @@ export default function OnboardingPage() {
         alert(`Failed to create organization: ${result.error}`)
         setStep('organization-form')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Error creating organization:', error)
       alert('Failed to create organization. Please try again.')
       setStep('organization-form')
@@ -167,14 +167,15 @@ export default function OnboardingPage() {
           <img
             src="/images/nexaicon.png?v=1"
             onError={(e) => {
-              console.log('Image failed to load:', e.target.src)
-              e.target.src = '/images/nexanonameicon.png?v=1'
+              const target = e.target as HTMLImageElement
+              console.log('Image failed to load:', target.src)
+              target.src = '/images/nexanonameicon.png?v=1'
             }}
             alt="NEXA"
             className="h-[60px] w-auto mx-auto mb-4 object-contain"
           />
           <h1 className="text-3xl font-bold text-white mb-2">
-            Welcome to NEXA, {user?.firstName}! 👋
+            Welcome to NEXA, {user?.fullName?.split(' ')[0] || 'there'}! 👋
           </h1>
           <p className="text-nexa-muted text-lg">
             Let's set up your workspace to get started

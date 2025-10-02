@@ -112,7 +112,7 @@ export class UsageTracker {
         limitWarning
       }
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Usage tracking error:', error)
       return {
         success: false,

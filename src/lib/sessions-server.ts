@@ -51,7 +51,7 @@ export async function createStructuringSession(
       updatedAt: session.updatedAt,
       data: session.diagramTextsJson
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating structuring session:', error)
     return null
   }
@@ -98,7 +98,7 @@ export async function updateStructuringSession(
     })
 
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating structuring session:', error)
     return false
   }
@@ -148,7 +148,7 @@ export async function createVisualsSession(
       updatedAt: session.updatedAt,
       data: session.visualAssetsJson
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating visuals session:', error)
     return null
   }
@@ -195,7 +195,7 @@ export async function updateVisualsSession(
     })
 
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating visuals session:', error)
     return false
   }
@@ -236,7 +236,7 @@ export async function getStructuringSession(
       updatedAt: session.updatedAt,
       data: session.diagramTextsJson
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error getting structuring session:', error)
     return null
   }
@@ -265,7 +265,7 @@ export async function deleteStructuringSession(
     })
 
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error deleting structuring session:', error)
     return false
   }
@@ -341,7 +341,7 @@ export async function getUserStructuringSessions(): Promise<SessionSummary[]> {
             hasEffort: isValidContent(session.loeObjects)
           })
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(`❌ Error checking access for session ${session.uuid}:`, error)
         // Skip this session if access check fails
       }
@@ -350,7 +350,7 @@ export async function getUserStructuringSessions(): Promise<SessionSummary[]> {
     console.log(`✅ User has access to ${accessibleSessions.length} of ${allSessions.length} sessions`)
     return accessibleSessions
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error getting user sessions:', error)
     return []
   }
@@ -433,7 +433,7 @@ export async function createSolutioningSession(
       updatedAt: session.updatedAt,
       data: session.sessionObjects as any
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 createSolutioningSession error:', error)
     return null
   }
@@ -482,7 +482,7 @@ export async function updateSolutioningSession(
 
     console.log('✅ updateSolutioningSession: Session updated successfully')
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 updateSolutioningSession error:', error)
     return false
   }
@@ -534,7 +534,7 @@ export async function createSOWSession(
       updatedAt: session.updatedAt,
       data: session.sowObjects as any
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 createSOWSession error:', error)
     return null
   }
@@ -583,7 +583,7 @@ export async function updateSOWSession(
 
     console.log('✅ updateSOWSession: Session updated successfully')
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 updateSOWSession error:', error)
     return false
   }
@@ -632,7 +632,7 @@ export async function createLOESession(
       updatedAt: session.updatedAt,
       data: session.loeObjects
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 createLOESession error:', error)
     return null
   }
@@ -680,7 +680,7 @@ export async function updateLOESession(
 
     console.log('✅ updateLOESession: Session updated successfully')
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 updateLOESession error:', error)
     return false
   }
@@ -808,7 +808,7 @@ export async function getSession(
       updatedAt: session.updatedAt,
       data: data
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error getting session:', error)
     return null
   }
@@ -851,7 +851,7 @@ export async function updateSessionWithVisuals(
 
     console.log('✅ updateSessionWithVisuals: Successfully added visuals to session')
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 updateSessionWithVisuals error:', error)
     return false
   }
@@ -894,7 +894,7 @@ export async function updateSessionWithSolutioning(
 
     console.log('✅ updateSessionWithSolutioning: Successfully added solutioning to session')
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 updateSessionWithSolutioning error:', error)
     return false
   }
@@ -939,7 +939,7 @@ export async function updateSessionWithSOW(
 
     console.log('✅ updateSessionWithSOW: Successfully added SOW to session')
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 updateSessionWithSOW error:', error)
     return false
   }
@@ -985,7 +985,7 @@ export async function updateSessionWithLOE(
     console.log('✅ updateSessionWithLOE: Successfully added LOE to session')
     return true
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 updateSessionWithLOE error:', error)
     return false
   }

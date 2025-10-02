@@ -102,7 +102,7 @@ export default function ChangePasswordPage() {
       } else {
         setMessage({ type: 'error', text: data.message || 'Failed to change password' })
       }
-    } catch (error) {
+    } catch (error: unknown) {
       setMessage({ type: 'error', text: 'An error occurred while changing password' })
     } finally {
       setIsLoading(false)
@@ -127,8 +127,9 @@ export default function ChangePasswordPage() {
             <img
               src="/images/nexaicon.png?v=1"
               onError={(e) => {
-                console.log('Image failed to load:', e.target.src)
-                e.target.src = '/images/nexanonameicon.png?v=1'
+              const target = e.target as HTMLImageElement
+                console.log('Image failed to load:', target.src)
+                target.src = '/images/nexanonameicon.png?v=1'
               }}
               alt="NEXA"
               className="h-[120px] w-auto mx-auto mb-6 object-contain"

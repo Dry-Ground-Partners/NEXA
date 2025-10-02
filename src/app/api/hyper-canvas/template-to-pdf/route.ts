@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Template-to-PDF: Converted successfully, size:', pdfBuffer.length, 'bytes')
     
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       }
     })
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Template-to-PDF: Error:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to convert template to PDF' },
@@ -82,14 +82,14 @@ async function convertHtmlToPdf(htmlTemplate: string): Promise<Buffer | null> {
       
       python.on('error', (error) => {
         console.error('❌ Failed to start Python process:', error)
-        reject(new Error(`Failed to start Python process: ${error.message}`))
+        reject(new Error(`Failed to start Python process: ${error instanceof Error ? error.message : "Unknown error"}`))
       })
       
       // Send HTML template to Python script
       python.stdin.write(htmlTemplate)
       python.stdin.end()
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error in convertHtmlToPdf:', error)
       reject(error)
     }

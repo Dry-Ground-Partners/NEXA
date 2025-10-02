@@ -1,0 +1,36 @@
+
+> nexa-platform@0.1.0 build
+> prisma generate && next build
+
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v5.22.0) to ./node_modules/@prisma/client in 324ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want real-time updates to your database without manual polling? Discover how with Pulse: https://pris.ly/tip-0-pulse
+
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+  ▲ Next.js 14.2.33
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+Failed to compile.
+
+./src/lib/middleware/usage-middleware.ts:155:17
+Type error: Property 'message' does not exist on type 'unknown'.
+
+[0m [90m 153 |[39m       [90m// If tracking fails, we should still execute the handler but log the error[39m[0m
+[0m [90m 154 |[39m       [90m// Comment out the following lines if you want tracking to be mandatory[39m[0m
+[0m[31m[1m>[22m[39m[90m 155 |[39m       [36mif[39m (error[33m.[39mmessage[33m.[39mincludes([32m'tracking'[39m)) {[0m
+[0m [90m     |[39m                 [31m[1m^[22m[39m[0m
+[0m [90m 156 |[39m         console[33m.[39mwarn([32m'⚠️ Proceeding without usage tracking due to error'[39m)[0m
+[0m [90m 157 |[39m         [36mreturn[39m handler([33m...[39margs)[0m
+[0m [90m 158 |[39m       }[0m
+Next.js build worker exited with code: 1 and signal: null

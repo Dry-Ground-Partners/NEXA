@@ -47,7 +47,7 @@ export default function CreateOrganizationPage() {
         const errorData = await response.json()
         setError(errorData.error || 'Failed to create organization')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       setError('Network error occurred')
     } finally {
       setLoading(false)

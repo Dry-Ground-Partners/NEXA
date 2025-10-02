@@ -13,7 +13,8 @@ export function Footer() {
                 alt="Dry Ground AI"
                 className="h-12 w-auto filter invert"
                 onError={(e) => {
-                  console.log('Footer logo failed to load:', e.target.src)
+              const target = e.target as HTMLImageElement
+                  console.log('Footer logo failed to load:', target.src)
                 }}
               />
             </div>

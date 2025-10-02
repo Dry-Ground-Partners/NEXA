@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ API: Error uploading image:', error)
     return NextResponse.json(
       { 

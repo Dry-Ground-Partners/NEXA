@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       enhancedText: result.enhancedText
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ API: Error in text enhancement:', error)
     return NextResponse.json(
       { 

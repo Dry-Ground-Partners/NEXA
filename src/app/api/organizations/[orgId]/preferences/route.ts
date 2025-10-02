@@ -74,7 +74,7 @@ export async function GET(
     }
 
     return NextResponse.json(response)
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching organization preferences:', error)
     return NextResponse.json(
       { error: 'Failed to fetch organization preferences' },
@@ -210,7 +210,7 @@ export async function PUT(
       data: response,
       message: 'Preferences updated successfully',
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating organization preferences:', error)
     return NextResponse.json(
       { error: 'Failed to update organization preferences' },

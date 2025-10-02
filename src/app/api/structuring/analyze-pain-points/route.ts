@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(result)
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 API: Unexpected error in pain point analysis:', error)
     
     return NextResponse.json(
@@ -84,7 +84,7 @@ export async function GET() {
       langchain: health,
       timestamp: new Date().toISOString()
     })
-  } catch (error) {
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         status: 'API endpoint active', 

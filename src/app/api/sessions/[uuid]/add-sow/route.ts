@@ -33,7 +33,7 @@ export async function PUT(
         { status: 500 }
       )
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 Error adding SOW to session:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

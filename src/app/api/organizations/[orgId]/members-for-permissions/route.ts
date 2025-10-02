@@ -65,7 +65,7 @@ export async function GET(
       members: membersList
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error getting organization members for permissions:', error)
     
     return NextResponse.json(

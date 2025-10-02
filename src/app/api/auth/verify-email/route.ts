@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Email verification error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
     } else {
       return NextResponse.redirect(new URL(`/auth/login?error=${encodeURIComponent(verifyData.error)}`, request.url))
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Email verification redirect error:', error)
     return NextResponse.redirect(new URL('/auth/login?error=verification-failed', request.url))
   }

@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
           console.log('📸 PDF: No organization logos set, will use defaults')
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('⚠️ PDF: Could not fetch organization preferences, using default logos:', error)
     }
     
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Solutioning PDF Download: Generated successfully, size:', pdfBuffer.length, 'bytes')
     
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       }
     })
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Solutioning PDF Download: Error:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to generate PDF download' },
@@ -141,14 +141,14 @@ async function callPythonScript(data: any): Promise<Buffer | null> {
       
       python.on('error', (error) => {
         console.error('❌ Failed to start Python process:', error)
-        reject(new Error(`Failed to start Python process: ${error.message}`))
+        reject(new Error(`Failed to start Python process: ${error instanceof Error ? error.message : "Unknown error"}`))
       })
       
       // Send JSON data to Python script
       python.stdin.write(JSON.stringify(data))
       python.stdin.end()
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error in callPythonScript:', error)
       reject(error)
     }

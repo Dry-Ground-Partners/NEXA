@@ -96,7 +96,7 @@ export async function GET(
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error getting session permissions:', error)
     
     return NextResponse.json(
@@ -276,7 +276,7 @@ export async function PUT(
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error updating session permissions:', error)
     
     return NextResponse.json(

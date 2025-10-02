@@ -66,10 +66,10 @@ export async function GET(
       totalSessions: sessions.length
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching organization sessions:', error)
     return NextResponse.json(
-      { error: `Internal server error: ${error.message}` },
+      { error: `Internal server error: ${error instanceof Error ? error.message : "Unknown error"}` },
       { status: 500 }
     )
   }

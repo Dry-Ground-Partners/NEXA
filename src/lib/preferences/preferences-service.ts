@@ -112,7 +112,7 @@ export async function updateOrganizationPreferences(
 ): Promise<OrganizationPreference> {
   // Get existing preferences to track changes
   const existing = await getOrganizationPreferences(organizationId)
-  const changeHistory = (existing.changeHistory as ChangeHistoryEntry[]) || []
+  const changeHistory = (existing.changeHistory as unknown as ChangeHistoryEntry[]) || []
 
   // Build update data
   const updateData: any = {
@@ -282,13 +282,13 @@ export async function updateOrganizationPreferences(
   })
 
   // Clear LangChain preferences cache for this organization
-  try {
-    const { clearPreferencesCache } = await import('@/lib/langchain/preferences-cache')
-    clearPreferencesCache(organizationId)
-  } catch (error) {
-    // Cache module might not be available, continue without clearing
-    console.warn('Could not clear preferences cache:', error)
-  }
+  // NOTE: Cache clearing disabled - preferences-cache module removed for Render deployment
+  // try {
+  //   const { clearPreferencesCache } = await import('@/lib/langchain/preferences-cache')
+  //   clearPreferencesCache(organizationId)
+  // } catch (error: unknown) {
+  //   console.warn('Could not clear preferences cache:', error)
+  // }
 
   return updated
 }

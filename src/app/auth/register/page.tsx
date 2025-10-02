@@ -67,7 +67,7 @@ export default function RegisterPage() {
             }
           }
         }
-      } catch (error) {
+      } catch (error: unknown) {
         // Silently handle error
       }
     } else {
@@ -156,7 +156,7 @@ export default function RegisterPage() {
       } else {
         setError(data.error || 'Registration failed')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       setError('Network error occurred')
     } finally {
       setLoading(false)
@@ -183,8 +183,9 @@ export default function RegisterPage() {
           <img
             src="/images/nexaicon.png?v=1"
             onError={(e) => {
-              console.log('Image failed to load:', e.target.src)
-              e.target.src = '/images/nexanonameicon.png?v=1'
+              const img = e.target as HTMLImageElement
+              console.log('Image failed to load:', img.src)
+              img.src = '/images/nexanonameicon.png?v=1'
             }}
             alt="NEXA"
             className="h-[168px] w-auto mx-auto object-contain"

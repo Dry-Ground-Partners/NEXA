@@ -47,7 +47,7 @@ export default function VerifyEmailPage() {
         setStatus('error')
         setMessage(data.error || 'Verification failed')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       setStatus('error')
       setMessage('Network error occurred')
     }
@@ -61,8 +61,9 @@ export default function VerifyEmailPage() {
           <img
             src="/images/nexaicon.png?v=1"
             onError={(e) => {
-              console.log('Image failed to load:', e.target.src)
-              e.target.src = '/images/nexanonameicon.png?v=1'
+              const img = e.target as HTMLImageElement
+              console.log('Image failed to load:', img.src)
+              img.src = '/images/nexanonameicon.png?v=1'
             }}
             alt="NEXA"
             className="h-[80px] w-auto mx-auto mb-4 object-contain"

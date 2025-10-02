@@ -99,7 +99,7 @@ export async function generatePDFFromHTMLClient(data: CoverPageData): Promise<Bl
         reject(error)
       })
       
-    } catch (error) {
+    } catch (error: unknown) {
       reject(error)
     }
   })

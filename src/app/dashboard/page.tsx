@@ -82,7 +82,7 @@ export default function DashboardPage() {
         if (data.success) {
           setUser(data.user)
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching user:', error)
       } finally {
         setLoading(false)
@@ -102,11 +102,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout 
-      currentPage="Dashboard" 
-      user={user ? {
-        fullName: user.fullName,
-        email: user.email
-      } : undefined}
+      currentPage="Dashboard"
     >
       <div className="container mx-auto p-6">
         <div className="max-w-6xl mx-auto">

@@ -66,7 +66,7 @@ export async function createQuickshotChain() {
     }
     */
     throw new Error('Using fallback for debugging')
-  } catch (error) {
+  } catch (error: unknown) {
     console.log('⚠️ Using fallback prompt')
     
     // Fallback to local prompt with memory structure
@@ -295,7 +295,7 @@ export async function chatTurn(
       }
     }
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Chat turn error:', error)
     
     // Fallback response
@@ -353,7 +353,7 @@ export async function createMaestroChain() {
     })
     console.log('✅ Successfully pulled maestro prompt from LangSmith')
     promptTemplate = hubPrompt
-  } catch (error) {
+  } catch (error: unknown) {
     console.log('⚠️ Using fallback maestro prompt')
     
     // Fallback prompt with same context structure
@@ -529,7 +529,7 @@ export async function maestroTurn(
       }
     }
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Maestro turn error:', error)
     
     return {

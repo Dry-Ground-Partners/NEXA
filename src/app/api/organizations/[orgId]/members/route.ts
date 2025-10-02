@@ -74,7 +74,7 @@ export async function GET(
       totalMembers: members.length
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching organization members:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

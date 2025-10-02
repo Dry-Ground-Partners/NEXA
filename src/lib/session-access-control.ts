@@ -109,7 +109,7 @@ export class SessionAccessControlService {
           return this.getOrganizationAccess(userMembership.role)
       }
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error evaluating session access:', error)
       return 'none'
     }
@@ -244,7 +244,7 @@ export class SessionAccessControlService {
 
       return accessibleSessions
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error getting accessible sessions:', error)
       return []
     }

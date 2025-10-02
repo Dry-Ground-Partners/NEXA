@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       structure: result.structure
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ API: Error in solution structuring:', error)
     return NextResponse.json(
       { 

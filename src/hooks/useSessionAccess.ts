@@ -76,7 +76,7 @@ export function useSessionAccess(sessionId?: string) {
           router.push('/grid?error=access_denied')
         }
 
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('❌ Error checking session access:', error)
         setAccessState(prev => ({
           ...prev,
@@ -119,7 +119,7 @@ export function useCanWrite(sessionId?: string) {
         setCanWrite(false)
         return false
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error checking write access:', error)
       setCanWrite(false)
       return false

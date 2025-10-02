@@ -41,7 +41,7 @@ async function testConfigurationSystem() {
 
     return true
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Configuration test failed:', error)
     return false
   }
@@ -102,7 +102,7 @@ async function testHotReloading() {
 
     return true
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Hot-reloading test failed:', error)
     return false
   }
@@ -186,7 +186,7 @@ async function demonstrateCreditsCalculation() {
 
     return true
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Credits calculation demo failed:', error)
     return false
   }
@@ -240,7 +240,7 @@ async function showPlanComparison() {
 
     return true
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Plan comparison failed:', error)
     return false
   }
@@ -271,9 +271,9 @@ async function main() {
         failed++
         console.log(`\n❌ ${test.name} - FAILED`)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       failed++
-      console.log(`\n❌ ${test.name} - ERROR: ${error.message}`)
+      console.log(`\n❌ ${test.name} - ERROR: ${error instanceof Error ? error.message : "Unknown error"}`)
     }
   }
 

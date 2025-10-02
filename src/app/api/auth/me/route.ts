@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         organizationMemberships: user.organizationMemberships
       }
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Get current user error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

@@ -56,11 +56,11 @@ export class PlanRegistry {
     await this.refreshCacheIfNeeded()
     const plans: Record<string, PlanDefinition> = {}
     
-    for (const [planName, definition] of this.cache) {
+    Array.from(this.cache.entries()).forEach(([planName, definition]) => {
       if (definition.pricing.monthly >= minPrice && definition.pricing.monthly <= maxPrice) {
         plans[planName] = definition
       }
-    }
+    })
     
     return plans
   }
@@ -141,7 +141,7 @@ export class PlanRegistry {
           }
           
           this.cache.set(def.planName, planDef)
-        } catch (error) {
+        } catch (error: unknown) {
           console.error(`❌ Error parsing plan definition ${def.planName}:`, error)
         }
       }
@@ -149,7 +149,7 @@ export class PlanRegistry {
       this.lastCacheUpdate = new Date()
       console.log(`✅ Loaded ${this.cache.size} plan definitions`)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Failed to refresh plan definitions cache:', error)
     } finally {
       this.isRefreshing = false
@@ -177,7 +177,7 @@ export class PlanRegistry {
       this.lastCacheUpdate = new Date(0)
       console.log(`✅ Updated plan definition: ${planName}`)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`❌ Failed to update plan definition ${planName}:`, error)
       throw error
     }
@@ -196,7 +196,7 @@ export class PlanRegistry {
       this.lastCacheUpdate = new Date(0)
       console.log(`✅ Deleted plan definition: ${planName}`)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`❌ Failed to delete plan definition ${planName}:`, error)
       throw error
     }

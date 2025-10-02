@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       }
     })
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ HTML Template Extraction: Error:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to generate HTML template' },
@@ -109,14 +109,14 @@ async function callPythonScriptForHTML(data: any): Promise<string | null> {
       
       python.on('error', (error) => {
         console.error('❌ Failed to start Python process:', error)
-        reject(new Error(`Failed to start Python process: ${error.message}`))
+        reject(new Error(`Failed to start Python process: ${error instanceof Error ? error.message : "Unknown error"}`))
       })
       
       // Send JSON data to Python script
       python.stdin.write(JSON.stringify(data))
       python.stdin.end()
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error in callPythonScriptForHTML:', error)
       reject(error)
     }

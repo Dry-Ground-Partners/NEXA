@@ -177,7 +177,7 @@ export default function StructuringPage() {
             // Remove invalid session from URL
             window.history.replaceState({}, '', '/structuring')
           }
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('💥 Error loading session:', error)
           window.history.replaceState({}, '', '/structuring')
         }
@@ -197,7 +197,7 @@ export default function StructuringPage() {
           // Redirect to login if not authenticated
           window.location.href = '/auth/login'
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching user:', error)
         window.location.href = '/auth/login'
       } finally {
@@ -236,7 +236,7 @@ export default function StructuringPage() {
       } else {
         console.error('❌ Auto-save failed:', result.error)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Auto-save error:', error)
     }
   }, [sessionId, saving, hasUnsavedChanges])
@@ -432,7 +432,7 @@ export default function StructuringPage() {
       // Auto-switch to solution tab (no popup needed)
       console.log(`✅ Analysis complete! Found ${result.data.pain_points.length} pain points. Auto-switching to Solution tab.`)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Error during pain point analysis:', error)
       alert('Analysis failed. Please check the console for details.')
     } finally {
@@ -605,7 +605,7 @@ export default function StructuringPage() {
       // Log success (no popup needed)
       console.log(`✅ Solution generation complete! Generated ${result.data.solution_parts.length} solutions with overview.`)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Error during solution generation:', error)
       alert('Solution generation failed. Please check the console for details.')
     } finally {
@@ -722,7 +722,7 @@ export default function StructuringPage() {
           alert(`Failed to save session: ${result.error}`)
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Error saving session:', error)
       alert('Failed to save session. Please try again.')
     } finally {
@@ -753,7 +753,7 @@ export default function StructuringPage() {
           console.error('❌ Failed to delete session:', result.error)
           alert(`Failed to delete session: ${result.error}`)
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('💥 Error deleting session:', error)
         alert('Failed to delete session. Please try again.')
       }
@@ -876,7 +876,7 @@ export default function StructuringPage() {
       } else {
         alert('Failed to transition to visuals. Please try again.')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error transitioning to visuals:', error)
       alert('Error transitioning to visuals. Please try again.')
     } finally {

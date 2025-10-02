@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       analysis: result.analysis
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ API: Error in vision analysis:', error)
     return NextResponse.json(
       { 

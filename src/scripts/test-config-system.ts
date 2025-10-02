@@ -56,7 +56,7 @@ async function testEventRegistry() {
     await eventRegistry.deleteEventDefinition('test_event')
     console.log('🧹 Cleaned up test event')
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Event registry test failed:', error)
   }
 }
@@ -124,7 +124,7 @@ async function testPlanRegistry() {
     await planRegistry.deletePlanDefinition('test_plan')
     console.log('🧹 Cleaned up test plan')
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Plan registry test failed:', error)
   }
 }
@@ -150,7 +150,7 @@ async function testUsageTracker() {
     
     console.log('✅ Usage tracker integration looks good')
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Usage tracker test failed:', error)
   }
 }
@@ -174,7 +174,7 @@ async function testCacheRefresh() {
     console.log(`📊 Event cache: ${eventCacheInfo.size} items, fresh: ${!eventCacheInfo.isStale}`)
     console.log(`📊 Plan cache: ${planCacheInfo.size} items, fresh: ${!planCacheInfo.isStale}`)
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Cache refresh test failed:', error)
   }
 }
@@ -221,7 +221,7 @@ async function testConfigIntegration() {
       console.log('⚠️ Some configuration issues found')
     }
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Integration test failed:', error)
   }
 }

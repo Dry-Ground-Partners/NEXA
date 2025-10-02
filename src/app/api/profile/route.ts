@@ -58,7 +58,7 @@ export async function PUT(request: NextRequest) {
         profileData: updatedUser.profileData
       }
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Profile update error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

@@ -49,11 +49,11 @@ export class EventRegistry {
     await this.refreshCacheIfNeeded()
     const events: Record<string, EventDefinition> = {}
     
-    for (const [eventType, definition] of this.cache) {
+    Array.from(this.cache.entries()).forEach(([eventType, definition]) => {
       if (definition.category === category) {
         events[eventType] = definition
       }
-    }
+    })
     
     return events
   }
@@ -111,7 +111,7 @@ export class EventRegistry {
           }
           
           this.cache.set(def.eventType, eventDef)
-        } catch (error) {
+        } catch (error: unknown) {
           console.error(`❌ Error parsing event definition ${def.eventType}:`, error)
         }
       }
@@ -119,7 +119,7 @@ export class EventRegistry {
       this.lastCacheUpdate = new Date()
       console.log(`✅ Loaded ${this.cache.size} event definitions`)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Failed to refresh event definitions cache:', error)
     } finally {
       this.isRefreshing = false
@@ -147,7 +147,7 @@ export class EventRegistry {
       this.lastCacheUpdate = new Date(0)
       console.log(`✅ Updated event definition: ${eventType}`)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`❌ Failed to update event definition ${eventType}:`, error)
       throw error
     }
@@ -166,7 +166,7 @@ export class EventRegistry {
       this.lastCacheUpdate = new Date(0)
       console.log(`✅ Deleted event definition: ${eventType}`)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`❌ Failed to delete event definition ${eventType}:`, error)
       throw error
     }

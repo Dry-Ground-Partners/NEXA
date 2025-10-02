@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 API: Onboarding error:', error)
     
     return NextResponse.json(

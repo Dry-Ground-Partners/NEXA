@@ -268,7 +268,7 @@ async function seedEventDefinitions() {
         }
       })
       console.log(`✅ Event: ${event.eventType}`)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`❌ Failed to seed event ${event.eventType}:`, error)
     }
   }
@@ -290,7 +290,7 @@ async function seedPlanDefinitions() {
         }
       })
       console.log(`✅ Plan: ${plan.planName}`)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`❌ Failed to seed plan ${plan.planName}:`, error)
     }
   }
@@ -309,7 +309,7 @@ async function main() {
     console.log('\n🎉 Seeding completed successfully!')
     console.log('You can now test the configuration system.')
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Seeding failed:', error)
     process.exit(1)
   } finally {

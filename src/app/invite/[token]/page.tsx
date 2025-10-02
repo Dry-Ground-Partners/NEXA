@@ -179,8 +179,8 @@ export default function InvitePage({ params }: { params: { token: string } }) {
           <img
             src="/images/nexaicon.png?v=1"
             onError={(e) => {
-              const target = e.target as HTMLImageElement
-              target.src = '/images/nexanonameicon.png?v=1'
+              const img = e.target as HTMLImageElement
+              img.src = '/images/nexanonameicon.png?v=1'
             }}
             alt="NEXA"
             className="h-20 w-auto mx-auto object-contain"

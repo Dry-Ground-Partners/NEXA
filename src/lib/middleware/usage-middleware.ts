@@ -108,7 +108,7 @@ export function trackUsageAsync(
       console.log(`✅ Async usage tracked: ${options.eventType} - ${result.creditsConsumed} credits`)
     })
     .catch((error) => {
-      console.error(`❌ Async usage tracking failed: ${error.message}`)
+      console.error(`❌ Async usage tracking failed: ${error instanceof Error ? error.message : "Unknown error"}`)
     })
 }
 
@@ -147,12 +147,12 @@ export function createUsageTrackingHandler<T extends any[]>(
 
       return newResponse
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Usage tracking handler error:', error)
       
       // If tracking fails, we should still execute the handler but log the error
       // Comment out the following lines if you want tracking to be mandatory
-      if (error.message.includes('tracking')) {
+      if (error instanceof Error && error.message.includes('tracking')) {
         console.warn('⚠️ Proceeding without usage tracking due to error')
         return handler(...args)
       }
@@ -249,10 +249,10 @@ export async function checkUsageLimits(
       percentageUsed: result.limitWarning?.percentageUsed || 0
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     return {
       allowed: false,
-      reason: error.message,
+      reason: error instanceof Error ? error.message : String(error),
       remainingCredits: 0,
       percentageUsed: 0
     }

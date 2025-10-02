@@ -32,7 +32,7 @@ export async function PUT(
         { status: 500 }
       )
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 Error adding solutioning to session:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

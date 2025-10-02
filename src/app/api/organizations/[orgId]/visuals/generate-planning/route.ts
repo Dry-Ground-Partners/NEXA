@@ -95,7 +95,7 @@ export async function POST(
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ API: Error in generate planning:', error)
     return NextResponse.json(
       { 

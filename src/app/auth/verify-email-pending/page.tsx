@@ -44,7 +44,7 @@ export default function VerifyEmailPendingPage() {
       } else {
         setMessage(data.error || 'Failed to resend email')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       setMessage('Network error occurred')
     } finally {
       setLoading(false)

@@ -48,7 +48,7 @@ export function ProtectedSaveButton({
 
     try {
       await onSave()
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Save operation failed:', error)
       // You could add toast notification here
     }

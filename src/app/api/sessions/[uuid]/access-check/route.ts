@@ -47,7 +47,7 @@ export async function GET(
       canDelete
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error checking session access:', error)
     
     return NextResponse.json(

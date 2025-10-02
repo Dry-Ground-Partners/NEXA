@@ -74,7 +74,7 @@ export async function PUT(request: NextRequest) {
     console.error('❌ API: Error updating solution:', error)
     return NextResponse.json({ 
       success: false, 
-      error: `Internal server error: ${error.message}` 
+      error: `Internal server error: ${error instanceof Error ? error.message : "Unknown error"}` 
     }, { status: 500 })
   }
 }

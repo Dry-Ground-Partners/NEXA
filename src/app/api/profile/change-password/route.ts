@@ -51,7 +51,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       message: 'Password changed successfully'
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Password change error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

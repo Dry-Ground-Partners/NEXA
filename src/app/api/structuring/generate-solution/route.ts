@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     } else {
       return NextResponse.json({ success: false, error: result.error || 'Unknown error during solution generation' }, { status: 500 })
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('API Error:', error)
     return NextResponse.json({ success: false, error: `API processing failed: ${error instanceof Error ? error.message : 'Unknown error'}` }, { status: 500 })
   }

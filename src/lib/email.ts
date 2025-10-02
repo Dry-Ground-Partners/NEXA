@@ -77,7 +77,7 @@ export async function sendVerificationEmail(data: EmailVerificationData): Promis
 
     console.log('Verification email sent successfully to:', data.email)
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending verification email:', error)
     return false
   }
@@ -126,7 +126,7 @@ export async function sendInvitationEmail(data: InvitationEmailData): Promise<bo
     }
 
     return response.ok
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending invitation email:', error)
     return false
   }
@@ -172,7 +172,7 @@ export async function sendWelcomeEmail(email: string, userName: string, organiza
     }
 
     return response.ok
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending welcome email:', error)
     return false
   }

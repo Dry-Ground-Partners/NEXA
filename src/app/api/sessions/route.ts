@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       success: true,
       sessions: limitedSessions
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 API: Error getting sessions:', error)
     
     return NextResponse.json(
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
       session
     }, { status: 201 })
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 API: Error creating session:', error)
     
     return NextResponse.json(

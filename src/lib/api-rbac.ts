@@ -63,7 +63,7 @@ export async function getUserRoleFromRequest(
       userId: user.id,
       user
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error getting user role from request:', error)
     return { role: null, organizationId: null, userId: null, user: null }
   }

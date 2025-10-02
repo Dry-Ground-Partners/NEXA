@@ -140,7 +140,7 @@ async function runRBACTests(): Promise<TestResult[]> {
       const emoji = passed ? '✅' : '❌'
       console.log(`${emoji} ${result.test}: expected ${expected}, got ${actual}`)
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`❌ Error testing ${permission} for ${role}:`, error)
       results.push({
         test: `${permission} for ${role}`,
@@ -269,7 +269,7 @@ async function main() {
       process.exit(1)
     }
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Test execution failed:', error)
     process.exit(1)
   }

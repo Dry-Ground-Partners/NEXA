@@ -144,7 +144,7 @@ export default function LOEPage() {
             // Remove invalid session from URL
             window.history.replaceState({}, '', '/loe')
           }
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('💥 Error loading LOE session:', error)
           window.history.replaceState({}, '', '/loe')
         }
@@ -164,7 +164,7 @@ export default function LOEPage() {
           // Redirect to login if not authenticated
           window.location.href = '/auth/login'
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching user:', error)
         window.location.href = '/auth/login'
       } finally {
@@ -215,7 +215,7 @@ export default function LOEPage() {
           setLastSaved(new Date())
           console.log('✅ LOE auto-save completed')
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('❌ LOE auto-save failed:', error)
       }
     }, 3000) // 3-second debounce
@@ -558,7 +558,7 @@ export default function LOEPage() {
         console.error('❌ LOE Preview PDF: Server error:', errorData)
         alert('Failed to generate PDF preview. Please try again.')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ LOE Preview PDF: Client error:', error)
       alert('Error generating PDF preview. Please try again.')
     } finally {
@@ -609,7 +609,7 @@ export default function LOEPage() {
         console.error('❌ LOE Generate PDF: Server error:', errorData)
         alert('Failed to generate PDF download. Please try again.')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ LOE Generate PDF: Client error:', error)
       alert('Error generating PDF download. Please try again.')
     } finally {
@@ -673,7 +673,7 @@ export default function LOEPage() {
           alert(`Failed to create LOE session: ${result.error}`)
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 LOE Save error:', error)
       alert('Error saving LOE session. Please try again.')
     } finally {
@@ -704,7 +704,7 @@ export default function LOEPage() {
           console.error('❌ Failed to delete LOE session:', result.error)
           alert(`Failed to delete LOE session: ${result.error}`)
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('💥 Delete LOE session error:', error)
         alert('Error deleting LOE session. Please try again.')
       }
@@ -722,10 +722,6 @@ export default function LOEPage() {
   return (
     <DashboardLayout 
       currentPage="Level of Effort" 
-      user={user ? {
-        fullName: user.fullName,
-        email: user.email
-      } : undefined}
     >
       <div className="nexa-background min-h-screen p-6">
         <div className="max-w-6xl mx-auto">

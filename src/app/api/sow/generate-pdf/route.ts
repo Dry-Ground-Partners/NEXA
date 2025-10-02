@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
           console.log('📸 SOW PDF: No organization logo set, will use default')
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('⚠️ SOW PDF: Could not fetch organization preferences, using default logo:', error)
     }
     
@@ -100,14 +100,14 @@ export async function POST(request: NextRequest) {
     const filename = `SOW_${sanitizedProjectName}_${new Date().toISOString().split('T')[0]}.pdf`
     
     // Return PDF as attachment for download
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     })
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ SOW PDF Download: Error:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to generate SOW PDF download' },

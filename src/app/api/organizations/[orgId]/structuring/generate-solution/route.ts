@@ -124,7 +124,7 @@ export async function POST(
       }
     })
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 API: Unexpected error in solution generation:', error)
     
     return NextResponse.json(

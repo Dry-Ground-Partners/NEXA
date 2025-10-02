@@ -98,7 +98,7 @@ async function testBasicAttribution(testData: any): Promise<boolean> {
       }
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Basic attribution test failed:', error)
     return false
   }
@@ -177,7 +177,7 @@ async function testCrossOrgIsolation(testData: any): Promise<boolean> {
 
     return true
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Cross-org isolation test failed:', error)
     return false
   }
@@ -237,7 +237,7 @@ async function testSessionAttribution(testData: any): Promise<boolean> {
 
     return true
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Session attribution test failed:', error)
     return false
   }
@@ -313,7 +313,7 @@ async function testUsageBreakdownAccuracy(testData: any): Promise<boolean> {
 
     return true
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Usage breakdown accuracy test failed:', error)
     return false
   }
@@ -335,7 +335,7 @@ async function cleanupTestData(testData: any): Promise<void> {
 
     console.log('✅ Test data cleaned up')
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('⚠️ Cleanup failed (non-critical):', error)
   }
 }
@@ -370,9 +370,9 @@ async function main() {
         failed++
         console.log(`\n❌ ${test.name} - FAILED`)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       failed++
-      console.log(`\n❌ ${test.name} - ERROR: ${error.message}`)
+      console.log(`\n❌ ${test.name} - ERROR: ${error instanceof Error ? error.message : "Unknown error"}`)
     }
 
     // Small delay between tests

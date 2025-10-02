@@ -201,10 +201,10 @@ export async function GET(
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Usage history error:', error)
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

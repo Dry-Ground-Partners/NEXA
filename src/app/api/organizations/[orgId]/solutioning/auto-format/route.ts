@@ -153,7 +153,7 @@ Remember: Only add HTML formatting tags, do not change the actual text content.
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Auto-Format: Error:', error)
     
     return NextResponse.json({

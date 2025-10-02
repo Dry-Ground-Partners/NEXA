@@ -52,7 +52,6 @@ import {
 import type { SessionSummary } from '@/lib/sessions'
 import { useUser } from '@/contexts/user-context'
 import { usePreferences } from '@/hooks/use-preferences'
-import { fileToBase64, validateImageFile, createPreviewUrl, revokePreviewUrl } from '@/lib/preferences/image-utils'
 
 export default function GridPage() {
   const router = useRouter()
@@ -190,10 +189,10 @@ export default function GridPage() {
   useEffect(() => {
     return () => {
       if (mainLogoPreview && mainLogoPreview.startsWith('blob:')) {
-        revokePreviewUrl(mainLogoPreview)
+        URL.revokeObjectURL(mainLogoPreview)
       }
       if (secondLogoPreview && secondLogoPreview.startsWith('blob:')) {
-        revokePreviewUrl(secondLogoPreview)
+        URL.revokeObjectURL(secondLogoPreview)
       }
     }
   }, [mainLogoPreview, secondLogoPreview])
@@ -205,6 +204,31 @@ export default function GridPage() {
       [section]: !prev[section]
     }))
   }
+  
+  // Inline utility functions
+  const validateImageFile = (file: File) => {
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml']
+    
+    if (!validTypes.includes(file.type)) {
+      return { valid: false, error: 'Invalid file type. Please use PNG, JPG, or SVG.' }
+    }
+    if (file.size > maxSize) {
+      return { valid: false, error: 'File size exceeds 5MB limit.' }
+    }
+    return { valid: true }
+  }
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const createPreviewUrl = (file: File) => URL.createObjectURL(file)
   
   // Handle logo upload with validation
   const handleLogoUpload = async (file: File, type: 'main' | 'second') => {
@@ -223,14 +247,14 @@ export default function GridPage() {
     if (type === 'main') {
       // Clean up old preview if it exists
       if (mainLogoPreview && mainLogoPreview.startsWith('blob:')) {
-        revokePreviewUrl(mainLogoPreview)
+        URL.revokeObjectURL(mainLogoPreview)
       }
       setMainLogo(file)
       setMainLogoPreview(previewUrl)
     } else {
       // Clean up old preview if it exists
       if (secondLogoPreview && secondLogoPreview.startsWith('blob:')) {
-        revokePreviewUrl(secondLogoPreview)
+        URL.revokeObjectURL(secondLogoPreview)
       }
       setSecondLogo(file)
       setSecondLogoPreview(previewUrl)
@@ -241,13 +265,13 @@ export default function GridPage() {
   const handleRemoveLogo = (type: 'main' | 'second') => {
     if (type === 'main') {
       if (mainLogoPreview && mainLogoPreview.startsWith('blob:')) {
-        revokePreviewUrl(mainLogoPreview)
+        URL.revokeObjectURL(mainLogoPreview)
       }
       setMainLogo(null)
       setMainLogoPreview(null)
     } else {
       if (secondLogoPreview && secondLogoPreview.startsWith('blob:')) {
-        revokePreviewUrl(secondLogoPreview)
+        URL.revokeObjectURL(secondLogoPreview)
       }
       setSecondLogo(null)
       setSecondLogoPreview(null)

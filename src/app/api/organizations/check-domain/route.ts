@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       exists: false
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Domain check error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

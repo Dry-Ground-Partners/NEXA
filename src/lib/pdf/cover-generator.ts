@@ -134,7 +134,7 @@ export async function generateProfessionalCoverPDF(data: CoverPageData): Promise
     // Add a subtle underline to mimic logo styling
     doc.setLineWidth(1)
     doc.line(logoX, logoY + 5, logoX + logoWidth, logoY + 5)
-  } catch (error) {
+  } catch (error: unknown) {
     console.warn('Logo image not available, using text fallback')
     doc.setFontSize(24)
     doc.setFont('helvetica', 'bold')

@@ -199,7 +199,7 @@ export default function OrganizationsPage() {
         setAvailableMembers(membersData.members)
       }
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error loading session permissions:', error)
       setPermissionsError('Failed to load session permissions')
     } finally {
@@ -248,7 +248,7 @@ export default function OrganizationsPage() {
 
     } catch (error: any) {
       console.error('❌ Error updating session permissions:', error)
-      setPermissionsError(error.message || 'Failed to update permissions')
+      setPermissionsError(error instanceof Error ? error.message : 'Failed to update permissions')
     } finally {
       setPermissionsLoading(false)
     }
@@ -280,7 +280,7 @@ export default function OrganizationsPage() {
       console.log('✅ Role updated successfully')
     } catch (error: any) {
       console.error('❌ Failed to update role:', error)
-      alert(`Failed to update role: ${error.message}`)
+      alert(`Failed to update role: ${error instanceof Error ? error.message : "Unknown error"}`)
     }
   }
 
@@ -327,7 +327,7 @@ export default function OrganizationsPage() {
       console.log('✅ Member offboarded successfully:', data.message)
     } catch (error: any) {
       console.error('❌ Failed to offboard member:', error)
-      alert(`Failed to offboard member: ${error.message}`)
+      alert(`Failed to offboard member: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
       setOffboardLoading(false)
     }
@@ -389,7 +389,7 @@ export default function OrganizationsPage() {
         closeInviteModal()
       }, 3000)
 
-    } catch (error) {
+    } catch (error: unknown) {
       setInviteError('Failed to send invitation')
       console.error('Error sending invitation:', error)
     } finally {
@@ -497,7 +497,7 @@ export default function OrganizationsPage() {
         roles: membersData.roles
       })
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Failed to load organization data:', error)
       // Fallback to empty data
       setOrganizationData({

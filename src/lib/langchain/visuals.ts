@@ -1,7 +1,6 @@
 // LangChain visuals module using LangSmith prompts
 import * as hub from "langchain/hub/node"
 import { JsonOutputParser } from "@langchain/core/output_parsers"
-import { getCachedPreferences } from './preferences-cache'
 
 // Types for visuals planning
 export interface VisualsIdeationRequest {
@@ -68,7 +67,7 @@ export async function generatePlanningFromIdeation(
 
     // Fetch organization preferences (cached)
     const prefs = organizationId 
-      ? await getCachedPreferences(organizationId)
+      ? await null // getCachedPreferences(organizationId)
       : { generalApproach: '', visuals: { ideation: '', planning: '' } }
 
     const result = await promptWithModel.invoke({
@@ -114,7 +113,7 @@ export async function generatePlanningFromIdeation(
       message: 'Planning generated successfully from ideation'
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in visuals planning generation:', error)
     return {
       success: false,
@@ -160,7 +159,7 @@ export async function generateSketchFromPlanning(
 
     // Fetch organization preferences (cached)
     const prefs = organizationId 
-      ? await getCachedPreferences(organizationId)
+      ? await null // getCachedPreferences(organizationId)
       : { generalApproach: '', visuals: { sketching: '' } }
 
     const result = await promptWithModel.invoke({
@@ -228,7 +227,7 @@ export async function generateSketchFromPlanning(
       message: 'Sketch generated successfully from planning'
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in visuals sketch generation:', error)
     return {
       success: false,

@@ -85,7 +85,7 @@ export default function SOWPage() {
       } else {
         console.log('❌ Auto-save failed:', result.error)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Auto-save error:', error)
     }
   }, [sessionId, saving, hasUnsavedChanges, collectCurrentData])
@@ -148,7 +148,7 @@ export default function SOWPage() {
           console.log('❌ Failed to update session:', result.error)
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Save error:', error)
     } finally {
       setSaving(false)
@@ -274,7 +274,7 @@ export default function SOWPage() {
       } else {
         console.log('❌ Failed to delete session:', result.error)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Delete error:', error)
     }
   }
@@ -306,7 +306,7 @@ export default function SOWPage() {
             // Remove invalid session from URL
             window.history.replaceState({}, '', '/sow')
           }
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('💥 Error loading SOW session:', error)
           window.history.replaceState({}, '', '/sow')
         }
@@ -325,7 +325,7 @@ export default function SOWPage() {
         } else {
           window.location.href = '/auth/login'
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching user:', error)
         window.location.href = '/auth/login'
       } finally {
@@ -630,7 +630,7 @@ export default function SOWPage() {
         console.log('❌ Preview failed:', errorText)
         alert('Failed to generate PDF preview. Please try again.')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Preview error:', error)
       alert('Error generating PDF preview. Please try again.')
     } finally {
@@ -678,7 +678,7 @@ export default function SOWPage() {
         console.log('❌ Download failed:', errorText)
         alert('Failed to generate PDF download. Please try again.')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('💥 Download error:', error)
       alert('Error generating PDF download. Please try again.')
     } finally {

@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       loeData: result.loeData
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in LOE generation:', error)
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Unknown error' },

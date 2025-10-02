@@ -45,7 +45,7 @@ export async function GET(
       success: true,
       session
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 API: Error getting session:', error)
     
     return NextResponse.json(
@@ -153,7 +153,7 @@ export async function PUT(
       message: 'Session updated successfully'
     })
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 API: Error updating session:', error)
     
     return NextResponse.json(
@@ -194,7 +194,7 @@ export async function DELETE(
       message: 'Session deleted successfully'
     })
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 API: Error deleting session:', error)
     
     return NextResponse.json(

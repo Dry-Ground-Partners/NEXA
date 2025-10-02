@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         })
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Config API error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch configuration' },
@@ -190,10 +190,10 @@ export async function POST(request: NextRequest) {
         )
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Config update error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to update configuration' },
+      { error: error instanceof Error ? error.message : 'Failed to update configuration' },
       { status: 500 }
     )
   }

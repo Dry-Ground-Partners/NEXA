@@ -117,10 +117,10 @@ export async function GET(
       dashboard: dashboardData
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Usage dashboard error:', error)
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

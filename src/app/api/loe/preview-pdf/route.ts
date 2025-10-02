@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
           console.log('📸 LOE Preview: No organization logo set, will use default')
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('⚠️ LOE Preview: Could not fetch organization preferences, using default logo:', error)
     }
 
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Return PDF for preview (inline display)
-    return new NextResponse(result, {
+    return new NextResponse(result as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ LOE PDF Preview: Error occurred:', error)
     return NextResponse.json(
       { error: 'Failed to generate LOE PDF preview' },

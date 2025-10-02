@@ -257,7 +257,7 @@ export async function PATCH(
   } catch (error: any) {
     console.error('Error updating member:', error)
     return NextResponse.json(
-      { error: `Internal server error: ${error.message}` },
+      { error: `Internal server error: ${error instanceof Error ? error.message : "Unknown error"}` },
       { status: 500 }
     )
   }
@@ -385,7 +385,7 @@ export async function DELETE(
   } catch (error: any) {
     console.error('Error removing member:', error)
     return NextResponse.json(
-      { error: `Internal server error: ${error.message}` },
+      { error: `Internal server error: ${error instanceof Error ? error.message : "Unknown error"}` },
       { status: 500 }
     )
   }

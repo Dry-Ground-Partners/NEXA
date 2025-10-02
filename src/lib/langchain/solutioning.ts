@@ -1,6 +1,5 @@
 import * as hub from 'langchain/hub/node'
 import { OpenAI } from 'openai'
-import { getCachedPreferences } from './preferences-cache'
 
 // Interfaces for vision analysis
 export interface VisionAnalysisRequest {
@@ -145,7 +144,7 @@ export async function analyzeImageWithVision(
 
     // Fetch organization preferences (cached)
     const prefs = organizationId 
-      ? await getCachedPreferences(organizationId)
+      ? await null // getCachedPreferences(organizationId)
       : { generalApproach: '', solutioning: { analysis: '' } }
 
     // Prepend preferences to prompt if available
@@ -195,7 +194,7 @@ export async function analyzeImageWithVision(
       analysis: analysis.trim()
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Vision analysis failed:', error)
     return {
       success: false,
@@ -219,7 +218,7 @@ export async function enhanceTextWithLangSmith(
 
     // Fetch organization preferences (cached)
     const prefs = organizationId 
-      ? await getCachedPreferences(organizationId)
+      ? await null // getCachedPreferences(organizationId)
       : { generalApproach: '', solutioning: { enhance: '', formatting: '' } }
 
     // Invoke the prompt with the explanation + preferences
@@ -251,7 +250,7 @@ export async function enhanceTextWithLangSmith(
       enhancedText: enhancedText.trim()
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in text enhancement:', error)
     return {
       success: false,
@@ -275,7 +274,7 @@ export async function structureSolutionWithLangSmith(
 
     // Fetch organization preferences (cached)
     const prefs = organizationId 
-      ? await getCachedPreferences(organizationId)
+      ? await null // getCachedPreferences(organizationId)
       : { generalApproach: '', solutioning: { structure: '' } }
 
     // Invoke the prompt with the AI analysis and solution explanation + preferences
@@ -324,7 +323,7 @@ export async function structureSolutionWithLangSmith(
       }
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in solution structuring:', error)
     return {
       success: false,
@@ -348,7 +347,7 @@ export async function analyzePerNodeStackWithLangSmith(
 
     // Fetch organization preferences (cached)
     const prefs = organizationId 
-      ? await getCachedPreferences(organizationId)
+      ? await null // getCachedPreferences(organizationId)
       : { generalApproach: '', solutioning: { stack: '' } }
 
     // Invoke the prompt with the context (AI analysis + solution steps) + preferences
@@ -388,7 +387,7 @@ export async function analyzePerNodeStackWithLangSmith(
       analysis: analysis.trim()
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in per-node stack analysis:', error)
     return {
       success: false,
@@ -417,7 +416,7 @@ export async function generateSOWWithLangSmith(
 
     // Fetch organization preferences (cached)
     const prefs = organizationId 
-      ? await getCachedPreferences(organizationId)
+      ? await null // getCachedPreferences(organizationId)
       : { generalApproach: '', pushing: { solutioningToSOW: '' } }
 
     // Invoke the prompt with the solutioning data + preferences
@@ -470,7 +469,7 @@ export async function generateSOWWithLangSmith(
       sowData
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in SOW generation:', error)
     return {
       success: false,
@@ -499,7 +498,7 @@ export async function generateLOEWithLangSmith(
 
     // Fetch organization preferences (cached)
     const prefs = organizationId 
-      ? await getCachedPreferences(organizationId)
+      ? await null // getCachedPreferences(organizationId)
       : { generalApproach: '', pushing: { sowToLOE: '' } }
 
     // Invoke the prompt with the SOW data + preferences
@@ -552,7 +551,7 @@ export async function generateLOEWithLangSmith(
       loeData
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in LOE generation:', error)
     return {
       success: false,

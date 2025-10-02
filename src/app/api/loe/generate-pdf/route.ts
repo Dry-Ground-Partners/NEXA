@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
           console.log('📸 LOE PDF: No organization logo set, will use default')
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('⚠️ LOE PDF: Could not fetch organization preferences, using default logo:', error)
     }
 
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     const filename = `LOE_${projectName}_${currentDate}.pdf`
 
     // Return PDF for download (attachment)
-    return new NextResponse(result, {
+    return new NextResponse(result as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ LOE PDF Download: Error occurred:', error)
     return NextResponse.json(
       { error: 'Failed to generate LOE PDF download' },

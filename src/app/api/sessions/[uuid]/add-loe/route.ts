@@ -34,7 +34,7 @@ export async function PUT(
       )
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('💥 Error adding LOE to session:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

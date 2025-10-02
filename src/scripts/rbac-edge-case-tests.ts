@@ -323,7 +323,7 @@ async function runAllEdgeCaseTests(): Promise<boolean> {
     // Print results and return success status
     return printEdgeCaseResults(allResults)
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Edge case testing failed:', error)
     return false
   }

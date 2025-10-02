@@ -69,9 +69,9 @@ export default function LoginPage() {
           <img
             src="/images/nexaicon.png?v=1"
             onError={(e) => {
-              const target = e.target as HTMLImageElement
-              console.log('Image failed to load:', target.src)
-              target.src = '/images/nexanonameicon.png?v=1'
+              const img = e.target as HTMLImageElement
+              console.log('Image failed to load:', img.src)
+              img.src = '/images/nexanonameicon.png?v=1'
             }}
             alt="NEXA"
             className="h-[252px] w-auto mx-auto object-contain"

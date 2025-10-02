@@ -91,7 +91,7 @@ export async function POST(
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error in LOE generation:', error)
     return NextResponse.json(
       { 

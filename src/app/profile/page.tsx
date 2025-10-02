@@ -144,7 +144,7 @@ export default function ProfilePage() {
       } else {
         setError('Failed to load profile')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       setError('Network error occurred')
     } finally {
       setLoading(false)
@@ -170,7 +170,7 @@ export default function ProfilePage() {
         const errorData = await response.json()
         setError(errorData.error || 'Failed to update profile')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       setError('Network error occurred')
     }
   }

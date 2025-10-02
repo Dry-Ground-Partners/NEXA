@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
           console.log('📸 SOW Preview: No organization logo set, will use default')
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('⚠️ SOW Preview: Could not fetch organization preferences, using default logo:', error)
     }
     
@@ -93,14 +93,14 @@ export async function POST(request: NextRequest) {
     console.log('✅ SOW PDF Preview: PDF generated, size:', pdfBuffer.length, 'bytes')
     
     // Return PDF blob
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'inline',
       },
     })
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ SOW PDF Preview: Error:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to generate SOW PDF preview' },

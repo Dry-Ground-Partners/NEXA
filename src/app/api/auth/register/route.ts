@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Registration error:', error)
     
     // Handle specific Prisma errors

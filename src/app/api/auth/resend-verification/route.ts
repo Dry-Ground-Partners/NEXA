@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       message: 'Verification email sent successfully'
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Resend verification error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

@@ -88,7 +88,7 @@ export async function POST(
       }
     })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ API: Error in text enhancement:', error)
     return NextResponse.json(
       { 

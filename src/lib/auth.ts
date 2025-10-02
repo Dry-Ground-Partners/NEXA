@@ -91,7 +91,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
         }
       }))
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error getting user by email:', error)
     return null
   }
@@ -150,7 +150,7 @@ export async function getUserById(id: string): Promise<User | null> {
         }
       }))
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error getting user by ID:', error)
     return null
   }
@@ -181,7 +181,7 @@ export async function verifyPassword(email: string, password: string): Promise<b
     }
 
     return await bcrypt.compare(password, user.passwordHash)
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error verifying password:', error)
     return false
   }
@@ -237,7 +237,7 @@ export function verifyToken(token: string): any {
     }
 
     return jwt.verify(token, secret)
-  } catch (error) {
+  } catch (error: unknown) {
     return null
   }
 }
@@ -278,7 +278,7 @@ export async function getCurrentUser(): Promise<User | null> {
     }
 
     return user
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error getting current user:', error)
     return null
   }
@@ -299,7 +299,7 @@ export async function updateLastLogin(userId: string): Promise<void> {
         failedLoginAttempts: 0 // Reset failed attempts on successful login
       }
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating last login:', error)
   }
 }
@@ -326,7 +326,7 @@ export async function recordFailedLogin(email: string): Promise<void> {
         }
       })
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error recording failed login:', error)
   }
 }
@@ -359,7 +359,7 @@ export async function isAccountLocked(email: string): Promise<boolean> {
     }
 
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error checking account lock:', error)
     return false
   }
@@ -426,7 +426,7 @@ export async function updateUserProfile(userId: string, data: {
         }
       }))
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating user profile:', error)
     return null
   }
@@ -465,7 +465,7 @@ export async function changeUserPassword(userId: string, currentPassword: string
     })
 
     return true
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error changing password:', error)
     return false
   }
@@ -505,7 +505,7 @@ export async function verifyAuth(request: NextRequest): Promise<User | null> {
     }
 
     return user
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error verifying auth:', error)
     return null
   }

@@ -106,8 +106,8 @@ async function simulateRealTimeUsage(users: TestUser[], organizations: TestOrgan
         console.log(`❌ ${new Date().toLocaleTimeString()} | Failed: ${result.error}`)
       }
 
-    } catch (error) {
-      console.error(`❌ ${new Date().toLocaleTimeString()} | Error:`, error.message)
+    } catch (error: unknown) {
+      console.error(`❌ ${new Date().toLocaleTimeString()} | Error:`, error instanceof Error ? error.message : "Unknown error")
     }
 
     // Random delay between 2-4 seconds
@@ -144,8 +144,8 @@ async function testDashboardAPIs(organizations: TestOrganization[]): Promise<voi
       console.log(`      - Event Types: ${Object.keys(breakdown.eventBreakdown).length}`)
       console.log(`      - Users: ${Object.keys(breakdown.userBreakdown).length}`)
 
-    } catch (error) {
-      console.error(`   ❌ API test failed:`, error.message)
+    } catch (error: unknown) {
+      console.error(`   ❌ API test failed:`, error instanceof Error ? error.message : "Unknown error")
     }
   }
 }
@@ -207,8 +207,8 @@ async function generateUsageReport(organizations: TestOrganization[]): Promise<v
         })
       }
 
-    } catch (error) {
-      console.error(`   ❌ Report error:`, error.message)
+    } catch (error: unknown) {
+      console.error(`   ❌ Report error:`, error instanceof Error ? error.message : "Unknown error")
     }
   }
 }
@@ -263,8 +263,8 @@ async function cleanupTestData(): Promise<void> {
 
     console.log(`✅ Cleaned up ${deleted.count} test events`)
 
-  } catch (error) {
-    console.error('⚠️ Cleanup error (non-critical):', error.message)
+  } catch (error: unknown) {
+    console.error('⚠️ Cleanup error (non-critical):', error instanceof Error ? error.message : "Unknown error")
   }
 }
 
