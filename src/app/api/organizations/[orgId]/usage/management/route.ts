@@ -214,7 +214,7 @@ export async function PUT(
       ...(alertThresholds ? { alertThresholds } : {}),
       ...(autoScaling ? { autoScaling } : {}),
       lastUpdated: new Date().toISOString(),
-      updatedBy: roleInfo.user.id
+      updatedBy: roleInfo.user?.id || 'system'
     }
 
     // Update organization
@@ -235,7 +235,7 @@ export async function PUT(
     await prisma.auditLog.create({
       data: {
         organizationId: orgId,
-        userId: roleInfo.user.id,
+        userId: roleInfo.user?.id || null,
         action: 'update_usage_limits',
         resourceType: 'organization',
         resourceId: orgId,
