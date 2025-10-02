@@ -57,7 +57,7 @@ export async function GET(
 
     // Calculate usage efficiency and patterns
     const usagePatterns = {
-      peakUsageDay: currentUsage.dailyUsage.reduce((peak, day) => 
+      peakUsageDay: currentUsage.dailyUsage.reduce<{ date: string; credits: number } | null>((peak, day) => 
         day.credits > (peak?.credits || 0) ? day : peak, null),
       averageDailyUsage: currentUsage.dailyUsage.length > 0 
         ? currentUsage.dailyUsage.reduce((sum, day) => sum + day.credits, 0) / currentUsage.dailyUsage.length
