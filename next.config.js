@@ -20,8 +20,12 @@ const nextConfig = {
   }),
   // Render.com requires this for proper routing
   trailingSlash: false,
-  // Disable static optimization - this is a dynamic full-stack app
+  // Disable static optimization - this is a dynamic full-stack app  
   output: 'standalone',
+  // Skip generating error pages during build (they'll be generated at runtime)
+  generateBuildId: async () => {
+    return 'nexa-render-build'
+  },
   // Use PORT environment variable from Render
   ...(process.env.RENDER && {
     env: {
