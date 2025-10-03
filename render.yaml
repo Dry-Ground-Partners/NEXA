@@ -1,15 +1,14 @@
 services:
-  # Main Next.js Web Service
   - type: web
     name: nexa-platform
-    runtime: node
-    plan: starter
+    env: node
     region: oregon
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
+    plan: starter
+    buildCommand: npm install && npm run build && echo "Build completed successfully"
+    startCommand: npm start
     envVars:
-      - key: NODE_VERSION
-        value: 20.11.0
+      - key: NODE_ENV
+        value: production
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
@@ -20,36 +19,11 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: LANGCHAIN_TRACING_V2
-        value: true
       - key: LANGCHAIN_API_KEY
         sync: false
       - key: LANGCHAIN_PROJECT
-        sync: false
+        value: NEXA
+      - key: LANGCHAIN_TRACING_V2
+        value: true
       - key: NEXT_PUBLIC_DRAWIO_URL
         value: https://app.diagrams.net
-      - key: NODE_ENV
-        value: production
-    healthCheckPath: /api/health
-    autoDeploy: true
-
-  # Python PDF Service (optional - if using separate service)
-  # - type: web
-  #   name: nexa-pdf-service
-  #   runtime: python
-  #   plan: starter
-  #   region: oregon
-  #   buildCommand: pip install -r pdf-service/requirements.txt
-  #   startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT pdf-service.app:app
-  #   envVars:
-  #     - key: PYTHON_VERSION
-  #       value: 3.11.0
-
-# Database (if using Render PostgreSQL)
-# databases:
-#   - name: nexa-db
-#     plan: starter
-#     region: oregon
-#     databaseName: nexa
-#     user: nexa_user
-
