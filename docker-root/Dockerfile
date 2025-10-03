@@ -2,13 +2,17 @@
 # Deploy this as a separate Render Web Service
 # 
 # This is a minimal wrapper around the official jgraph/drawio image
-# No custom code needed - just deploy and it works!
+# Fixed: Disable HTTPS to avoid entrypoint script bug (Render handles SSL)
 
 FROM jgraph/drawio:latest
 
-# Expose HTTP and HTTPS ports
-# Render will automatically detect port 8080
-EXPOSE 8080 8443
+# Disable HTTPS setup (Render terminates SSL at load balancer)
+# This fixes the entrypoint script error: "binary operator expected"
+ENV LETS_ENCRYPT_ENABLED=false
+ENV SSL_ENABLED=false
+
+# Only expose HTTP port (Render provides HTTPS externally)
+EXPOSE 8080
 
 # Health check to ensure service is responding
 # Render uses this to know when service is ready
