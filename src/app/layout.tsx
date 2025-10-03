@@ -3,6 +3,11 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 
+// Force dynamic rendering for all pages (no static generation)
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
+export const revalidate = 0
+
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
