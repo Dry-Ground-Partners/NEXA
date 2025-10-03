@@ -285,8 +285,8 @@ export default function GridPage() {
       setLogoError(null)
       
       // Convert logos to Base64 if they're new files
-      let mainLogoData = null
-      let secondLogoData = null
+      let mainLogoData: string | null | undefined = null
+      let secondLogoData: string | null | undefined = null
       
       if (mainLogo) {
         mainLogoData = await fileToBase64(mainLogo)

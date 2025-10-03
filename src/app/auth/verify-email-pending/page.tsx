@@ -16,7 +16,7 @@ export default function VerifyEmailPendingPage() {
 
   useEffect(() => {
     // Get email from URL parameters
-    const emailParam = searchParams.get('email')
+    const emailParam = searchParams?.get('email')
     if (emailParam) {
       setEmail(emailParam)
     }

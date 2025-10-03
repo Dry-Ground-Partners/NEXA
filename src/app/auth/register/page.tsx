@@ -26,7 +26,7 @@ interface FormData {
 export default function RegisterPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const invitationToken = searchParams.get('token')
+  const invitationToken = searchParams?.get('token')
 
   const [registrationType, setRegistrationType] = useState<RegistrationType>(
     invitationToken ? 'join' : 'solo'
@@ -45,7 +45,7 @@ export default function RegisterPage() {
     organizationName: ''
   })
 
-  const [passwordStrength, setPasswordStrength] = useState({
+  const [passwordStrength, setPasswordStrength] = useState<{ score: number; feedback: string[] }>({
     score: 0,
     feedback: []
   })

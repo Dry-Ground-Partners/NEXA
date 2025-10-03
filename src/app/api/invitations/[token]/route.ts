@@ -59,7 +59,7 @@ export async function GET(
     }
 
     // Return invitation details for the frontend
-    const expiresAt = new Date(invitation.invitedAt)
+    const expiresAt = new Date(invitation.invitedAt || invitation.createdAt)
     expiresAt.setDate(expiresAt.getDate() + 7) // Calculate expiration (7 days from invitation)
     
     return NextResponse.json({

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Organization, OrganizationMembership } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { generateVerificationToken, sendVerificationEmail, extractDomain, isValidEmail, isFreeEmailDomain } from '@/lib/email'
 
@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      let organization = null
-      let membership = null
+      let organization: Organization | null = null
+      let membership: OrganizationMembership | null = null
 
       // Handle different registration types
       if (organizationType === 'create' && organizationName) {

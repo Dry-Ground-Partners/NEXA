@@ -85,12 +85,12 @@ export async function POST(
 
       if (offboardedMembership) {
         isReInvite = true
-        previousOffboardingData = offboardedMembership.offboardingData as any
+        previousOffboardingData = (offboardedMembership.offboardingData || {}) as any
         
-        const reason = previousOffboardingData.nexa_offboarded?.reason
+        const reason = (previousOffboardingData as any)?.nexa_offboarded?.reason
         
         // Simple policy: Only owners can re-invite users offboarded for security reasons
-        if (['security_concern', 'policy_violation'].includes(reason) && 
+        if (reason && ['security_concern', 'policy_violation'].includes(reason) && 
             roleInfo.role !== 'owner') {
           return NextResponse.json(
             { 
@@ -205,7 +205,7 @@ export async function POST(
           invited_by_name: user!.fullName || user!.email,
           ...(isReInvite && { 
             reinvite_reason: 'role_reopened',
-            previous_offboard_reason: previousOffboardingData?.nexa_offboarded?.reason
+            previous_offboard_reason: (previousOffboardingData as any)?.nexa_offboarded?.reason
           })
         },
         ipAddress: '127.0.0.1', // Fixed IP for development
@@ -229,9 +229,9 @@ export async function POST(
         isReInvite,
         ...(isReInvite && {
           previousOffboarding: {
-            reason: previousOffboardingData?.nexa_offboarded?.reason,
-            timestamp: previousOffboardingData?.nexa_offboarded?.timestamp,
-            offboardedBy: previousOffboardingData?.nexa_offboarded?.offboarded_by_name
+            reason: (previousOffboardingData as any)?.nexa_offboarded?.reason,
+            timestamp: (previousOffboardingData as any)?.nexa_offboarded?.timestamp,
+            offboardedBy: (previousOffboardingData as any)?.nexa_offboarded?.offboarded_by_name
           }
         })
       }

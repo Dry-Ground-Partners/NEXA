@@ -56,8 +56,8 @@ export async function GET(
 
     // Calculate usage efficiency and patterns
     const usagePatterns = {
-      peakUsageDay: currentUsage.dailyUsage.reduce((peak, day) => 
-        day.credits > (peak?.credits || 0) ? day : peak, null),
+      peakUsageDay: currentUsage.dailyUsage.reduce((peak: any, day) => 
+        day.credits > (peak?.credits || 0) ? day : peak, null as any),
       averageDailyUsage: currentUsage.dailyUsage.length > 0 
         ? currentUsage.dailyUsage.reduce((sum, day) => sum + day.credits, 0) / currentUsage.dailyUsage.length
         : 0,
@@ -65,7 +65,7 @@ export async function GET(
     }
 
     // Check for upcoming limit warnings
-    const warnings = []
+    const warnings: any[] = []
     if (currentUsage.percentageUsed >= 90) {
       warnings.push({
         type: 'critical',
@@ -213,7 +213,7 @@ export async function PUT(
       ...(alertThresholds ? { alertThresholds } : {}),
       ...(autoScaling ? { autoScaling } : {}),
       lastUpdated: new Date().toISOString(),
-      updatedBy: roleInfo.user.id
+      updatedBy: roleInfo.user?.id || roleInfo.userId
     }
 
     // Update organization
@@ -234,7 +234,7 @@ export async function PUT(
     await prisma.auditLog.create({
       data: {
         organizationId: orgId,
-        userId: roleInfo.user.id,
+        userId: roleInfo.user?.id || roleInfo.userId,
         action: 'update_usage_limits',
         resourceType: 'organization',
         resourceId: orgId,
