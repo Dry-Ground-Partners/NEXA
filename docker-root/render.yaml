@@ -1,0 +1,47 @@
+# Render Blueprint for NEXA Draw.io Service
+# Deploy just the Draw.io service using this file
+# 
+# Usage:
+#   1. Push this folder to a separate Git repo, OR
+#   2. Deploy manually from Render Dashboard pointing to docker-root as root directory
+
+services:
+  - type: web
+    name: nexa-drawio
+    env: docker
+    dockerfilePath: ./Dockerfile
+    
+    # Instance configuration
+    plan: free  # Options: free, starter, standard, pro
+    
+    # Region (choose same as NEXA for lower latency)
+    region: oregon  # Options: oregon, ohio, frankfurt, singapore
+    
+    # Health check endpoint
+    healthCheckPath: /
+    
+    # Environment variables
+    envVars:
+      - key: DRAWIO_BASE_URL
+        sync: false
+        # Value will be: https://nexa-drawio.onrender.com (set after deploy)
+      
+      - key: DRAWIO_GOOGLE_ANALYTICS
+        value: false
+    
+    # Auto-deploy settings
+    autoDeploy: true  # Auto-deploy on git push
+    
+    # Scaling (for paid tiers)
+    # numInstances: 1
+    
+    # Notifications
+    # alerts:
+    #   - type: health_check_failed
+    #   - type: deployment_failed
+
+# Notes:
+# - Free tier spins down after 15 min inactivity
+# - Upgrade to Starter ($7/mo) for always-on service
+# - This is a stateless service (no data persistence needed)
+

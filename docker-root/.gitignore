@@ -1,0 +1,11 @@
+# Nothing to ignore in docker-root
+# This folder should be tracked in git
+# But keep this file in case we add local testing artifacts later
+
+# Local testing
+*.log
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
