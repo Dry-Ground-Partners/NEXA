@@ -32,7 +32,8 @@ export function DrawioEditor({
   const [error, setError] = useState<string | null>(null)
 
   // Get draw.io URL from environment
-  const DRAWIO_URL = process.env.NEXT_PUBLIC_DRAWIO_URL || 'https://app.diagrams.net'
+  // Note: Using embed.diagrams.net specifically for embedding (bypasses some CSP restrictions)
+  const DRAWIO_URL = process.env.NEXT_PUBLIC_DRAWIO_URL || 'https://embed.diagrams.net'
   const embedUrl = `${DRAWIO_URL}/?embed=1&proto=json&spin=1&libraries=1&noSaveBtn=1&ui=atlas`
 
   // Listen for messages from draw.io
