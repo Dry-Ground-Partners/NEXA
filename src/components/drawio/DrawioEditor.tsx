@@ -32,8 +32,9 @@ export function DrawioEditor({
   const [error, setError] = useState<string | null>(null)
 
   // Get draw.io URL from environment
-  // Note: Using embed.diagrams.net specifically for embedding (bypasses some CSP restrictions)
-  const DRAWIO_URL = process.env.NEXT_PUBLIC_DRAWIO_URL || 'https://embed.diagrams.net'
+  // Default to localhost:8080 (Docker self-hosted) for development
+  // Production should set NEXT_PUBLIC_DRAWIO_URL to your Draw.io domain
+  const DRAWIO_URL = process.env.NEXT_PUBLIC_DRAWIO_URL || 'http://localhost:8080'
   const embedUrl = `${DRAWIO_URL}/?embed=1&proto=json&spin=1&libraries=1&noSaveBtn=1&ui=atlas`
 
   // Listen for messages from draw.io

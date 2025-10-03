@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  drawio:
+    image: jgraph/drawio:latest
+    container_name: nexa-drawio
+    ports:
+      - "8080:8080"     # HTTP port
+      - "8443:8443"     # HTTPS port (if using built-in SSL)
+    environment:
+      # Base URL configuration
+      - DRAWIO_BASE_URL=${DRAWIO_BASE_URL:-http://localhost:8080}
+      
+      # Disable certain features for security/simplicity
+      - DRAWIO_SELF_CONTAINED=1
+      
+      # Enable offline mode (no external dependencies)
+      - DRAWIO_CONFIG={"defaultLibraries": "general"}
+      
+    restart: unless-stopped
+    
+    volumes:
+      # Optional: Persist configuration
+      - ./drawio-config:/usr/local/tomcat/webapps/draw/WEB-INF/classes
+    
+    networks:
+      - nexa-network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  nexa-network:
+    driver: bridge
+
+# Usage:
+# 1. Start: docker-compose -f docker-compose.drawio.yml up -d
+# 2. Stop: docker-compose -f docker-compose.drawio.yml down
+# 3. Logs: docker-compose -f docker-compose.drawio.yml logs -f drawio
+# 4. Access: http://localhost:8080
+
