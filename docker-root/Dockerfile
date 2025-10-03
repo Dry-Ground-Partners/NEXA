@@ -1,25 +1,21 @@
 # Draw.io Docker Service for NEXA
 # Deploy this as a separate Render Web Service
 # 
-# This is a minimal wrapper around the official jgraph/drawio image
-# Fixed: Disable HTTPS to avoid entrypoint script bug (Render handles SSL)
+# Using alternative Draw.io image to avoid jgraph/drawio entrypoint bug
+# This image is maintained and doesn't have the SSL keystore bash error
 
-FROM jgraph/drawio:latest
+FROM tomcat:9-jre11
 
-# Disable HTTPS setup (Render terminates SSL at load balancer)
-# This fixes the entrypoint script error: "binary operator expected"
-ENV LETS_ENCRYPT_ENABLED=false
-ENV SSL_ENABLED=false
+# Install Draw.io webapp
+ADD https://github.com/jgraph/drawio/releases/download/v24.7.17/draw.war /usr/local/tomcat/webapps/ROOT.war
 
-# Only expose HTTP port (Render provides HTTPS externally)
+# Expose HTTP port only (Render provides HTTPS)
 EXPOSE 8080
 
-# Health check to ensure service is responding
-# Render uses this to know when service is ready
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
+# Health check to ensure Tomcat and Draw.io are responding
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
   CMD curl -f http://localhost:8080/ || exit 1
 
-# Use default entrypoint from base image
-# This starts Tomcat with the Draw.io web application
-CMD ["/docker-entrypoint.sh"]
+# Start Tomcat
+CMD ["catalina.sh", "run"]
 
