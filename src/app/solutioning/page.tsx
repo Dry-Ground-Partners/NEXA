@@ -2504,14 +2504,61 @@ export default function SolutioningPage() {
                 </div>
                 <h2 className="text-white text-xl font-semibold">Nexa Hyper-Canvas Editor</h2>
               </div>
-              <Button
-                onClick={closeHyperCanvas}
-                variant="ghost"
-                size="sm"
-                className="text-white/70 hover:text-white hover:bg-white/10 rounded-lg"
-              >
-                <X className="h-5 w-5" />
-              </Button>
+              
+              {/* Action Controls - Separated from Close Button */}
+              <div className="flex items-center gap-3">
+                <Button 
+                  onClick={generatePreviewBlob}
+                  disabled={previewLoading}
+                  size="sm"
+                  className="bg-purple-500/20 hover:bg-purple-500/30 text-white border border-purple-400/30 backdrop-blur-sm"
+                >
+                  {previewLoading ? (
+                    <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Refresh
+                </Button>
+                <Button 
+                  onClick={generatePDF}
+                  disabled={loadingStates.generating}
+                  size="sm"
+                  className="bg-blue-500/20 hover:bg-blue-500/30 text-white border border-blue-400/30 backdrop-blur-sm"
+                >
+                  {loadingStates.generating ? (
+                    <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Download
+                </Button>
+                <Button 
+                  onClick={saveSession}
+                  disabled={saving}
+                  size="sm"
+                  className="bg-green-500/20 hover:bg-green-500/30 text-white border border-green-400/30 backdrop-blur-sm"
+                >
+                  {saving ? (
+                    <RotateCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Save
+                </Button>
+                
+                {/* Close Button - Separated with margin */}
+                <div className="ml-4 pl-4 border-l border-white/20">
+                  <Button
+                    onClick={closeHyperCanvas}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/70 hover:text-white hover:bg-white/10 rounded-lg"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
             </div>
 
             {/* Main Content Area */}
@@ -2519,23 +2566,6 @@ export default function SolutioningPage() {
               {/* Document Preview - 75% */}
               <div className="w-3/4 border-r border-white/10 bg-white/5 backdrop-blur-sm">
                 <div className="p-6 h-full flex flex-col">
-                  {/* Refresh Control */}
-                  <div className="mb-4 flex justify-end">
-                    <Button
-                      onClick={generatePreviewBlob}
-                      disabled={previewLoading}
-                      variant="ghost"
-                      size="sm"
-                      className="text-white/70 hover:text-white hover:bg-white/10 rounded-lg"
-                    >
-                      {previewLoading ? (
-                        <RotateCw className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  
                   {/* PDF Preview Area */}
                   <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-4 overflow-hidden">
                     {previewLoading ? (
@@ -2583,36 +2613,6 @@ export default function SolutioningPage() {
                   error={chatState.error}
                 />
               </div>
-            </div>
-
-            {/* Action Controls */}
-            <div className="absolute top-4 right-4 flex gap-3">
-              <Button 
-                onClick={generatePDF}
-                disabled={loadingStates.generating}
-                size="sm"
-                className="bg-blue-500/20 hover:bg-blue-500/30 text-white border border-blue-400/30 backdrop-blur-sm"
-              >
-                {loadingStates.generating ? (
-                  <RotateCw className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                Download
-              </Button>
-              <Button 
-                onClick={saveSession}
-                disabled={saving}
-                size="sm"
-                className="bg-green-500/20 hover:bg-green-500/30 text-white border border-green-400/30 backdrop-blur-sm"
-              >
-                {saving ? (
-                  <RotateCw className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Save
-              </Button>
             </div>
           </div>
         </div>
