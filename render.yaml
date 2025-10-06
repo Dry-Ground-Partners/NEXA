@@ -27,3 +27,7 @@ services:
         value: true
       - key: NEXT_PUBLIC_DRAWIO_URL
         value: https://app.diagrams.net
+      - key: PDF_SERVICE_URL
+        sync: false
+        # Set this to your PDF microservice URL after deploying pdf-service-root
+        # Example: https://nexa-pdf-service.onrender.com

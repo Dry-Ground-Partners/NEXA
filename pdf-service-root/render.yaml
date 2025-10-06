@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: nexa-pdf-service
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: |
+      pip install --upgrade pip &&
+      pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PORT
+        value: 5000
+      - key: ALLOWED_ORIGIN
+        value: https://nexa-tlje.onrender.com
+    healthCheckPath: /health

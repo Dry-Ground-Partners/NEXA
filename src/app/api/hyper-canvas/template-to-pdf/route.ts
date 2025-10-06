@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn } from 'child_process'
-import path from 'path'
+import { pdfServiceClient } from '@/lib/pdf/pdf-service-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,8 +17,8 @@ export async function POST(request: NextRequest) {
     
     console.log('📊 Template-to-PDF: Template length:', htmlTemplate.length, 'characters')
     
-    // Call Python script to convert HTML to PDF
-    const pdfBuffer = await convertHtmlToPdf(htmlTemplate)
+    // Call PDF microservice to convert HTML to PDF
+    const pdfBuffer = await pdfServiceClient.generatePDF(htmlTemplate)
     
     if (!pdfBuffer) {
       throw new Error('Failed to convert HTML template to PDF')
@@ -42,57 +41,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-async function convertHtmlToPdf(htmlTemplate: string): Promise<Buffer | null> {
-  return new Promise((resolve, reject) => {
-    try {
-      const scriptPath = path.join(process.cwd(), 'pdf-service', 'html_to_pdf.py')
-      
-      console.log('🐍 Calling HTML-to-PDF Python script:', scriptPath)
-      
-      const python = spawn('python3', [scriptPath], {
-        stdio: ['pipe', 'pipe', 'pipe']
-      })
-      
-      const chunks: Buffer[] = []
-      const errorChunks: Buffer[] = []
-      
-      python.stdout.on('data', (chunk) => {
-        chunks.push(chunk)
-      })
-      
-      python.stderr.on('data', (chunk) => {
-        errorChunks.push(chunk)
-        console.log('🐍 Python stderr:', chunk.toString())
-      })
-      
-      python.on('close', (code) => {
-        if (code === 0 && chunks.length > 0) {
-          const pdfBuffer = Buffer.concat(chunks)
-          console.log('✅ PDF converted successfully, size:', pdfBuffer.length, 'bytes')
-          resolve(pdfBuffer)
-        } else {
-          const errorMessage = Buffer.concat(errorChunks).toString()
-          console.error('❌ Python script failed with code:', code)
-          console.error('❌ Error message:', errorMessage)
-          reject(new Error(`Python script failed with code: ${code}, Error: ${errorMessage}`))
-        }
-      })
-      
-      python.on('error', (error) => {
-        console.error('❌ Failed to start Python process:', error)
-        reject(new Error(`Failed to start Python process: ${error instanceof Error ? error.message : "Unknown error"}`))
-      })
-      
-      // Send HTML template to Python script
-      python.stdin.write(htmlTemplate)
-      python.stdin.end()
-      
-    } catch (error: unknown) {
-      console.error('❌ Error in convertHtmlToPdf:', error)
-      reject(error)
-    }
-  })
 }
 
