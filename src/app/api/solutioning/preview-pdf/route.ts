@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn } from 'child_process'
-import path from 'path'
 import { getUserRoleFromRequest } from '@/lib/api-rbac'
 import { getOrganizationPreferences } from '@/lib/preferences/preferences-service'
+import { pdfServiceClient } from '@/lib/pdf/pdf-service-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,36 +44,15 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ PDF Preview: Could not fetch organization preferences, using default logos:', error)
     }
     
-    // Transform data to match Python script expectations
-    const pythonData = {
-      basic: {
-        title: sessionData.basic.title || 'Untitled Project',
-        engineer: sessionData.basic.engineer || 'Unknown Engineer',
-        recipient: sessionData.basic.recipient || 'Unknown Client',
-        date: sessionData.basic.date || new Date().toISOString().split('T')[0]
-      },
-      solutions: Object.values(sessionData.solutions || {}).map((solution: any) => ({
-        title: solution.structure?.title || 'Untitled Solution',
-        steps: solution.structure?.steps || '',
-        approach: solution.structure?.approach || '',
-        difficulty: solution.structure?.difficulty || 0,
-        layout: solution.structure?.layout || 1,
-        imageData: solution.additional?.imageData || null
-      })),
-      sessionProtocol: sessionId ? sessionId.split('-')[0].toUpperCase() : 'SH123',
-      // PHASE 4: Add organization logos
-      mainLogo: mainLogo,
-      secondLogo: secondLogo
-    }
+    console.log('📊 Solutioning PDF Preview: Calling PDF microservice')
     
-    console.log('📊 Solutioning PDF Preview: Sending to Python:', {
-      basic: pythonData.basic,
-      solutionsCount: pythonData.solutions.length,
-      sessionProtocol: pythonData.sessionProtocol
-    })
-    
-    // Call Python script
-    const pdfBuffer = await callPythonScript(pythonData)
+    // Call PDF microservice
+    const pdfBuffer = await pdfServiceClient.generateSolutioningPDF(
+      sessionData,
+      sessionId,
+      mainLogo,
+      secondLogo
+    )
     
     if (!pdfBuffer) {
       throw new Error('Failed to generate PDF')
@@ -97,57 +75,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-async function callPythonScript(data: any): Promise<Buffer | null> {
-  return new Promise((resolve, reject) => {
-    try {
-      const scriptPath = path.join(process.cwd(), 'pdf-service', 'generate_solutioning_standalone.py')
-      
-      console.log('🐍 Calling Python script:', scriptPath)
-      console.log('📊 Data being sent to Python:', JSON.stringify(data, null, 2))
-      
-      const python = spawn('python3', [scriptPath], {
-        stdio: ['pipe', 'pipe', 'pipe']
-      })
-      
-      const chunks: Buffer[] = []
-      const errorChunks: Buffer[] = []
-      
-      python.stdout.on('data', (chunk) => {
-        chunks.push(chunk)
-      })
-      
-      python.stderr.on('data', (chunk) => {
-        errorChunks.push(chunk)
-        console.log('🐍 Python stderr:', chunk.toString())
-      })
-      
-      python.on('close', (code) => {
-        if (code === 0 && chunks.length > 0) {
-          const pdfBuffer = Buffer.concat(chunks)
-          console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes')
-          resolve(pdfBuffer)
-        } else {
-          const errorMessage = Buffer.concat(errorChunks).toString()
-          console.error('❌ Python script failed with code:', code)
-          console.error('❌ Error message:', errorMessage)
-          reject(new Error(`Python script failed with code: ${code}, Error: ${errorMessage}`))
-        }
-      })
-      
-      python.on('error', (error) => {
-        console.error('❌ Failed to start Python process:', error)
-        reject(new Error(`Failed to start Python process: ${error instanceof Error ? error.message : "Unknown error"}`))
-      })
-      
-      // Send JSON data to Python script
-      python.stdin.write(JSON.stringify(data))
-      python.stdin.end()
-      
-    } catch (error: unknown) {
-      console.error('❌ Error in callPythonScript:', error)
-      reject(error)
-    }
-  })
 }
