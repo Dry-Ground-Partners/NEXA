@@ -177,11 +177,31 @@ def generate_solutioning_pdf():
         
         logger.info(f'Transformed data: {len(solutions)} solutions, layout types: {[s.get("layout") for s in solutions[:5]]}')
         
-        # DEBUG: Log full merged data structure
-        logger.info(f'DEBUG - Full merged data: {json.dumps(merged_data, indent=2)[:2000]}...')
+        # DEBUG: Log full merged data structure (truncated)
+        logger.info(f'DEBUG - Full merged data structure:')
+        logger.info(f'  - basic: {merged_data.get("basic")}')
+        logger.info(f'  - sessionProtocol: {merged_data.get("sessionProtocol")}')
+        logger.info(f'  - mainLogo length: {len(merged_data.get("mainLogo", ""))}')
+        logger.info(f'  - secondLogo length: {len(merged_data.get("secondLogo", ""))}')
+        logger.info(f'  - solutions count: {len(merged_data.get("solutions", []))}')
         
-        # Use ORIGINAL PDF generation function
-        pdf_bytes = generate_solutioning_pdf_from_json(merged_data)
+        for i, sol in enumerate(merged_data.get("solutions", [])[:3]):
+            logger.info(f'  - Solution {i+1}:')
+            logger.info(f'      title: {sol.get("title")}')
+            logger.info(f'      layout: {sol.get("layout")} (type: {type(sol.get("layout")).__name__})')
+            logger.info(f'      difficulty: {sol.get("difficulty")}')
+            logger.info(f'      imageData length: {len(sol.get("imageData", ""))}')
+            logger.info(f'      imageData starts with: {sol.get("imageData", "")[:50]}...')
+        
+        # Use ORIGINAL PDF generation function with detailed error catching
+        try:
+            logger.info('Calling generate_solutioning_pdf_from_json...')
+            pdf_bytes = generate_solutioning_pdf_from_json(merged_data)
+            logger.info(f'generate_solutioning_pdf_from_json returned: {type(pdf_bytes)} with length {len(pdf_bytes) if pdf_bytes else 0}')
+        except Exception as e:
+            logger.error(f'EXCEPTION in generate_solutioning_pdf_from_json: {type(e).__name__}: {str(e)}')
+            logger.error(f'Exception details:', exc_info=True)
+            raise
         
         if not pdf_bytes:
             raise Exception('PDF generation returned None')

@@ -82,12 +82,20 @@ def generate_solutioning_pdf_from_json(solutioning_data):
         solutions = []
         solution_number = 1
         
+        print(f"🐍 DEBUG: Received {len(solutioning_data.get('solutions', []))} solutions", file=sys.stderr)
+        
         for solution_data in solutioning_data.get('solutions', []):
+            print(f"🐍 DEBUG: Processing solution {solution_number}: {solution_data.get('title', 'NO TITLE')}", file=sys.stderr)
+            print(f"🐍 DEBUG: Raw layout value: {repr(solution_data.get('layout'))} (type: {type(solution_data.get('layout')).__name__})", file=sys.stderr)
+            
             # Handle image data - remove data:image prefix if present
             image_data = solution_data.get('imageData', '')
             if image_data and image_data.startswith('data:image/'):
                 # Extract base64 part after the comma
                 image_data = image_data.split(',', 1)[1] if ',' in image_data else ''
+            
+            layout_value = solution_data.get('layout', 1)
+            print(f"🐍 DEBUG: Layout value after get: {repr(layout_value)} (type: {type(layout_value).__name__})", file=sys.stderr)
             
             solution = {
                 'number': solution_number,
@@ -95,9 +103,10 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 'steps': solution_data.get('steps', ''),
                 'approach': solution_data.get('approach', ''),
                 'difficulty': solution_data.get('difficulty', 0),
-                'layout': solution_data.get('layout', 1),
+                'layout': layout_value,
                 'image_data': image_data if image_data else None
             }
+            print(f"🐍 DEBUG: Created solution dict with layout: {solution['layout']}", file=sys.stderr)
             solutions.append(solution)
             solution_number += 1
         
@@ -109,7 +118,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
         
         print(f"🐍 Processing {len(solutions)} solutions", file=sys.stderr)
         for sol in solutions:
-            print(f"🐍 Solution {sol['number']}: {sol['title']} (Layout {sol['layout']})", file=sys.stderr)
+            print(f"🐍 Solution {sol['number']}: {sol['title']} (Layout {sol['layout']}, type: {type(sol['layout']).__name__})", file=sys.stderr)
         
         # HTML Template - EXACT COPY from old system
         html_template = """
@@ -761,19 +770,34 @@ def generate_solutioning_pdf_from_json(solutioning_data):
         </html>
         """
 
+        print(f"🐍 DEBUG: About to render Jinja template with {len(solutions)} solutions", file=sys.stderr)
         template = Template(html_template)
-        html_content = template.render(
-            basic_info=basic_info,
-            solutions=solutions,
-            total_solutions=total_solutions,
-            is_multi_solution=is_multi_solution,
-            logo_base64=logo_base64,
-            dg_logo_base64=dg_logo_base64,
-            session_id=session_id
-        )
+        
+        try:
+            print(f"🐍 DEBUG: Rendering template...", file=sys.stderr)
+            html_content = template.render(
+                basic_info=basic_info,
+                solutions=solutions,
+                total_solutions=total_solutions,
+                is_multi_solution=is_multi_solution,
+                logo_base64=logo_base64,
+                dg_logo_base64=dg_logo_base64,
+                session_id=session_id
+            )
+            print(f"🐍 DEBUG: Template rendered successfully, HTML length: {len(html_content)}", file=sys.stderr)
+        except Exception as e:
+            print(f"🐍 ERROR in template.render(): {type(e).__name__}: {str(e)}", file=sys.stderr)
+            raise
 
-        html_doc = HTML(string=html_content)
-        pdf_bytes = html_doc.write_pdf()
+        try:
+            print(f"🐍 DEBUG: Converting HTML to PDF with WeasyPrint...", file=sys.stderr)
+            html_doc = HTML(string=html_content)
+            pdf_bytes = html_doc.write_pdf()
+            print(f"🐍 DEBUG: PDF generated successfully, size: {len(pdf_bytes) if pdf_bytes else 0}", file=sys.stderr)
+        except Exception as e:
+            print(f"🐍 ERROR in WeasyPrint conversion: {type(e).__name__}: {str(e)}", file=sys.stderr)
+            raise
+        
         return pdf_bytes
         
     except Exception as e:
