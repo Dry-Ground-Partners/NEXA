@@ -160,9 +160,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 min-width: 794px;
                 box-sizing: border-box;
                 background: #fff;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
+                text-align: center;
                 page-break-after: always;
                 padding-bottom: 80px;
             }
@@ -371,9 +369,6 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             
             /* Layout 1 Styles */
             .layout-1-container {
-                display: flex;
-                flex-direction: column;
-                min-height: calc(962px - 60px);  /* Changed: Use min-height instead of fixed height */
                 max-width: 100%;
                 margin: 0 auto;
             }
@@ -414,9 +409,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 border: 1px solid #000;
                 border-radius: 15px;
                 padding: 20px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
+                text-align: center;
                 height: 300px;
                 box-sizing: border-box;
             }
@@ -433,23 +426,25 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 border: 1px solid #000;
                 border-radius: 42px;
                 padding: 20px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
+                text-align: center;
                 margin-top: 20px;
                 height: 300px;
                 box-sizing: border-box;
             }
             
             .layout-1-boxes-container {
-                display: flex;
-                justify-content: space-between;
                 margin-top: 20px;
-                align-items: flex-start;  /* Added: Align boxes to top */
+                width: 100%;
+            }
+            .layout-1-boxes-container::after {
+                content: "";
+                display: table;
+                clear: both;
             }
             
             .layout-1-box {
                 width: 48%;  /* Increased from 45%: Wider boxes = less space between them */
+                float: left;
                 border: 1px solid #000;
                 border-radius: 30px;
                 padding: 20px;
@@ -461,6 +456,9 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 word-wrap: break-word;  /* Added: Ensure text wraps properly */
                 overflow-wrap: break-word;  /* Added: Handle long words */
             }
+            .layout-1-box:first-child {
+                margin-right: 4%;
+            }
 
             .layout-1-spacer {
                 width: 1%;  /* Reduced to minimal: Almost no space between boxes */
@@ -468,10 +466,13 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             
             /* Layout 3 Styles - No fixed height for boxes */
             .layout-3-boxes-container {
-                display: flex;
-                justify-content: space-between;
                 margin-top: 20px;
-                align-items: flex-start;  /* Added: Align boxes to top */
+                width: 100%;
+            }
+            .layout-3-boxes-container::after {
+                content: "";
+                display: table;
+                clear: both;
             }
             
             /* Layout 2 Styles - White borders variant */
@@ -479,9 +480,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 border: 1px solid #fff;
                 border-radius: 30px;
                 padding: 20px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
+                text-align: center;
                 margin-top: 20px;
                 height: 300px;
                 box-sizing: border-box;
@@ -489,6 +488,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             
             .layout-2-box {
                 width: 48%;  /* Increased from 45%: Wider boxes = less space between them */
+                float: left;
                 border: 1px solid #fff;
                 border-radius: 30px;
                 padding: 20px;
