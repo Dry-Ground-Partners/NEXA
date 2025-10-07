@@ -168,6 +168,8 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 margin-top: 200px;
                 margin-bottom: 80px;  /* Increased from 40px: More space before main content */
                 width: 350px;
+                margin-left: auto;
+                margin-right: auto;
                 text-align: center;
                 position: relative;
             }
@@ -444,6 +446,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             
             .layout-1-box {
                 width: 48%;  /* Increased from 45%: Wider boxes = less space between them */
+                margin: 0;  /* Reset default margins */
                 float: left;
                 border: 1px solid #000;
                 border-radius: 30px;
@@ -484,6 +487,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             
             .layout-2-box {
                 width: 48%;  /* Increased from 45%: Wider boxes = less space between them */
+                margin: 0;  /* Reset default margins */
                 float: left;
                 border: 1px solid #fff;
                 border-radius: 30px;
@@ -530,6 +534,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             /* Layout 5 Styles - White borders with sharp (non-rounded) boxes */
             .layout-5-box {
                 width: 48%;  /* Increased from 45%: Wider boxes = less space between them */
+                margin: 0;  /* Reset default margins */
                 float: left;
                 border: 1px solid #000;
                 border-radius: 0;
