@@ -24,14 +24,6 @@ def generate_solutioning_html(data):
     main_logo_base64 = data.get('mainLogo', '')
     dg_logo_base64 = data.get('secondLogo', '')
     
-    # If no logos provided, use placeholders
-    if not main_logo_base64:
-        # TODO: Load default logo from filesystem if needed
-        main_logo_base64 = ''
-    
-    if not dg_logo_base64:
-        dg_logo_base64 = ''
-    
     # Extract basic info
     basic = session_data.get('basic', {})
     title = basic.get('title', 'Untitled Project')
@@ -46,26 +38,47 @@ def generate_solutioning_html(data):
     except:
         formatted_date = date
     
-    # Extract solutions
+    # Extract solutions - handle both dict and list formats
     solutions = []
     solutions_data = session_data.get('solutions', {})
     
-    for sol_id, solution in solutions_data.items():
-        if not isinstance(solution, dict):
-            continue
-        
-        structure = solution.get('structure', {})
-        additional = solution.get('additional', {})
-        
-        solutions.append({
-            'number': len(solutions) + 1,
-            'title': structure.get('title', 'Untitled Solution'),
-            'steps': structure.get('steps', ''),
-            'approach': structure.get('approach', ''),
-            'difficulty': structure.get('difficulty', 0),
-            'layout': structure.get('layout', 1),
-            'image_data': additional.get('imageData', '')
-        })
+    if isinstance(solutions_data, dict):
+        # Convert dict to list
+        for sol_id, solution in solutions_data.items():
+            if not isinstance(solution, dict):
+                continue
+            
+            structure = solution.get('structure', {})
+            additional = solution.get('additional', {})
+            
+            # Handle imageData that might have data URI prefix
+            image_data = additional.get('imageData', '')
+            if image_data and image_data.startswith('data:image/'):
+                # Keep full data URI for img src
+                pass
+            
+            solutions.append({
+                'number': len(solutions) + 1,
+                'title': structure.get('title', 'Untitled Solution'),
+                'steps': structure.get('steps', ''),
+                'approach': structure.get('approach', ''),
+                'difficulty': structure.get('difficulty', 0),
+                'layout': structure.get('layout', 1),
+                'image_data': image_data
+            })
+    elif isinstance(solutions_data, list):
+        # Already a list
+        for i, solution in enumerate(solutions_data):
+            image_data = solution.get('imageData', '')
+            solutions.append({
+                'number': i + 1,
+                'title': solution.get('title', 'Untitled Solution'),
+                'steps': solution.get('steps', ''),
+                'approach': solution.get('approach', ''),
+                'difficulty': solution.get('difficulty', 0),
+                'layout': solution.get('layout', 1),
+                'image_data': image_data
+            })
     
     total_solutions = len(solutions)
     is_multi_solution = total_solutions > 1
@@ -80,10 +93,54 @@ def generate_solutioning_html(data):
     # Generate session protocol
     session_protocol = session_id.split('-')[0].upper() if '-' in session_id else 'SH123'
     
-    # Render template (using simplified inline template for now)
-    # Full template logic from generate_solutioning_standalone.py should be here
-    # For brevity, using simplified version - EXPAND THIS WITH FULL TEMPLATE
+    # Escape HTML entities in text content
+    def escape_html(text):
+        if not text:
+            return ''
+        return (str(text)
+                .replace('&', '&amp;')
+                .replace('<', '&lt;')
+                .replace('>', '&gt;')
+                .replace('"', '&quot;')
+                .replace('\n', '<br>'))
     
+    # Build solutions HTML
+    solutions_html = []
+    for sol in solutions:
+        sol_html = f'''
+        <div class="solution" style="page-break-before: {'always' if sol['number'] > 1 else 'auto'};">
+            <div class="solution-title">Solution {sol['number']}: {escape_html(sol['title'])}</div>
+            <div class="solution-content">
+                <strong>Steps:</strong>
+                <p>{escape_html(sol['steps'])}</p>
+            </div>
+            <div class="solution-content">
+                <strong>Approach:</strong>
+                <p>{escape_html(sol['approach'])}</p>
+            </div>
+            <div class="solution-content">
+                <strong>Difficulty:</strong> {sol['difficulty']}%
+            </div>
+        '''
+        
+        # Add image if present
+        if sol['image_data']:
+            sol_html += f'''
+            <div class="solution-image">
+                <img src="{sol['image_data']}" style="max-width: 100%; height: auto; margin-top: 20px;">
+            </div>
+            '''
+        
+        sol_html += '</div>'
+        solutions_html.append(sol_html)
+    
+    # Logo HTML
+    logo_html = ''
+    if main_logo_base64:
+        logo_src = main_logo_base64 if main_logo_base64.startswith('data:') else f'data:image/png;base64,{main_logo_base64}'
+        logo_html = f'<img src="{logo_src}" style="max-width: 200px; max-height: 80px; margin-bottom: 20px;">'
+    
+    # Build complete HTML
     html_template = f"""
     <!DOCTYPE html>
     <html>
@@ -100,15 +157,17 @@ def generate_solutioning_html(data):
                 margin: 0;
                 padding: 0;
                 color: #000;
+                line-height: 1.6;
             }}
             .header {{
                 text-align: center;
-                margin-bottom: 30px;
+                margin-bottom: 40px;
             }}
             .title {{
                 font-size: 24px;
                 font-weight: bold;
                 margin-bottom: 20px;
+                color: #2c3e50;
             }}
             .meta {{
                 font-size: 12px;
@@ -117,49 +176,44 @@ def generate_solutioning_html(data):
             }}
             .solution {{
                 margin: 30px 0;
-                page-break-before: always;
             }}
             .solution-title {{
                 font-size: 18px;
                 font-weight: bold;
                 margin-bottom: 15px;
+                color: #2c3e50;
+                border-bottom: 2px solid #3498db;
+                padding-bottom: 5px;
             }}
             .solution-content {{
                 margin-bottom: 15px;
+            }}
+            .solution-content p {{
+                margin: 5px 0;
+                white-space: pre-wrap;
+            }}
+            .solution-image {{
+                margin-top: 20px;
+                text-align: center;
             }}
         </style>
     </head>
     <body>
         <div class="header">
+            {logo_html}
             <div class="title">{formatted_title}</div>
-            <div class="meta">Prepared for: {recipient}</div>
+            <div class="meta">Prepared for: {escape_html(recipient)}</div>
             <div class="meta">Date: {formatted_date}</div>
-            <div class="meta">Engineer: {engineer}</div>
+            <div class="meta">Engineer: {escape_html(engineer)}</div>
         </div>
         
-        {''.join([f'''
-        <div class="solution">
-            <div class="solution-title">Solution {sol['number']}: {sol['title']}</div>
-            <div class="solution-content">
-                <strong>Steps:</strong>
-                <p>{sol['steps']}</p>
-            </div>
-            <div class="solution-content">
-                <strong>Approach:</strong>
-                <p>{sol['approach']}</p>
-            </div>
-            <div class="solution-content">
-                <strong>Difficulty:</strong> {sol['difficulty']}%
-            </div>
+        {''.join(solutions_html)}
+        
+        <div style="margin-top: 50px; text-align: center; font-size: 10px; color: #999;">
+            Session ID: {session_protocol} | Generated by NEXA Platform
         </div>
-        ''' for sol in solutions])}
     </body>
     </html>
     """
     
     return html_template
-
-
-# NOTE: This is a simplified version. The full template from
-# generate_solutioning_standalone.py (800+ lines) should be copied here
-# for production use to maintain pixel-perfect formatting
