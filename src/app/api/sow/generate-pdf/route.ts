@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn } from 'child_process'
-import path from 'path'
 import { getUserRoleFromRequest } from '@/lib/api-rbac'
 import { getOrganizationPreferences } from '@/lib/preferences/preferences-service'
+import { pdfServiceClient } from '@/lib/pdf/pdf-service-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,14 +80,10 @@ export async function POST(request: NextRequest) {
       secondLogo: secondLogo
     }
     
-    console.log('📊 SOW PDF Download: Python data:', pythonData)
+    console.log('📊 SOW PDF Download: Sending data to PDF microservice')
     
-    // Call Python script
-    const pdfBuffer = await callPythonScript(pythonData)
-    
-    if (!pdfBuffer) {
-      throw new Error('Failed to generate PDF')
-    }
+    // Call PDF microservice
+    const pdfBuffer = await pdfServiceClient.generateSOWPDF(pythonData)
     
     console.log('✅ SOW PDF Download: PDF generated, size:', pdfBuffer.length, 'bytes')
     
@@ -114,58 +109,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-async function callPythonScript(data: any): Promise<Buffer | null> {
-  return new Promise((resolve, reject) => {
-    // Path to Python script
-    const scriptPath = path.join(process.cwd(), 'pdf-service', 'generate_sow_standalone.py')
-    console.log('🔍 Script path:', scriptPath)
-    
-    console.log('🐍 Calling Python script at:', scriptPath)
-    
-    // Spawn Python process
-    const python = spawn('python3', [scriptPath], {
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
-    
-    const chunks: Buffer[] = []
-    const errorChunks: Buffer[] = []
-    
-    // Collect PDF data from stdout
-    python.stdout.on('data', (chunk) => {
-      chunks.push(chunk)
-    })
-    
-    // Collect error data
-    python.stderr.on('data', (data) => {
-      errorChunks.push(data)
-    })
-    
-    // Handle completion
-    python.on('close', (code) => {
-      if (code === 0 && chunks.length > 0) {
-        const pdfBuffer = Buffer.concat(chunks)
-        console.log('✅ Python script completed successfully, PDF size:', pdfBuffer.length)
-        resolve(pdfBuffer)
-      } else {
-        const errorMessage = Buffer.concat(errorChunks).toString()
-        console.error('❌ Python script failed with code:', code)
-        console.error('❌ Python script error:', errorMessage)
-        reject(new Error(`Python script failed with code: ${code}, error: ${errorMessage}`))
-      }
-    })
-    
-    // Handle process errors
-    python.on('error', (error) => {
-      console.error('❌ Python process error:', error)
-      reject(error)
-    })
-    
-    // Send JSON data to Python script
-    const jsonInput = JSON.stringify(data)
-    console.log('📤 Sending to Python script:', jsonInput)
-    python.stdin.write(jsonInput)
-    python.stdin.end()
-  })
 }
