@@ -1,5 +1,6 @@
 import * as hub from 'langchain/hub/node'
 import { OpenAI } from 'openai'
+import { getPreferencesForPrompts } from '@/lib/preferences/preferences-service'
 
 // Interfaces for vision analysis
 export interface VisionAnalysisRequest {
@@ -142,9 +143,9 @@ export async function analyzeImageWithVision(
     console.log('🎯 Final prompt to be used:', finalPrompt.substring(0, 200) + '...')
     console.log('📸 Image URL length:', imageUrl.length, 'characters')
 
-    // Fetch organization preferences (cached)
+    // Fetch organization preferences
     const prefs = organizationId 
-      ? await null // getCachedPreferences(organizationId)
+      ? await getPreferencesForPrompts(organizationId)
       : { generalApproach: '', solutioning: { analysis: '' } }
 
     // Prepend preferences to prompt if available
@@ -216,9 +217,9 @@ export async function enhanceTextWithLangSmith(
       includeModel: true
     })
 
-    // Fetch organization preferences (cached)
+    // Fetch organization preferences
     const prefs = organizationId 
-      ? await null // getCachedPreferences(organizationId)
+      ? await getPreferencesForPrompts(organizationId)
       : { generalApproach: '', solutioning: { enhance: '', formatting: '' } }
 
     // Invoke the prompt with the explanation + preferences
@@ -272,9 +273,9 @@ export async function structureSolutionWithLangSmith(
       includeModel: true
     })
 
-    // Fetch organization preferences (cached)
+    // Fetch organization preferences
     const prefs = organizationId 
-      ? await null // getCachedPreferences(organizationId)
+      ? await getPreferencesForPrompts(organizationId)
       : { generalApproach: '', solutioning: { structure: '' } }
 
     // Invoke the prompt with the AI analysis and solution explanation + preferences
@@ -345,9 +346,9 @@ export async function analyzePerNodeStackWithLangSmith(
       includeModel: true
     })
 
-    // Fetch organization preferences (cached)
+    // Fetch organization preferences
     const prefs = organizationId 
-      ? await null // getCachedPreferences(organizationId)
+      ? await getPreferencesForPrompts(organizationId)
       : { generalApproach: '', solutioning: { stack: '' } }
 
     // Invoke the prompt with the context (AI analysis + solution steps) + preferences
@@ -414,9 +415,9 @@ export async function generateSOWWithLangSmith(
     })
     console.log('✅ Successfully pulled SOW generation prompt from LangSmith')
 
-    // Fetch organization preferences (cached)
+    // Fetch organization preferences
     const prefs = organizationId 
-      ? await null // getCachedPreferences(organizationId)
+      ? await getPreferencesForPrompts(organizationId)
       : { generalApproach: '', pushing: { solutioningToSOW: '' } }
 
     // Invoke the prompt with the solutioning data + preferences
@@ -496,9 +497,9 @@ export async function generateLOEWithLangSmith(
     })
     console.log('✅ Successfully pulled LOE generation prompt from LangSmith')
 
-    // Fetch organization preferences (cached)
+    // Fetch organization preferences
     const prefs = organizationId 
-      ? await null // getCachedPreferences(organizationId)
+      ? await getPreferencesForPrompts(organizationId)
       : { generalApproach: '', pushing: { sowToLOE: '' } }
 
     // Invoke the prompt with the SOW data + preferences

@@ -2,6 +2,7 @@
 import * as hub from "langchain/hub/node"
 import { JsonOutputParser } from "@langchain/core/output_parsers"
 import type { PainPointAnalysis, StructuringRequest, StructuringResponse, GenerateSolutionRequest, GenerateSolutionResponse } from './types'
+import { getPreferencesForPrompts } from '@/lib/preferences/preferences-service'
 
 // JSON output parsers for structured responses
 const painPointParser = new JsonOutputParser<PainPointAnalysis>()
@@ -57,9 +58,9 @@ export async function analyzePainPoints(
 
     console.log('🤖 Executing LangChain analysis...')
 
-    // Fetch organization preferences (cached)
+    // Fetch organization preferences
     const prefs = organizationId 
-      ? await null // getCachedPreferences(organizationId)
+      ? await getPreferencesForPrompts(organizationId)
       : { generalApproach: '', structuring: { diagnose: '', echo: '' } }
 
     // Execute the chain with the transcript variable + preferences
@@ -173,9 +174,9 @@ export async function generateSolution(
     console.log('   - report (analysis report):', request.report.length, 'chars')
     console.log('   - Context Echo toggle:', request.content !== " " ? 'ON' : 'OFF')
     
-    // Fetch organization preferences (cached)
+    // Fetch organization preferences
     const prefs = organizationId 
-      ? await null // getCachedPreferences(organizationId)
+      ? await getPreferencesForPrompts(organizationId)
       : { generalApproach: '', structuring: { solution: '', echo: '', traceback: '' } }
     
     // Send pain points and content separately + preferences

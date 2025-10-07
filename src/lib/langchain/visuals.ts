@@ -1,6 +1,7 @@
 // LangChain visuals module using LangSmith prompts
 import * as hub from "langchain/hub/node"
 import { JsonOutputParser } from "@langchain/core/output_parsers"
+import { getPreferencesForPrompts } from '@/lib/preferences/preferences-service'
 
 // Types for visuals planning
 export interface VisualsIdeationRequest {
@@ -65,9 +66,9 @@ export async function generatePlanningFromIdeation(
     console.log('🎯 Variables being sent to LangSmith:')
     console.log(`- solution: ${request.solution.length} chars`)
 
-    // Fetch organization preferences (cached)
+    // Fetch organization preferences
     const prefs = organizationId 
-      ? await null // getCachedPreferences(organizationId)
+      ? await getPreferencesForPrompts(organizationId)
       : { generalApproach: '', visuals: { ideation: '', planning: '' } }
 
     const result = await promptWithModel.invoke({
@@ -157,9 +158,9 @@ export async function generateSketchFromPlanning(
     console.log('🎯 Variables being sent to LangSmith:')
     console.log(`- planning: ${request.planning.length} chars`)
 
-    // Fetch organization preferences (cached)
+    // Fetch organization preferences
     const prefs = organizationId 
-      ? await null // getCachedPreferences(organizationId)
+      ? await getPreferencesForPrompts(organizationId)
       : { generalApproach: '', visuals: { sketching: '' } }
 
     const result = await promptWithModel.invoke({
