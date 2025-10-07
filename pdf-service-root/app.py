@@ -171,6 +171,9 @@ def generate_solutioning_pdf():
         
         logger.info(f'Transformed data: {len(solutions)} solutions, layout types: {[s.get("layout") for s in solutions[:5]]}')
         
+        # DEBUG: Log full merged data structure
+        logger.info(f'DEBUG - Full merged data: {json.dumps(merged_data, indent=2)[:2000]}...')
+        
         # Use ORIGINAL PDF generation function
         pdf_bytes = generate_solutioning_pdf_from_json(merged_data)
         
