@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // PHASE 4: Fetch organization preferences for logo
+    // Fetch organization preferences for logos (main + header)
+    let mainLogo = ''
     let secondLogo = ''
     
     try {
@@ -27,16 +28,21 @@ export async function POST(request: NextRequest) {
         console.log(`🎨 SOW: Fetching logo preferences for organization: ${orgId}`)
         
         const preferences = await getOrganizationPreferences(orgId)
+        mainLogo = preferences.mainLogo || ''
         secondLogo = preferences.secondLogo || ''
         
+        if (mainLogo) {
+          console.log('✅ SOW PDF: Found organization main logo')
+        }
         if (secondLogo) {
           console.log('✅ SOW PDF: Found organization secondary logo')
-        } else {
-          console.log('📸 SOW PDF: No organization logo set, will use default')
+        }
+        if (!mainLogo && !secondLogo) {
+          console.log('📸 SOW PDF: No organization logos set, will use defaults')
         }
       }
     } catch (error: unknown) {
-      console.warn('⚠️ SOW PDF: Could not fetch organization preferences, using default logo:', error)
+      console.warn('⚠️ SOW PDF: Could not fetch organization preferences, using default logos:', error)
     }
     
     // Transform SOW session data to Python script format (matching original system structure)
@@ -76,7 +82,8 @@ export async function POST(request: NextRequest) {
           weeks_display: `${phase.weeksStart || 1}-${phase.weeksEnd || 4}`
         }))
       },
-      // PHASE 4: Add organization logo
+      // Organization logos
+      mainLogo: mainLogo,
       secondLogo: secondLogo
     }
     

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn } from 'child_process'
-import path from 'path'
 import { getUserRoleFromRequest } from '@/lib/api-rbac'
 import { getOrganizationPreferences } from '@/lib/preferences/preferences-service'
+import { pdfServiceClient } from '@/lib/pdf/pdf-service-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +17,8 @@ export async function POST(request: NextRequest) {
 
     console.log('📊 LOE PDF Preview: Received data for project:', loeData.info?.project || 'Unknown')
 
-    // PHASE 4: Fetch organization preferences for logo
+    // Fetch organization preferences for logos (main + header)
+    let mainLogo = ''
     let secondLogo = ''
     
     try {
@@ -28,16 +28,21 @@ export async function POST(request: NextRequest) {
         console.log(`🎨 LOE Preview: Fetching logo preferences for organization: ${orgId}`)
         
         const preferences = await getOrganizationPreferences(orgId)
+        mainLogo = preferences.mainLogo || ''
         secondLogo = preferences.secondLogo || ''
         
+        if (mainLogo) {
+          console.log('✅ LOE Preview: Found organization main logo')
+        }
         if (secondLogo) {
           console.log('✅ LOE Preview: Found organization secondary logo')
-        } else {
-          console.log('📸 LOE Preview: No organization logo set, will use default')
+        }
+        if (!mainLogo && !secondLogo) {
+          console.log('📸 LOE Preview: No organization logos set, will use defaults')
         }
       }
     } catch (error: unknown) {
-      console.warn('⚠️ LOE Preview: Could not fetch organization preferences, using default logo:', error)
+      console.warn('⚠️ LOE Preview: Could not fetch organization preferences, using default logos:', error)
     }
 
     // Transform LOE page data to match Python script expected format
@@ -57,74 +62,20 @@ export async function POST(request: NextRequest) {
         .filter(Boolean),
       goodOptions: loeData.variations?.goodOptions || [],
       bestOptions: loeData.variations?.bestOptions || [],
-      // PHASE 4: Add organization logo
+      // Organization logos
+      mainLogo: mainLogo,
       secondLogo: secondLogo
     }
 
-    console.log('🔄 LOE PDF Preview: Transformed data structure:', {
-      project: pythonData.basic.project,
-      client: pythonData.basic.client,
-      workstreamsCount: pythonData.workstreams.length,
-      resourcesCount: pythonData.resources.length,
-      assumptionsCount: pythonData.assumptions.length,
-      goodOptionsCount: pythonData.goodOptions.length,
-      bestOptionsCount: pythonData.bestOptions.length
-    })
+    console.log('📊 LOE PDF Preview: Sending data to PDF microservice')
 
-    // Path to the Python script
-    const scriptPath = path.join(process.cwd(), 'pdf-service', 'generate_loe_standalone.py')
-    console.log('🐍 LOE PDF Preview: Using Python script at:', scriptPath)
+    // Call PDF microservice
+    const pdfBuffer = await pdfServiceClient.generateLOEPDF(pythonData)
 
-    // Spawn Python process
-    const python = spawn('python3', [scriptPath], {
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
-
-    const chunks: Buffer[] = []
-    const errorChunks: Buffer[] = []
-
-    // Collect stdout (PDF data)
-    python.stdout.on('data', (chunk) => {
-      chunks.push(chunk)
-    })
-
-    // Collect stderr (error messages)
-    python.stderr.on('data', (chunk) => {
-      errorChunks.push(chunk)
-    })
-
-    // Send JSON data to Python script via stdin
-    python.stdin.write(JSON.stringify(pythonData))
-    python.stdin.end()
-
-    // Wait for Python process to complete
-    const result = await new Promise<Buffer>((resolve, reject) => {
-      python.on('close', (code) => {
-        const errorOutput = Buffer.concat(errorChunks).toString()
-        
-        if (errorOutput) {
-          console.log('🐍 LOE PDF Preview: Python stderr:', errorOutput)
-        }
-
-        if (code === 0 && chunks.length > 0) {
-          const pdfBuffer = Buffer.concat(chunks)
-          console.log('✅ LOE PDF Preview: Successfully generated PDF, size:', pdfBuffer.length, 'bytes')
-          resolve(pdfBuffer)
-        } else {
-          const errorMessage = errorOutput || `Python script failed with exit code: ${code}`
-          console.error('❌ LOE PDF Preview: Python script failed:', errorMessage)
-          reject(new Error(`Python script failed with code: ${code}, error: ${errorMessage}`))
-        }
-      })
-
-      python.on('error', (error) => {
-        console.error('❌ LOE PDF Preview: Python process error:', error)
-        reject(error)
-      })
-    })
+    console.log('✅ LOE PDF Preview: PDF generated, size:', pdfBuffer.length, 'bytes')
 
     // Return PDF for preview (inline display)
-    return new NextResponse(result as unknown as BodyInit, {
+    return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
