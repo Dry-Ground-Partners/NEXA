@@ -171,6 +171,7 @@ def generate_solutioning_pdf():
             'basic': session_data.get('basic', {}),
             'solutions': solutions,
             'sessionProtocol': session_id.split('-')[0].upper() if '-' in session_id else 'SH123',
+            'sessionId': session_id,  # Full session ID for footer
             'mainLogo': main_logo,  # Base64 only, no data URI prefix
             'secondLogo': second_logo  # Base64 only, no data URI prefix
         }

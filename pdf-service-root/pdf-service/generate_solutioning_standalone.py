@@ -113,8 +113,9 @@ def generate_solutioning_pdf_from_json(solutioning_data):
         total_solutions = len(solutions)
         is_multi_solution = total_solutions > 1
         
-        # Generate session ID for footer (extract from sessionProtocol or generate)
-        session_id = solutioning_data.get('sessionProtocol', 'SH123')
+        # Generate session ID for footer (use full session ID)
+        session_id = solutioning_data.get('sessionId', 'UNKNOWN')
+        session_protocol = solutioning_data.get('sessionProtocol', 'SH123')
         
         print(f"🐍 Processing {len(solutions)} solutions", file=sys.stderr)
         for sol in solutions:
@@ -445,7 +446,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             }
             
             .layout-1-box {
-                width: 48%;  /* Increased from 45%: Wider boxes = less space between them */
+                width: 47%;  /* Reduced to 47% for safe float layout: 47% + 6% + 47% = 100% */
                 margin: 0;  /* Reset default margins */
                 float: left;
                 border: 1px solid #000;
@@ -460,7 +461,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 overflow-wrap: break-word;  /* Added: Handle long words */
             }
             .layout-1-box:first-child {
-                margin-right: 4%;
+                margin-right: 6%;  /* Increased gap for reliable side-by-side layout */
             }
             
             /* Layout 3 Styles - No fixed height for boxes */
@@ -486,7 +487,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             }
             
             .layout-2-box {
-                width: 48%;  /* Increased from 45%: Wider boxes = less space between them */
+                width: 47%;  /* Reduced to 47% for safe float layout: 47% + 6% + 47% = 100% */
                 margin: 0;  /* Reset default margins */
                 float: left;
                 border: 1px solid #fff;
@@ -500,7 +501,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 text-align: justify;
             }
             .layout-2-box:first-child {
-                margin-right: 4%;
+                margin-right: 6%;  /* Increased gap for reliable side-by-side layout */
             }
             
             .layout-divisor-line {
@@ -533,7 +534,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             
             /* Layout 5 Styles - White borders with sharp (non-rounded) boxes */
             .layout-5-box {
-                width: 48%;  /* Increased from 45%: Wider boxes = less space between them */
+                width: 47%;  /* Reduced to 47% for safe float layout: 47% + 6% + 47% = 100% */
                 margin: 0;  /* Reset default margins */
                 float: left;
                 border: 1px solid #000;
@@ -547,7 +548,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 text-align: justify;
             }
             .layout-5-box:first-child {
-                margin-right: 4%;
+                margin-right: 6%;  /* Increased gap for reliable side-by-side layout */
             }
             
             /* Solution page footer */
@@ -762,7 +763,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             <div class="solution-footer">
                 <div class="solution-footer-line"></div>
                 <div class="solution-footer-text">
-                    Dry Ground AI — {{ basic_info.title }} — Protocol {{ session_id }} Glyph — LS{{ solution.layout }}DL{{ solution.difficulty }} at {{ basic_info.formatted_date }}
+                    Dry Ground AI — {{ basic_info.title }} — {{ session_id }} — LS{{ solution.layout }}DL{{ solution.difficulty }} at {{ basic_info.formatted_date }}
                 </div>
             </div>
         </div>
