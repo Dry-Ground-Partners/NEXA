@@ -459,10 +459,6 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             .layout-1-box:first-child {
                 margin-right: 4%;
             }
-
-            .layout-1-spacer {
-                width: 1%;  /* Reduced to minimal: Almost no space between boxes */
-            }
             
             /* Layout 3 Styles - No fixed height for boxes */
             .layout-3-boxes-container {
@@ -499,6 +495,9 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 line-height: 1.5;
                 text-align: justify;
             }
+            .layout-2-box:first-child {
+                margin-right: 4%;
+            }
             
             .layout-divisor-line {
                 width: 100%;
@@ -509,9 +508,6 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             
             /* Layout 4 Styles - Full width stacked boxes */
             .layout-4-container {
-                display: flex;
-                flex-direction: column;
-                min-height: calc(962px - 60px);  /* Changed: Use min-height instead of fixed height */
                 max-width: 100%;
                 margin: 0 auto;
             }
@@ -534,6 +530,7 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             /* Layout 5 Styles - White borders with sharp (non-rounded) boxes */
             .layout-5-box {
                 width: 48%;  /* Increased from 45%: Wider boxes = less space between them */
+                float: left;
                 border: 1px solid #000;
                 border-radius: 0;
                 padding: 20px;
@@ -543,6 +540,9 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 font-size: 12px;
                 line-height: 1.5;
                 text-align: justify;
+            }
+            .layout-5-box:first-child {
+                margin-right: 4%;
             }
             
             /* Solution page footer */
@@ -665,7 +665,6 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 
                 <div class="layout-1-boxes-container">
                     <div class="layout-2-box">{{ solution.steps }}</div>
-                    <div class="layout-1-spacer"></div>
                     <div class="layout-2-box">{{ solution.approach }}</div>
                 </div>
             </div>
@@ -679,7 +678,6 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 
                 <div class="layout-3-boxes-container">
                     <div class="layout-1-box">{{ solution.steps }}</div>
-                    <div class="layout-1-spacer"></div>
                     <div class="layout-1-box">{{ solution.approach }}</div>
                 </div>
                 
@@ -729,7 +727,6 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 <br>
                 <div class="layout-1-boxes-container">
                     <div class="layout-5-box">{{ solution.steps }}</div>
-                    <div class="layout-1-spacer"></div>
                     <div class="layout-5-box">{{ solution.approach }}</div>
                 </div>
             </div>
@@ -751,7 +748,6 @@ def generate_solutioning_pdf_from_json(solutioning_data):
                 <br>
                 <div class="layout-1-boxes-container">
                     <div class="layout-1-box">{{ solution.steps }}</div>
-                    <div class="layout-1-spacer"></div>
                     <div class="layout-1-box">{{ solution.approach }}</div>
                 </div>
             </div>
