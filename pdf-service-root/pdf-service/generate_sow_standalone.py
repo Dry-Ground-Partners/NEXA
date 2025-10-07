@@ -16,9 +16,27 @@ def generate_sow_pdf_from_json(sow_data):
         # Get current directory for assets
         curr_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Logo handling - PHASE 4: Use organization logos from database
-        # Check if organization secondary logo is provided in the JSON
+        # Logo handling: Use organization logos from database
+        # mainLogo is for cover/header areas, secondLogo is for page headers
+        main_logo_from_db = sow_data.get('mainLogo', '')
         second_logo_from_db = sow_data.get('secondLogo', '')
+        
+        # Main logo (used in header/cover)
+        if main_logo_from_db:
+            # Organization provided custom main logo (already base64 from DB)
+            print("🎨 SOW: Using organization main logo from database", file=sys.stderr)
+            main_logo_base64 = main_logo_from_db
+        else:
+            # Fallback to default Dry Ground AI logo
+            print("📸 SOW: Using default main logo (no organization logo set)", file=sys.stderr)
+            main_logo_path = os.path.join(curr_dir, '../public/Dry Ground AI_Full Logo_Black_RGB.png')
+            if not os.path.exists(main_logo_path):
+                main_logo_path = os.path.join(curr_dir, 'Dry Ground AI_Full Logo_Black_RGB.png')
+            
+            main_logo_base64 = ""
+            if os.path.exists(main_logo_path):
+                with open(main_logo_path, 'rb') as f:
+                    main_logo_base64 = base64.b64encode(f.read()).decode('utf-8')
         
         # DG logo for page headers
         if second_logo_from_db:
@@ -257,8 +275,8 @@ def generate_sow_pdf_from_json(sow_data):
         <body>
             <!-- Header -->
             <div class="header">
-                <!-- Header logo like solution pages but not faded -->
-                <img src="data:image/png;base64,{{ dg_logo_base64 }}" class="sow-header-image" alt="DG Logo">
+                <!-- Header logo - use mainLogo if available, otherwise dg logo -->
+                <img src="data:image/png;base64,{{ main_logo_base64 or dg_logo_base64 }}" class="sow-header-image" alt="Organization Logo">
                 
                 <div class="document-title">Statement of Work</div>
                 <div class="project-title">{{ sow_data.project }}</div>
@@ -418,6 +436,7 @@ def generate_sow_pdf_from_json(sow_data):
         html_content = template.render(
             sow_data=sow_data,
             formatted_date=formatted_date,
+            main_logo_base64=main_logo_base64,
             dg_logo_base64=dg_logo_base64,
             refinement_midpoint=refinement_midpoint,
             refinement_endpoint=refinement_endpoint

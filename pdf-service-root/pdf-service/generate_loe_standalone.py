@@ -19,9 +19,27 @@ def generate_loe_pdf_from_json(loe_data):
     try:
         curr_dir = os.path.dirname(os.path.abspath(__file__))
 
-        # Logo handling - PHASE 4: Use organization logos from database
-        # Check if organization secondary logo is provided in the JSON
+        # Logo handling: Use organization logos from database
+        # mainLogo is for cover/header areas, secondLogo is for page headers
+        main_logo_from_db = loe_data.get('mainLogo', '')
         second_logo_from_db = loe_data.get('secondLogo', '')
+        
+        # Main logo (used in header/cover)
+        if main_logo_from_db:
+            # Organization provided custom main logo (already base64 from DB)
+            print("🎨 LOE: Using organization main logo from database", file=sys.stderr)
+            main_logo_base64 = main_logo_from_db
+        else:
+            # Fallback to default Dry Ground AI logo
+            print("📸 LOE: Using default main logo (no organization logo set)", file=sys.stderr)
+            main_logo_path = os.path.join(curr_dir, '../public/Dry Ground AI_Full Logo_Black_RGB.png')
+            if not os.path.exists(main_logo_path):
+                main_logo_path = os.path.join(curr_dir, 'Dry Ground AI_Full Logo_Black_RGB.png')
+            
+            main_logo_base64 = ""
+            if os.path.exists(main_logo_path):
+                with open(main_logo_path, 'rb') as f:
+                    main_logo_base64 = base64.b64encode(f.read()).decode('utf-8')
         
         # DG logo for page headers
         if second_logo_from_db:
@@ -293,7 +311,7 @@ def generate_loe_pdf_from_json(loe_data):
         <body>
             <!-- Header -->
             <div class="header">
-                <img src="data:image/png;base64,{{ dg_logo_base64 }}" class="loe-header-image" alt="DG Logo">
+                <img src="data:image/png;base64,{{ main_logo_base64 or dg_logo_base64 }}" class="loe-header-image" alt="Organization Logo">
                 
                 <div class="document-title">Level of Effort</div>
                 <div class="project-title">{{ loe_data.basic.project }}</div>
@@ -539,6 +557,7 @@ def generate_loe_pdf_from_json(loe_data):
         template = Template(html_template)
         html_content = template.render(loe_data=loe_data,
                                        formatted_date=formatted_date,
+                                       main_logo_base64=main_logo_base64,
                                        dg_logo_base64=dg_logo_base64,
                                        total_weeks=total_weeks,
                                        total_hours=total_hours,
