@@ -111,8 +111,68 @@ def generate_solutioning_pdf():
         data = request.get_json()
         logger.info('Generating Solutioning PDF from structured data')
         
+        # Transform data format: Client sends separate, module expects merged
+        session_data = data.get('sessionData', {})
+        session_id = data.get('sessionId', 'UNKNOWN')
+        main_logo = data.get('mainLogo', '')
+        second_logo = data.get('secondLogo', '')
+        
+        # Fix duplicate data URI prefix
+        if main_logo and main_logo.startswith('data:image/'):
+            # Extract just base64 part after comma
+            main_logo = main_logo.split(',', 1)[1] if ',' in main_logo else main_logo
+        
+        if second_logo and second_logo.startswith('data:image/'):
+            # Extract just base64 part after comma
+            second_logo = second_logo.split(',', 1)[1] if ',' in second_logo else second_logo
+        
+        # Transform solutions from dict to array if needed
+        solutions = session_data.get('solutions', {})
+        if isinstance(solutions, dict):
+            # Convert dict to array format expected by module
+            solutions_array = []
+            for sol_id, solution in solutions.items():
+                if not isinstance(solution, dict):
+                    continue
+                
+                structure = solution.get('structure', {})
+                additional = solution.get('additional', {})
+                
+                # Fix layout: convert "TextBox" or other strings to numeric
+                layout = structure.get('layout', 1)
+                if isinstance(layout, str):
+                    if layout == 'TextBox':
+                        layout = 1  # Default to layout 1
+                    else:
+                        try:
+                            layout = int(layout)
+                        except:
+                            layout = 1
+                
+                solutions_array.append({
+                    'title': structure.get('title', 'Untitled Solution'),
+                    'steps': structure.get('steps', ''),
+                    'approach': structure.get('approach', ''),
+                    'difficulty': structure.get('difficulty', 0),
+                    'layout': layout,
+                    'imageData': additional.get('imageData', '')
+                })
+            
+            solutions = solutions_array
+        
+        # Merge into format expected by original module
+        merged_data = {
+            'basic': session_data.get('basic', {}),
+            'solutions': solutions,
+            'sessionProtocol': session_id.split('-')[0].upper() if '-' in session_id else 'SH123',
+            'mainLogo': main_logo,  # Base64 only, no data URI prefix
+            'secondLogo': second_logo  # Base64 only, no data URI prefix
+        }
+        
+        logger.info(f'Transformed data: {len(solutions)} solutions, layout types: {[s.get("layout") for s in solutions[:5]]}')
+        
         # Use ORIGINAL PDF generation function
-        pdf_bytes = generate_solutioning_pdf_from_json(data)
+        pdf_bytes = generate_solutioning_pdf_from_json(merged_data)
         
         if not pdf_bytes:
             raise Exception('PDF generation returned None')
