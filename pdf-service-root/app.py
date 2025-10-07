@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 """
 NEXA PDF Generation Microservice
-Handles all PDF generation using WeasyPrint + Jinja2
+Uses ORIGINAL PDF generation modules from pdf-service/
 Deployed as separate Render Web Service
 """
 
 from flask import Flask, request, jsonify, send_file
 from weasyprint import HTML, CSS
-from jinja2 import Template
 import os
 import sys
 import json
-import base64
 import datetime
 import logging
 from io import BytesIO
+
+# Add pdf-service to path to import original modules
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'pdf-service'))
+
+# Import ORIGINAL PDF generation functions
+from generate_solutioning_standalone import generate_solutioning_pdf_from_json
+from generate_loe_standalone import generate_loe_pdf_from_json
+from generate_sow_standalone import generate_sow_pdf_from_json
 
 # Configure logging
 logging.basicConfig(
@@ -50,7 +56,7 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'service': 'nexa-pdf-generator',
-        'weasyprint_version': '60.1',
+        'weasyprint_version': '62.3',
         'timestamp': datetime.datetime.now().isoformat()
     }), 200
 
@@ -74,27 +80,9 @@ def generate_pdf():
         html_template = data['htmlTemplate']
         logger.info(f'Generating PDF from HTML template, length: {len(html_template)} characters')
         
-        # Basic CSS for better PDF rendering
-        base_css = CSS(string="""
-            @page {
-                margin: 40px;
-                size: A4;
-            }
-            body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-            }
-            h1, h2, h3 {
-                color: #2c3e50;
-                margin-top: 20px;
-                margin-bottom: 10px;
-            }
-        """)
-        
-        # Convert HTML to PDF
+        # Convert HTML to PDF using WeasyPrint
         html_doc = HTML(string=html_template)
-        pdf_bytes = html_doc.write_pdf(stylesheets=[base_css])
+        pdf_bytes = html_doc.write_pdf()
         
         logger.info(f'PDF generated successfully, size: {len(pdf_bytes)} bytes')
         
@@ -114,7 +102,7 @@ def generate_pdf():
 def generate_solutioning_pdf():
     """
     Generate Solutioning PDF from structured data
-    Uses existing solutioning templates
+    Uses ORIGINAL generate_solutioning_standalone.py module
     """
     if request.method == 'OPTIONS':
         return '', 204
@@ -123,14 +111,11 @@ def generate_solutioning_pdf():
         data = request.get_json()
         logger.info('Generating Solutioning PDF from structured data')
         
-        # Import existing solutioning PDF generator logic
-        from pdf_templates.solutioning import generate_solutioning_html
+        # Use ORIGINAL PDF generation function
+        pdf_bytes = generate_solutioning_pdf_from_json(data)
         
-        html_content = generate_solutioning_html(data)
-        
-        # Convert to PDF
-        html_doc = HTML(string=html_content)
-        pdf_bytes = html_doc.write_pdf()
+        if not pdf_bytes:
+            raise Exception('PDF generation returned None')
         
         logger.info(f'Solutioning PDF generated successfully, size: {len(pdf_bytes)} bytes')
         
@@ -147,7 +132,10 @@ def generate_solutioning_pdf():
 
 @app.route('/api/generate-sow-pdf', methods=['POST', 'OPTIONS'])
 def generate_sow_pdf():
-    """Generate SOW PDF from structured data"""
+    """
+    Generate SOW PDF from structured data
+    Uses ORIGINAL generate_sow_standalone.py module
+    """
     if request.method == 'OPTIONS':
         return '', 204
     
@@ -155,11 +143,11 @@ def generate_sow_pdf():
         data = request.get_json()
         logger.info('Generating SOW PDF from structured data')
         
-        from pdf_templates.sow import generate_sow_html
+        # Use ORIGINAL PDF generation function
+        pdf_bytes = generate_sow_pdf_from_json(data)
         
-        html_content = generate_sow_html(data)
-        html_doc = HTML(string=html_content)
-        pdf_bytes = html_doc.write_pdf()
+        if not pdf_bytes:
+            raise Exception('PDF generation returned None')
         
         logger.info(f'SOW PDF generated successfully, size: {len(pdf_bytes)} bytes')
         
@@ -176,7 +164,10 @@ def generate_sow_pdf():
 
 @app.route('/api/generate-loe-pdf', methods=['POST', 'OPTIONS'])
 def generate_loe_pdf():
-    """Generate LOE PDF from structured data"""
+    """
+    Generate LOE PDF from structured data
+    Uses ORIGINAL generate_loe_standalone.py module
+    """
     if request.method == 'OPTIONS':
         return '', 204
     
@@ -184,11 +175,11 @@ def generate_loe_pdf():
         data = request.get_json()
         logger.info('Generating LOE PDF from structured data')
         
-        from pdf_templates.loe import generate_loe_html
+        # Use ORIGINAL PDF generation function
+        pdf_bytes = generate_loe_pdf_from_json(data)
         
-        html_content = generate_loe_html(data)
-        html_doc = HTML(string=html_content)
-        pdf_bytes = html_doc.write_pdf()
+        if not pdf_bytes:
+            raise Exception('PDF generation returned None')
         
         logger.info(f'LOE PDF generated successfully, size: {len(pdf_bytes)} bytes')
         
@@ -212,13 +203,14 @@ def index():
         'endpoints': {
             '/health': 'Health check',
             '/api/generate-pdf': 'Generate PDF from HTML template',
-            '/api/generate-solutioning-pdf': 'Generate Solutioning PDF',
-            '/api/generate-sow-pdf': 'Generate SOW PDF',
-            '/api/generate-loe-pdf': 'Generate LOE PDF'
+            '/api/generate-solutioning-pdf': 'Generate Solutioning PDF (ORIGINAL MODULE)',
+            '/api/generate-sow-pdf': 'Generate SOW PDF (ORIGINAL MODULE)',
+            '/api/generate-loe-pdf': 'Generate LOE PDF (ORIGINAL MODULE)'
         }
     }), 200
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     logger.info(f'Starting NEXA PDF Microservice on port {port}')
+    logger.info(f'Using ORIGINAL PDF generation modules from pdf-service/')
     app.run(host='0.0.0.0', port=port, debug=False)

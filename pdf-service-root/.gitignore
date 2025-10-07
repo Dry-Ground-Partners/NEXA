@@ -8,3 +8,5 @@ ENV/
 .venv/
 *.pdf
 *.log
+pdf-service/venv/
+pdf-service/__pycache__/
