@@ -27,8 +27,13 @@ def generate_loe_pdf_from_json(loe_data):
         # Main logo (used in header/cover)
         if main_logo_from_db:
             # Organization provided custom main logo (already base64 from DB)
+            # Strip data URI prefix if present (logos from DB include it)
             print("🎨 LOE: Using organization main logo from database", file=sys.stderr)
-            main_logo_base64 = main_logo_from_db
+            if main_logo_from_db.startswith('data:image/'):
+                # Extract just base64 part after comma
+                main_logo_base64 = main_logo_from_db.split(',', 1)[1] if ',' in main_logo_from_db else main_logo_from_db
+            else:
+                main_logo_base64 = main_logo_from_db
         else:
             # Fallback to default Dry Ground AI logo
             print("📸 LOE: Using default main logo (no organization logo set)", file=sys.stderr)
@@ -44,8 +49,13 @@ def generate_loe_pdf_from_json(loe_data):
         # DG logo for page headers
         if second_logo_from_db:
             # Organization provided custom secondary logo (already base64 from DB)
+            # Strip data URI prefix if present (logos from DB include it)
             print("🎨 LOE: Using organization secondary logo from database", file=sys.stderr)
-            dg_logo_base64 = second_logo_from_db
+            if second_logo_from_db.startswith('data:image/'):
+                # Extract just base64 part after comma
+                dg_logo_base64 = second_logo_from_db.split(',', 1)[1] if ',' in second_logo_from_db else second_logo_from_db
+            else:
+                dg_logo_base64 = second_logo_from_db
         else:
             # Fallback to default DG logo
             print("📸 LOE: Using default header logo (no organization secondary logo set)", file=sys.stderr)
