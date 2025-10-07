@@ -149,13 +149,19 @@ def generate_solutioning_pdf():
                         except:
                             layout = 1
                 
+                # Fix imageData: strip data URI prefix if present
+                image_data = additional.get('imageData', '')
+                if image_data and image_data.startswith('data:image/'):
+                    # Extract just base64 part after comma
+                    image_data = image_data.split(',', 1)[1] if ',' in image_data else image_data
+                
                 solutions_array.append({
                     'title': structure.get('title', 'Untitled Solution'),
                     'steps': structure.get('steps', ''),
                     'approach': structure.get('approach', ''),
                     'difficulty': structure.get('difficulty', 0),
                     'layout': layout,
-                    'imageData': additional.get('imageData', '')
+                    'imageData': image_data  # Base64 only, no prefix
                 })
             
             solutions = solutions_array
