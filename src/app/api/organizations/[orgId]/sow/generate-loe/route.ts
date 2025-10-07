@@ -47,7 +47,7 @@ export async function POST(
     
     // Track usage before processing
     const trackingResult = await withUsageTracking(request, orgId, {
-      eventType: 'sow_push_to_loe',
+      eventType: 'push_sow_to_loe',
       eventData: {
         contentLength: concatenatedContent.length,
         complexity: complexity,
