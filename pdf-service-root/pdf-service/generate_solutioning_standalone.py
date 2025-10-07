@@ -789,20 +789,18 @@ def generate_solutioning_pdf_from_json(solutioning_data):
             print(f"🐍 ERROR in template.render(): {type(e).__name__}: {str(e)}", file=sys.stderr)
             raise
 
+        # SAVE HTML FOR INSPECTION
+        try:
+            import tempfile
+            html_file = os.path.join(tempfile.gettempdir(), 'solutioning_debug.html')
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            print(f"🐍 DEBUG: Saved HTML to {html_file} for inspection", file=sys.stderr)
+        except Exception as save_error:
+            print(f"🐍 WARNING: Could not save HTML: {save_error}", file=sys.stderr)
+        
         try:
             print(f"🐍 DEBUG: Converting HTML to PDF with WeasyPrint...", file=sys.stderr)
-            
-            # SAVE HTML FOR INSPECTION
-            try:
-                import os
-                import tempfile
-                html_file = os.path.join(tempfile.gettempdir(), 'solutioning_debug.html')
-                with open(html_file, 'w', encoding='utf-8') as f:
-                    f.write(html_content)
-                print(f"🐍 DEBUG: Saved HTML to {html_file} for inspection", file=sys.stderr)
-            except:
-                pass
-            
             html_doc = HTML(string=html_content)
             pdf_bytes = html_doc.write_pdf()
             print(f"🐍 DEBUG: PDF generated successfully, size: {len(pdf_bytes) if pdf_bytes else 0}", file=sys.stderr)
