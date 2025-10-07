@@ -468,8 +468,8 @@ export function useHyperCanvasChat(
         }))
         
         // Show fallback response if provided
-        if (data.response && data.response.chat_responses) {
-          data.response.chat_responses.forEach((responseContent: string, index: number) => {
+        if (data.chat_responses) {
+          data.chat_responses.forEach((responseContent: string, index: number) => {
             const timeout = setTimeout(() => {
               const assistantMessage: ChatMessage = {
                 id: `assistant_error_${Date.now()}_${index}`,

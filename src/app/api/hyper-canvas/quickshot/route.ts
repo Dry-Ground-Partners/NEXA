@@ -22,11 +22,11 @@ export async function POST(request: NextRequest) {
         { 
           success: false, 
           error: 'Missing required fields: message, threadId, sessionId, or userId',
-          response: {
-            chat_responses: [
-              "I need more information to help you. Please make sure you're properly connected."
-            ]
-          }
+          maestro: false,
+          message_to_maestro: null,
+          chat_responses: [
+            "I need more information to help you. Please make sure you're properly connected."
+          ]
         },
         { status: 400 }
       )
@@ -63,12 +63,12 @@ export async function POST(request: NextRequest) {
       { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error occurred',
-        response: {
-          chat_responses: [
-            "I encountered an unexpected error. Let me try that again...",
-            "If this persists, please try refreshing the page."
-          ]
-        }
+        maestro: false,
+        message_to_maestro: null,
+        chat_responses: [
+          "I encountered an unexpected error. Let me try that again...",
+          "If this persists, please try refreshing the page."
+        ]
       },
       { status: 500 }
     )

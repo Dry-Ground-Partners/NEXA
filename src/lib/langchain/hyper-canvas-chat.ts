@@ -287,7 +287,9 @@ export async function chatTurn(
     
     return {
       success: true,
-      response: quickshotResponse,
+      maestro: quickshotResponse.maestro,
+      message_to_maestro: quickshotResponse.message_to_maestro,
+      chat_responses: quickshotResponse.chat_responses,
       memoryState: {
         summary: updatedSummary,
         messageCount: 0, // We'll update this when we find the proper API
@@ -302,15 +304,13 @@ export async function chatTurn(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      response: {
-        maestro: false,
-        message_to_maestro: null,
-        chat_responses: [
-          "I'm having trouble processing that request right now 😅",
-          "Let me try to understand what you're looking for...",
-          "Could you rephrase that for me?"
-        ]
-      }
+      maestro: false,
+      message_to_maestro: null,
+      chat_responses: [
+        "I'm having trouble processing that request right now 😅",
+        "Let me try to understand what you're looking for...",
+        "Could you rephrase that for me?"
+      ]
     }
   }
 }
