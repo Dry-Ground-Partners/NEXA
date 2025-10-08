@@ -514,10 +514,12 @@ RULES:
     return promptTemplate
   } else {
     // Fallback: bind model in code
+    // Note: We use .stream() for invocation to handle large templates
     const llm = new ChatAnthropic({
       modelName: 'claude-3-5-sonnet-20241022',
       temperature: 0.3,
-      anthropicApiKey: process.env.ANTHROPIC_API_KEY
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+      maxTokens: 8192  // Set explicit max tokens
     })
     const chain = promptTemplate.pipe(llm)
     return chain
@@ -568,6 +570,21 @@ export async function maestroTurn(
     console.log(`   Context size: ${conversationContext.length} characters`)
     console.log(`   Template size: ${currentTemplate.length} characters`)
     
+    // Optimize template size for Claude processing
+    let optimizedTemplate = currentTemplate
+    if (currentTemplate.length > 50000) {
+      console.log(`⚠️ Large template detected (${currentTemplate.length} chars), optimizing...`)
+      
+      // Remove excessive whitespace and comments while preserving structure
+      optimizedTemplate = currentTemplate
+        .replace(/<!--[\s\S]*?-->/g, '') // Remove HTML comments
+        .replace(/\s+/g, ' ')            // Collapse multiple whitespace
+        .replace(/>\s+</g, '><')         // Remove whitespace between tags
+        .trim()
+      
+      console.log(`✅ Template optimized: ${currentTemplate.length} → ${optimizedTemplate.length} chars`)
+    }
+    
     // Configure LangSmith tagging
     const config: RunnableConfig = {
       tags: [
@@ -588,23 +605,31 @@ export async function maestroTurn(
       }
     }
     
-    // Invoke maestro with conversation context + current template + instruction
-    const result = await maestroChain.invoke({
+    // Use streaming for large templates to avoid Anthropic timeout
+    console.log('🔄 Invoking maestro chain with streaming enabled...')
+    
+    let responseText: string = ''
+    
+    // Stream the response and collect all chunks
+    const stream = await maestroChain.stream({
       summary: conversationContext.substring(0, 500), // Limited context summary
-      template: currentTemplate,  // Match LangSmith prompt variable name
+      template: optimizedTemplate,  // Use optimized template to reduce size
       older_messages: conversationContext,
       instruction: instruction
     }, config)
     
-    // Extract and parse maestro response
-    let responseText: string
-    if (typeof result === 'string') {
-      responseText = result
-    } else if (result && typeof result === 'object' && 'content' in result) {
-      responseText = (result as any).content
-    } else {
-      responseText = JSON.stringify(result)
+    // Collect all streamed chunks
+    for await (const chunk of stream) {
+      if (typeof chunk === 'string') {
+        responseText += chunk
+      } else if (chunk && typeof chunk === 'object' && 'content' in chunk) {
+        responseText += (chunk as any).content
+      } else if (chunk) {
+        responseText += JSON.stringify(chunk)
+      }
     }
+    
+    console.log('✅ Streaming complete, total response length:', responseText.length)
     
     // Clean JSON response (same as quickshot)
     let cleanedResponse = responseText.trim()
