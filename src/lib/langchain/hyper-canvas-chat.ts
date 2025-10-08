@@ -441,7 +441,7 @@ SUMMARY: {summary}
 OLDER MESSAGES: {older_messages}
 (OLDER MESSAGES END HERE)
 
-CURRENT TEMPLATE: {current_template}
+CURRENT TEMPLATE: {template}
 (CURRENT TEMPLATE ENDS HERE)
 
 MODIFICATION INSTRUCTION: {instruction}
@@ -569,8 +569,8 @@ export async function maestroTurn(
     // Invoke maestro with conversation context + current template + instruction
     const result = await maestroChain.invoke({
       summary: conversationContext.substring(0, 500), // Limited context summary
+      template: currentTemplate,  // Match LangSmith prompt variable name
       older_messages: conversationContext,
-      current_template: currentTemplate,
       instruction: instruction
     }, config)
     

@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 async function callPythonScriptForHTML(data: any): Promise<string | null> {
   return new Promise((resolve, reject) => {
     try {
-      const scriptPath = path.join(process.cwd(), 'pdf-service', 'generate_solutioning_html.py')
+      const scriptPath = path.join(process.cwd(), 'pdf-service-root', 'pdf-service', 'generate_solutioning_html.py')
       
       console.log('🐍 Calling HTML generation Python script:', scriptPath)
       console.log('📊 Data being sent to Python:', JSON.stringify(data, null, 2))
