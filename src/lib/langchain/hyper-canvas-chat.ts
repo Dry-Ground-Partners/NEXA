@@ -1,40 +1,104 @@
-import { ConversationSummaryBufferMemory } from 'langchain/memory'
 import { ChatOpenAI } from '@langchain/openai'
 import { PromptTemplate } from '@langchain/core/prompts'
 import { RunnableWithMessageHistory } from '@langchain/core/runnables'
-import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import { RunnableConfig } from '@langchain/core/runnables'
+import { BaseChatMessageHistory } from '@langchain/core/chat_history'
+import { BaseMessage, HumanMessage, AIMessage } from '@langchain/core/messages'
+import { PrismaClient } from '@prisma/client'
 import * as hub from 'langchain/hub/node'
 
-// Memory instances stored per thread (in-memory for now)
-const threadMemories = new Map<string, ConversationSummaryBufferMemory>()
+const prisma = new PrismaClient()
 
 /**
- * Get or create memory for a specific thread
+ * Custom PostgreSQL-backed chat message history using Prisma
  */
-export function getOrCreateMemory(threadId: string): ConversationSummaryBufferMemory {
-  if (!threadMemories.has(threadId)) {
-    const llm = new ChatOpenAI({
-      modelName: 'gpt-4o-mini', // Cheaper model for summarization
-      temperature: 0.3,
-      openAIApiKey: process.env.OPENAI_API_KEY
-    })
-    
-    const memory = new ConversationSummaryBufferMemory({
-      llm: llm,
-      maxTokenLimit: 2000,      // Budget for summary + recent messages
-      returnMessages: true,      // Exposes messages for the prompt
-      memoryKey: 'older_messages',
-      aiPrefix: 'Quickshot',
-      humanPrefix: 'User',
-      outputKey: 'text'         // Key for chain output
-    })
-    
-    threadMemories.set(threadId, memory)
-    console.log(`🧠 Created new memory for thread: ${threadId}`)
+class PostgresChatMessageHistory extends BaseChatMessageHistory {
+  lc_namespace = ["langchain", "stores", "message", "postgres"]
+  private threadId: string
+
+  constructor(threadId: string) {
+    super()
+    this.threadId = threadId
   }
-  
-  return threadMemories.get(threadId)!
+
+  async getMessages(): Promise<BaseMessage[]> {
+    try {
+      // Query raw SQL since we might not have Prisma model yet
+      const messages = await prisma.$queryRaw<Array<{
+        id: number
+        session_id: string
+        message: any
+        role: string
+        created_at: Date
+      }>>`
+        SELECT * FROM hyper_canvas_messages 
+        WHERE session_id = ${this.threadId}
+        ORDER BY created_at ASC
+      `
+
+      return messages.map(msg => {
+        const messageData = typeof msg.message === 'string' 
+          ? JSON.parse(msg.message) 
+          : msg.message
+        
+        const content = messageData.content || messageData.data?.content || ''
+        
+        return messageData.type === 'human' || msg.role === 'user'
+          ? new HumanMessage(content)
+          : new AIMessage(content)
+      })
+    } catch (error) {
+      console.error('Error getting messages:', error)
+      return []
+    }
+  }
+
+  async addMessage(message: BaseMessage): Promise<void> {
+    try {
+      const messageType = message._getType()
+      const role = messageType === 'human' ? 'user' : 'assistant'
+      
+      await prisma.$executeRaw`
+        INSERT INTO hyper_canvas_messages (session_id, message, role, created_at)
+        VALUES (
+          ${this.threadId},
+          ${JSON.stringify({ type: messageType, content: message.content })}::jsonb,
+          ${role},
+          NOW()
+        )
+      `
+    } catch (error) {
+      console.error('Error adding message:', error)
+      throw error
+    }
+  }
+
+  async addUserMessage(message: string): Promise<void> {
+    await this.addMessage(new HumanMessage(message))
+  }
+
+  async addAIChatMessage(message: string): Promise<void> {
+    await this.addMessage(new AIMessage(message))
+  }
+
+  async clear(): Promise<void> {
+    try {
+      await prisma.$executeRaw`
+        DELETE FROM hyper_canvas_messages 
+        WHERE session_id = ${this.threadId}
+      `
+    } catch (error) {
+      console.error('Error clearing messages:', error)
+      throw error
+    }
+  }
+}
+
+/**
+ * Get message history for a specific thread (PostgreSQL-backed via Prisma)
+ */
+function getMessageHistory(threadId: string) {
+  return new PostgresChatMessageHistory(threadId)
 }
 
 /**
@@ -162,7 +226,7 @@ RULES:
 }
 
 /**
- * Execute a chat turn with LCEL, memory, and LangSmith tagging
+ * Execute a chat turn with persistent message history
  */
 export async function chatTurn(
   threadId: string, 
@@ -174,16 +238,26 @@ export async function chatTurn(
   
   console.log(`💬 Chat turn started: ${threadId}`)
   console.log(`   User: ${userId}`)
+  console.log(`   Session: ${sessionId}`)
   console.log(`   Input: "${input.substring(0, 50)}..."`)
-  
-  const memory = getOrCreateMemory(threadId)
   
   try {
     // Get the base chain
     const baseChain = await createQuickshotChain()
     
+    // Wrap chain with message history (PostgreSQL-backed)
+    const chainWithHistory = new RunnableWithMessageHistory({
+      runnable: baseChain,
+      getMessageHistory: getMessageHistory,
+      inputMessagesKey: "input",
+      historyMessagesKey: "older_messages"
+    })
+    
     // Configure LangSmith tagging
     const config: RunnableConfig = {
+      configurable: { 
+        sessionId: threadId  // This maps to the thread_id in the database
+      },
       tags: [
         `thread:${threadId}`,
         `user:${userId}`,
@@ -202,20 +276,14 @@ export async function chatTurn(
       }
     }
     
-    // Get memory context for the prompt
-    const memoryVariables = await memory.loadMemoryVariables({})
-    const summary = memoryVariables.summary || ''
-    const olderMessages = memoryVariables.older_messages || ''
+    console.log('🔄 Invoking chain with persistent message history')
     
-    console.log(`🧠 Memory context: ${summary.substring(0, 50)}...`)
-    
-    // Invoke the chain with memory context
-    console.log('🔄 Invoking chain with memory context')
-    const result = await baseChain.invoke(
+    // Invoke the chain - history is automatically loaded and saved
+    const result = await chainWithHistory.invoke(
       {
         input: input,
-        summary: summary,
-        older_messages: olderMessages
+        summary: "", // Will be auto-populated from history
+        older_messages: "" // Will be auto-populated from history
       },
       config
     )
@@ -269,21 +337,15 @@ export async function chatTurn(
       throw new Error('Invalid quickshot response format')
     }
     
-    // Update memory with the conversation
-    // Save the actual chat responses instead of the full JSON
-    const chatText = quickshotResponse.chat_responses.join(' ')
-    await memory.saveContext(
-      { input: input },
-      { text: chatText }  // Use 'text' key to match outputKey config
-    )
-    
-    // Get updated memory state
-    const updatedMemoryVariables = await memory.loadMemoryVariables({})
-    const updatedSummary = updatedMemoryVariables.summary || 'No conversation yet'
-    
+    // Message history is automatically saved by RunnableWithMessageHistory!
     console.log(`✅ Chat turn completed successfully`)
     console.log(`   Maestro: ${quickshotResponse.maestro}`)
     console.log(`   Responses: ${quickshotResponse.chat_responses.length}`)
+    console.log(`   💾 Message history persisted to database`)
+    
+    // Get message count from database for memory state
+    const messageHistory = getMessageHistory(threadId)
+    const messages = await messageHistory.getMessages()
     
     return {
       success: true,
@@ -291,8 +353,8 @@ export async function chatTurn(
       message_to_maestro: quickshotResponse.message_to_maestro,
       chat_responses: quickshotResponse.chat_responses,
       memoryState: {
-        summary: updatedSummary,
-        messageCount: 0, // We'll update this when we find the proper API
+        summary: `${messages.length} messages in conversation`,
+        messageCount: messages.length,
         tokenBudget: 2000
       }
     }
@@ -319,23 +381,37 @@ export async function chatTurn(
  * Get memory status for a thread
  */
 export async function getMemoryStatus(threadId: string) {
-  const memory = getOrCreateMemory(threadId)
-  const memoryVariables = await memory.loadMemoryVariables({})
-  
-  return {
-    messageCount: 0, // We'll update this when we find the proper API
-    summary: memoryVariables.summary || 'No conversation yet',
-    tokenBudget: 2000
+  try {
+    const messageHistory = getMessageHistory(threadId)
+    const messages = await messageHistory.getMessages()
+    
+    return {
+      messageCount: messages.length,
+      summary: `${messages.length} messages in conversation`,
+      tokenBudget: 2000,
+      hasHistory: messages.length > 0
+    }
+  } catch (error) {
+    console.error('❌ Error getting memory status:', error)
+    return {
+      messageCount: 0,
+      summary: 'No conversation yet',
+      tokenBudget: 2000,
+      hasHistory: false
+    }
   }
 }
 
 /**
  * Clear memory for a thread (useful for testing)
  */
-export function clearThreadMemory(threadId: string) {
-  if (threadMemories.has(threadId)) {
-    threadMemories.delete(threadId)
-    console.log(`🗑️ Cleared memory for thread: ${threadId}`)
+export async function clearThreadMemory(threadId: string) {
+  try {
+    const messageHistory = getMessageHistory(threadId)
+    await messageHistory.clear()
+    console.log(`🗑️ Cleared message history for thread: ${threadId}`)
+  } catch (error) {
+    console.error('❌ Error clearing thread memory:', error)
   }
 }
 
@@ -440,14 +516,23 @@ export async function maestroTurn(
   console.log(`🎭 Maestro turn started: ${threadId}`)
   console.log(`   Instruction: "${instruction.substring(0, 50)}..."`)
   
-  // Get the SAME memory instance used by quickshot
-  const memory = getOrCreateMemory(threadId)
-  
   try {
-    // Get maestro chain with shared context structure
+    // Get maestro chain
     const maestroChain = await createMaestroChain()
     
-    // Configure LangSmith tagging (same pattern as quickshot)
+    // Get conversation history from the same thread (read-only for maestro context)
+    const messageHistory = getMessageHistory(threadId)
+    const messages = await messageHistory.getMessages()
+    
+    // Convert messages to a simple context string
+    const conversationContext = messages
+      .slice(-10) // Last 10 messages for context
+      .map(msg => `${msg._getType() === 'human' ? 'User' : 'Assistant'}: ${msg.content}`)
+      .join('\n')
+    
+    console.log(`🧠 Maestro has context from ${messages.length} previous messages`)
+    
+    // Configure LangSmith tagging
     const config: RunnableConfig = {
       tags: [
         `thread:${threadId}`,
@@ -467,17 +552,10 @@ export async function maestroTurn(
       }
     }
     
-    // Get memory context (same as quickshot)
-    const memoryVariables = await memory.loadMemoryVariables({})
-    const summary = memoryVariables.summary || ''
-    const olderMessages = memoryVariables.older_messages || ''
-    
-    console.log(`🧠 Maestro memory context: ${summary.substring(0, 50)}...`)
-    
-    // Invoke maestro with shared context + current template + instruction
+    // Invoke maestro with conversation context + current template + instruction
     const result = await maestroChain.invoke({
-      summary: summary,
-      older_messages: olderMessages,
+      summary: conversationContext.substring(0, 500), // Limited context summary
+      older_messages: conversationContext,
       current_template: currentTemplate,
       instruction: instruction
     }, config)
@@ -510,21 +588,18 @@ export async function maestroTurn(
       throw new Error('Invalid maestro response format')
     }
     
-    // Update memory with maestro interaction
-    await memory.saveContext(
-      { input: `[MAESTRO REQUEST] ${instruction}` },
-      { text: `[MAESTRO COMPLETED] ${maestroResponse.explanation}` }
-    )
-    
     console.log(`✅ Maestro turn completed: ${maestroResponse.explanation}`)
+    
+    // Note: Maestro reads from history but doesn't write to it
+    // Only quickshot writes to the conversation history
     
     return {
       success: true,
       modified_template: maestroResponse.modified_template,
       explanation: maestroResponse.explanation,
       memoryState: {
-        summary: (await memory.loadMemoryVariables({})).summary || 'No conversation yet',
-        messageCount: 0,
+        summary: `${messages.length} messages in conversation`,
+        messageCount: messages.length,
         tokenBudget: 2000
       }
     }
