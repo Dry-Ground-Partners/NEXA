@@ -648,7 +648,7 @@ export async function maestroTurn(
               }
             }
           }
-        } else {
+    } else {
           // Fallback: stringify unknown object
           console.log('⚠️ Unknown chunk structure:', JSON.stringify(chunk).substring(0, 200))
         }

@@ -18,23 +18,51 @@ export class PDFServiceClient {
   async generatePDF(htmlTemplate: string): Promise<Buffer> {
     try {
       console.log('📄 Calling PDF service:', `${this.baseUrl}/api/generate-pdf`)
+      console.log('📊 Template size:', htmlTemplate.length, 'characters')
       
-      const response = await fetch(`${this.baseUrl}/api/generate-pdf`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ htmlTemplate })
-      })
+      // WeasyPrint can take 30-60 seconds for complex templates
+      // Use AbortController with generous timeout
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 90000) // 90 second timeout
+      
+      try {
+        const response = await fetch(`${this.baseUrl}/api/generate-pdf`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ htmlTemplate }),
+          signal: controller.signal
+        })
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(`PDF service error: ${error.error || response.statusText}`)
+        clearTimeout(timeout)
+
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type')
+          let errorDetails
+          
+          if (contentType?.includes('application/json')) {
+            errorDetails = await response.json().catch(() => ({ error: 'Unknown error' }))
+          } else {
+            const errorText = await response.text()
+            errorDetails = { error: errorText || 'Unknown error' }
+          }
+          
+          console.error('❌ PDF service returned error:', errorDetails)
+          throw new Error(`PDF service error: ${errorDetails.error || response.statusText}`)
+        }
+
+        const arrayBuffer = await response.arrayBuffer()
+        console.log('✅ PDF received, size:', arrayBuffer.byteLength, 'bytes')
+        return Buffer.from(arrayBuffer)
+      } finally {
+        clearTimeout(timeout)
       }
-
-      const arrayBuffer = await response.arrayBuffer()
-      return Buffer.from(arrayBuffer)
     } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('❌ PDF generation timed out after 90 seconds')
+        throw new Error('PDF generation timed out - template may be too complex')
+      }
       console.error('❌ PDF service client error:', error)
       throw error
     }
