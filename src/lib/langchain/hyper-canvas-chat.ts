@@ -507,23 +507,23 @@ RULES:
 `)
   }
 
-  // Always use local ChatAnthropic to ensure streaming works properly
-  // LangSmith bound models may not support streaming correctly for large requests
-  const llm = new ChatAnthropic({
-    modelName: 'claude-3-5-sonnet-20241022',
-    temperature: 0.3,
-    anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-    maxTokens: 8192,
-    clientOptions: {
-      // This is critical for large templates!
-      defaultHeaders: {
-        'anthropic-version': '2023-06-01'
-      }
-    }
-  })
-  
+  // If LangSmith prompt includes model, use it directly
+  // Otherwise fall back to local model configuration
+  if (promptTemplate && typeof promptTemplate.invoke === 'function') {
+    // LangSmith prompt with bound model
+    return promptTemplate
+  } else {
+    // Fallback: bind model in code
+    // Note: We use .stream() for invocation to handle large templates
+    const llm = new ChatAnthropic({
+      modelName: 'claude-3-5-sonnet-20241022',
+      temperature: 0.3,
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+      maxTokens: 8192  // Set explicit max tokens
+    })
   const chain = promptTemplate.pipe(llm)
   return chain
+  }
 }
 
 /**
@@ -606,75 +606,56 @@ export async function maestroTurn(
     }
     
     // Use streaming for large templates to avoid Anthropic timeout
-    console.log('🔄 Invoking maestro chain with streaming...')
+    console.log('🔄 Invoking maestro chain with streaming enabled...')
     
     let responseText: string = ''
     
-    // Try streaming first
-    try {
-      // Check if stream method exists
-      if (typeof maestroChain.stream !== 'function') {
-        throw new Error('Stream method not available, falling back to invoke')
+    // Stream the response and collect all chunks
+    const stream = await maestroChain.stream({
+      summary: conversationContext.substring(0, 500), // Limited context summary
+      template: optimizedTemplate,  // Use optimized template to reduce size
+      older_messages: conversationContext,
+      instruction: instruction
+    }, config)
+    
+    // Collect all streamed chunks
+    let chunkCount = 0
+    for await (const chunk of stream) {
+      chunkCount++
+      
+      // Debug first chunk to see structure
+      if (chunkCount === 1) {
+        console.log('🔍 First chunk type:', typeof chunk)
+        console.log('🔍 First chunk keys:', chunk && typeof chunk === 'object' ? Object.keys(chunk) : 'N/A')
       }
       
-      // Stream the response and collect all chunks
-      const stream = await maestroChain.stream({
-        summary: conversationContext.substring(0, 500), // Limited context summary
-        template: optimizedTemplate,  // Use optimized template to reduce size
-        older_messages: conversationContext,
-        instruction: instruction
-      }, config)
-      
-      // Collect all streamed chunks
-      let chunkCount = 0
-      for await (const chunk of stream) {
-        chunkCount++
-        
-        // Log first chunk to understand structure
-        if (chunkCount === 1) {
-          console.log('🔍 First chunk type:', typeof chunk)
-          console.log('🔍 First chunk keys:', chunk && typeof chunk === 'object' ? Object.keys(chunk) : 'N/A')
-        }
-        
-        if (typeof chunk === 'string') {
-          responseText += chunk
-        } else if (chunk && typeof chunk === 'object') {
-          // Try different possible content fields
-          const content = (chunk as any).content || (chunk as any).text || (chunk as any).message?.content
-          if (content) {
-            responseText += typeof content === 'string' ? content : JSON.stringify(content)
+      // Handle different chunk formats
+      if (typeof chunk === 'string') {
+        responseText += chunk
+      } else if (chunk && typeof chunk === 'object') {
+        // LangChain AIMessageChunk has 'content' property
+        if ('content' in chunk) {
+          const content = (chunk as any).content
+          if (typeof content === 'string') {
+            responseText += content
+          } else if (Array.isArray(content)) {
+            // Handle content array (multimodal)
+            for (const item of content) {
+              if (typeof item === 'string') {
+                responseText += item
+              } else if (item && typeof item === 'object' && 'text' in item) {
+                responseText += item.text
+              }
+            }
           }
+        } else {
+          // Fallback: stringify unknown object
+          console.log('⚠️ Unknown chunk structure:', JSON.stringify(chunk).substring(0, 200))
         }
       }
-      
-      console.log(`✅ Streaming complete: ${chunkCount} chunks, total length: ${responseText.length}`)
-      
-      // If we got no response from streaming, throw to trigger fallback
-      if (responseText.length === 0) {
-        throw new Error('No content received from stream')
-      }
-    } catch (streamError) {
-      // Fallback to regular invoke if streaming fails
-      console.log('⚠️ Streaming failed, falling back to invoke:', (streamError as Error).message)
-      
-      const result = await maestroChain.invoke({
-        summary: conversationContext.substring(0, 500),
-        template: optimizedTemplate,
-        older_messages: conversationContext,
-        instruction: instruction
-      }, config)
-      
-      // Extract response
-      if (typeof result === 'string') {
-        responseText = result
-      } else if (result && typeof result === 'object' && 'content' in result) {
-        responseText = (result as any).content
-      } else {
-        responseText = JSON.stringify(result)
-      }
-      
-      console.log(`✅ Invoke complete, response length: ${responseText.length}`)
     }
+    
+    console.log('✅ Streaming complete, chunks:', chunkCount, 'total length:', responseText.length)
     
     // Clean JSON response (same as quickshot)
     let cleanedResponse = responseText.trim()
