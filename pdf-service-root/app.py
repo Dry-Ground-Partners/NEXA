@@ -81,6 +81,32 @@ def generate_pdf():
         html_template = data['htmlTemplate']
         logger.info(f'Generating PDF from HTML template, length: {len(html_template)} characters')
         
+        # Sanitize HTML to fix WeasyPrint compatibility issues
+        # Remove problematic CSS properties that cause "Layout for TextBox" errors
+        import re
+        
+        # Save original for debugging
+        if len(html_template) < 50000:
+            with open('/tmp/maestro_modified_original.html', 'w', encoding='utf-8') as f:
+                f.write(html_template)
+            logger.info('Saved original modified HTML to /tmp/maestro_modified_original.html')
+        
+        # Replace problematic display modes
+        html_template = html_template.replace('display: inline;', 'display: block;')
+        html_template = html_template.replace('display: table-cell;', 'display: block;')
+        html_template = html_template.replace('display: inline-flex;', 'display: flex;')
+        
+        # Remove any orphaned TextBox-like elements (shouldn't exist, but just in case)
+        html_template = re.sub(r'<textbox[^>]*>.*?</textbox>', '', html_template, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Save sanitized for debugging
+        if len(html_template) < 50000:
+            with open('/tmp/maestro_modified_sanitized.html', 'w', encoding='utf-8') as f:
+                f.write(html_template)
+            logger.info('Saved sanitized HTML to /tmp/maestro_modified_sanitized.html')
+        
+        logger.info(f'Sanitized HTML template for WeasyPrint compatibility')
+        
         # Convert HTML to PDF using WeasyPrint
         html_doc = HTML(string=html_template)
         pdf_bytes = html_doc.write_pdf()

@@ -481,6 +481,9 @@ MODIFICATION GUIDELINES:
 - Apply changes precisely as requested
 - Ensure all HTML remains valid and well-formed
 - Keep explanations concise but informative
+- CRITICAL: Only modify CSS properties, never change HTML structure or add new elements
+- CRITICAL: Only use display modes: block, flex, grid, none (NO inline-block, inline, table-cell)
+- CRITICAL: The PDF renderer (WeasyPrint) has limitations - stick to standard CSS3 properties
 
 EXAMPLES:
 
