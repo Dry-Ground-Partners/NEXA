@@ -46,6 +46,8 @@ export class PDFServiceClient {
   async generateSolutioningPDF(sessionData: any, sessionId: string, mainLogo?: string, secondLogo?: string): Promise<Buffer> {
     try {
       console.log('📄 Calling PDF service: Solutioning PDF')
+      console.log('   Service URL:', this.baseUrl)
+      console.log('   Endpoint:', `${this.baseUrl}/api/generate-solutioning-pdf`)
       
       const response = await fetch(`${this.baseUrl}/api/generate-solutioning-pdf`, {
         method: 'POST',
@@ -60,15 +62,50 @@ export class PDFServiceClient {
         })
       })
 
+      console.log('📡 PDF service response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(`PDF service error: ${error.error || response.statusText}`)
+        // Try to get detailed error
+        let errorDetails
+        const contentType = response.headers.get('content-type')
+        
+        if (contentType?.includes('application/json')) {
+          try {
+            errorDetails = await response.json()
+            console.error('❌ PDF service returned JSON error:', errorDetails)
+          } catch (jsonError) {
+            console.error('❌ Failed to parse error as JSON:', jsonError)
+            errorDetails = { error: 'Unknown error - could not parse response' }
+          }
+        } else {
+          // Response is not JSON, try to read as text
+          try {
+            const errorText = await response.text()
+            console.error('❌ PDF service returned text error:', errorText)
+            errorDetails = { error: errorText || 'Unknown error - empty response' }
+          } catch (textError) {
+            console.error('❌ Failed to read error as text:', textError)
+            errorDetails = { error: 'Unknown error - could not read response' }
+          }
+        }
+        
+        throw new Error(`PDF service error (${response.status}): ${errorDetails.error || response.statusText}`)
       }
 
       const arrayBuffer = await response.arrayBuffer()
+      console.log('✅ PDF generated successfully, size:', arrayBuffer.byteLength, 'bytes')
       return Buffer.from(arrayBuffer)
     } catch (error: unknown) {
       console.error('❌ Solutioning PDF service error:', error)
+      if (error instanceof Error) {
+        console.error('   Error message:', error.message)
+        console.error('   Error stack:', error.stack)
+      }
       throw error
     }
   }
