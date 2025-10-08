@@ -454,11 +454,18 @@ CORE RESPONSIBILITIES:
 3. Apply changes while preserving styling, layout, and functionality
 4. Provide clear explanation of modifications made
 
-RESPONSE FORMAT (Always return exactly this JSON):
+RESPONSE FORMAT (CRITICAL - Must be valid JSON):
 {{
-  "modified_template": "Complete HTML document with all changes applied",
+  "modified_template": "Complete HTML document with all changes applied - ENSURE ALL QUOTES AND BACKSLASHES ARE PROPERLY ESCAPED",
   "explanation": "Brief summary of modifications and their impact"
 }}
+
+JSON FORMATTING RULES (CRITICAL):
+- Escape all double quotes in HTML as \\"
+- Escape all backslashes as \\\\
+- Do NOT include newlines in the JSON string (use \\n if needed)
+- The entire HTML must be on ONE line or properly escaped
+- Test that your JSON is valid before returning
 
 MODIFICATION GUIDELINES:
 - Preserve all CSS styling and layout structures
@@ -470,17 +477,17 @@ MODIFICATION GUIDELINES:
 EXAMPLES:
 
 Instruction: "Make the timeline more aggressive"
-Output:
+Output (note: HTML is simplified for example, yours will be complete):
 {{
-  "modified_template": "<html>...modified timeline with shorter durations...</html>",
+  "modified_template": "<html><body><h1>Accelerated Timeline</h1><p>8-week delivery</p></body></html>",
   "explanation": "Compressed timeline phases by 30% and added urgent language to show accelerated delivery"
 }}
 
-Instruction: "Add more technical details to the API section"
-Output:
+Instruction: "Change background to blue"
+Output (note: HTML is simplified for example, yours will be complete):
 {{
-  "modified_template": "<html>...enhanced API section with technical specs...</html>",
-  "explanation": "Expanded API documentation with endpoints, authentication methods, and rate limiting details"
+  "modified_template": "<html><head><style>body {{ background: #2563eb; }}</style></head><body><h1>Content</h1></body></html>",
+  "explanation": "Updated document background color to professional blue (#2563eb) with proper contrast"
 }}
 
 RULES:
@@ -594,8 +601,57 @@ export async function maestroTurn(
     if (cleanedResponse.endsWith('```')) {
       cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3)
     }
+    cleanedResponse = cleanedResponse.trim()
     
-    const maestroResponse = JSON.parse(cleanedResponse.trim())
+    // Robust JSON parsing with multiple strategies
+    let maestroResponse: any
+    try {
+      // Strategy 1: Standard JSON parse
+      maestroResponse = JSON.parse(cleanedResponse)
+      console.log('✅ Parsed response using standard JSON.parse')
+    } catch (parseError) {
+      console.warn('⚠️ Standard JSON parsing failed, trying fallback strategies...')
+      console.warn('Parse error:', parseError)
+      console.warn('Response preview:', cleanedResponse.substring(0, 500))
+      
+      try {
+        // Strategy 2: Extract using regex (for malformed JSON with large strings)
+        const explanationMatch = cleanedResponse.match(/"explanation"\s*:\s*"([^"]*)"/i)
+        const templateMatch = cleanedResponse.match(/"modified_template"\s*:\s*"([\s\S]*?)"[\s,]*"explanation"/i)
+        
+        if (!templateMatch) {
+          // Try alternative: look for HTML markers
+          const htmlStart = cleanedResponse.indexOf('<!DOCTYPE') !== -1 ? cleanedResponse.indexOf('<!DOCTYPE') : cleanedResponse.indexOf('<html')
+          const htmlEnd = cleanedResponse.lastIndexOf('</html>') + 7
+          
+          if (htmlStart !== -1 && htmlEnd > htmlStart) {
+            const extractedHtml = cleanedResponse.substring(htmlStart, htmlEnd)
+            const extractedExplanation = explanationMatch ? explanationMatch[1] : 'Document modified successfully'
+            
+            maestroResponse = {
+              modified_template: extractedHtml,
+              explanation: extractedExplanation
+            }
+            console.log('✅ Extracted response using HTML markers')
+            console.log(`   HTML length: ${extractedHtml.length}`)
+            console.log(`   Explanation: ${extractedExplanation}`)
+          } else {
+            throw new Error('Could not extract HTML from response')
+          }
+        } else {
+          maestroResponse = {
+            modified_template: templateMatch[1],
+            explanation: explanationMatch ? explanationMatch[1] : 'Document modified successfully'
+          }
+          console.log('✅ Extracted response using regex fallback')
+        }
+      } catch (extractError) {
+        console.error('❌ All parsing strategies failed')
+        console.error('Extract error:', extractError)
+        console.error('Full response (first 1000 chars):', cleanedResponse.substring(0, 1000))
+        throw new Error(`Failed to parse maestro response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+      }
+    }
     
     // Validate maestro response
     if (!maestroResponse.modified_template || !maestroResponse.explanation) {
