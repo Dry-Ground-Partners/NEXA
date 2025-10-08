@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'pdf-service'))
 from generate_solutioning_standalone import generate_solutioning_pdf_from_json
 from generate_loe_standalone import generate_loe_pdf_from_json
 from generate_sow_standalone import generate_sow_pdf_from_json
+from generate_solutioning_html import generate_solutioning_html_from_json
 
 # Configure logging
 logging.basicConfig(
@@ -97,6 +98,77 @@ def generate_pdf():
     except Exception as e:
         logger.error(f'Error generating PDF: {str(e)}', exc_info=True)
         return jsonify({'error': f'PDF generation failed: {str(e)}'}), 500
+
+@app.route('/api/generate-solutioning-html', methods=['POST', 'OPTIONS'])
+def generate_solutioning_html():
+    """
+    Generate Solutioning HTML from structured data (for Maestro editing)
+    Uses generate_solutioning_html.py module
+    Returns: HTML template as text
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    try:
+        data = request.get_json()
+        logger.info('Generating Solutioning HTML from structured data')
+        
+        # Same transformation as PDF endpoint
+        session_data = data.get('sessionData', {})
+        session_id = data.get('sessionId', 'UNKNOWN')
+        
+        solutions = session_data.get('solutions', {})
+        if isinstance(solutions, dict):
+            solutions_array = []
+            for sol_id, solution in solutions.items():
+                if not isinstance(solution, dict):
+                    continue
+                
+                structure = solution.get('structure', {})
+                additional = solution.get('additional', {})
+                
+                layout = structure.get('layout', 1)
+                if isinstance(layout, str):
+                    layout = 1 if layout == 'TextBox' else int(layout) if layout.isdigit() else 1
+                
+                image_data = additional.get('imageData', '')
+                if image_data and image_data.startswith('data:image/'):
+                    image_data = image_data.split(',', 1)[1] if ',' in image_data else image_data
+                
+                solutions_array.append({
+                    'title': structure.get('title', 'Untitled Solution'),
+                    'steps': structure.get('steps', ''),
+                    'approach': structure.get('approach', ''),
+                    'difficulty': structure.get('difficulty', 0),
+                    'layout': layout,
+                    'imageData': image_data
+                })
+            
+            solutions = solutions_array
+        
+        merged_data = {
+            'basic': session_data.get('basic', {}),
+            'solutions': solutions,
+            'sessionProtocol': session_id.split('-')[0].upper() if '-' in session_id else 'SH123'
+        }
+        
+        logger.info(f'Generating HTML for {len(solutions)} solutions')
+        
+        # Generate HTML using the same function as the standalone script
+        html_content = generate_solutioning_html_from_json(merged_data)
+        
+        if not html_content:
+            raise Exception('HTML generation returned empty content')
+        
+        logger.info(f'HTML generated successfully, length: {len(html_content)} characters')
+        
+        # Return HTML as plain text
+        return html_content, 200, {'Content-Type': 'text/html; charset=utf-8'}
+        
+    except Exception as e:
+        logger.error(f'Error generating HTML: {str(e)}', exc_info=True)
+        return jsonify({'error': f'HTML generation failed: {str(e)}'}), 500
+
 
 @app.route('/api/generate-solutioning-pdf', methods=['POST', 'OPTIONS'])
 def generate_solutioning_pdf():
