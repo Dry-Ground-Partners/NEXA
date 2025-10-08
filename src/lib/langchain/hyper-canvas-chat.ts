@@ -425,13 +425,20 @@ export async function createMaestroChain() {
   try {
     // Pull maestro prompt from LangSmith
     console.log('📥 Attempting to pull nexa-canvas-maestro from LangSmith...')
+    console.log('🔑 LangChain API Key present:', !!process.env.LANGCHAIN_API_KEY)
+    console.log('🔍 LangSmith tracing enabled:', process.env.LANGCHAIN_TRACING_V2)
+    
     const hubPrompt = await hub.pull('nexa-canvas-maestro', {
       includeModel: true
     })
     console.log('✅ Successfully pulled maestro prompt from LangSmith')
+    console.log('✅ Using LangSmith prompt (NOT fallback)')
     promptTemplate = hubPrompt
   } catch (error: unknown) {
-    console.log('⚠️ Using fallback maestro prompt')
+    console.error('❌ Failed to pull from LangSmith:', error)
+    console.error('   Error type:', error instanceof Error ? error.constructor.name : typeof error)
+    console.error('   Error message:', error instanceof Error ? error.message : String(error))
+    console.log('⚠️ Using fallback maestro prompt (THIS SHOULD NOT HAPPEN)')
     
     // Fallback prompt with same context structure
     promptTemplate = PromptTemplate.fromTemplate(`
@@ -615,40 +622,63 @@ export async function maestroTurn(
       console.warn('Response preview:', cleanedResponse.substring(0, 500))
       
       try {
-        // Strategy 2: Extract using regex (for malformed JSON with large strings)
-        const explanationMatch = cleanedResponse.match(/"explanation"\s*:\s*"([^"]*)"/i)
-        const templateMatch = cleanedResponse.match(/"modified_template"\s*:\s*"([\s\S]*?)"[\s,]*"explanation"/i)
+        // Strategy 2: Find the JSON keys and extract based on structure
+        // Even if JSON is malformed, we can find where the fields are
         
-        if (!templateMatch) {
-          // Try alternative: look for HTML markers
-          const htmlStart = cleanedResponse.indexOf('<!DOCTYPE') !== -1 ? cleanedResponse.indexOf('<!DOCTYPE') : cleanedResponse.indexOf('<html')
-          const htmlEnd = cleanedResponse.lastIndexOf('</html>') + 7
-          
-          if (htmlStart !== -1 && htmlEnd > htmlStart) {
-            const extractedHtml = cleanedResponse.substring(htmlStart, htmlEnd)
-            const extractedExplanation = explanationMatch ? explanationMatch[1] : 'Document modified successfully'
-            
-            maestroResponse = {
-              modified_template: extractedHtml,
-              explanation: extractedExplanation
-            }
-            console.log('✅ Extracted response using HTML markers')
-            console.log(`   HTML length: ${extractedHtml.length}`)
-            console.log(`   Explanation: ${extractedExplanation}`)
-          } else {
-            throw new Error('Could not extract HTML from response')
-          }
-        } else {
-          maestroResponse = {
-            modified_template: templateMatch[1],
-            explanation: explanationMatch ? explanationMatch[1] : 'Document modified successfully'
-          }
-          console.log('✅ Extracted response using regex fallback')
+        // Find where "modified_template" starts
+        const templateKeyIndex = cleanedResponse.indexOf('"modified_template"')
+        const explanationKeyIndex = cleanedResponse.indexOf('"explanation"')
+        
+        if (templateKeyIndex === -1 || explanationKeyIndex === -1) {
+          throw new Error('Could not find required JSON keys in response')
         }
+        
+        // Extract HTML: find the value after "modified_template": "
+        const templateValueStart = cleanedResponse.indexOf(':"', templateKeyIndex) + 2
+        // HTML goes until we hit ", "explanation" (but might have escaped quotes)
+        // So we look for the explanation key as our end marker
+        const templateValueEnd = explanationKeyIndex - 3 // Account for ", before explanation
+        
+        let extractedHtml = cleanedResponse.substring(templateValueStart, templateValueEnd)
+        
+        // Unescape the JSON string
+        extractedHtml = extractedHtml
+          .replace(/\\"/g, '"')     // \" -> "
+          .replace(/\\\\/g, '\\')   // \\ -> \
+          .replace(/\\n/g, '\n')    // \n -> newline
+          .replace(/\\r/g, '\r')    // \r -> carriage return
+          .replace(/\\t/g, '\t')    // \t -> tab
+        
+        // Extract explanation
+        const explanationValueStart = cleanedResponse.indexOf(':"', explanationKeyIndex) + 2
+        const explanationValueEnd = cleanedResponse.indexOf('"', explanationValueStart)
+        const extractedExplanation = cleanedResponse.substring(explanationValueStart, explanationValueEnd)
+        
+        if (!extractedHtml || extractedHtml.length < 100) {
+          throw new Error(`Extracted HTML too short: ${extractedHtml.length} chars`)
+        }
+        
+        maestroResponse = {
+          modified_template: extractedHtml,
+          explanation: extractedExplanation || 'Document modified successfully'
+        }
+        
+        console.log('✅ Extracted response using smart string parsing')
+        console.log(`   HTML length: ${extractedHtml.length}`)
+        console.log(`   HTML starts with: ${extractedHtml.substring(0, 50)}`)
+        console.log(`   Explanation: ${extractedExplanation}`)
+        
       } catch (extractError) {
         console.error('❌ All parsing strategies failed')
         console.error('Extract error:', extractError)
         console.error('Full response (first 1000 chars):', cleanedResponse.substring(0, 1000))
+        console.error('Response structure:', {
+          hasModifiedTemplate: cleanedResponse.includes('"modified_template"'),
+          hasExplanation: cleanedResponse.includes('"explanation"'),
+          modifiedTemplateIndex: cleanedResponse.indexOf('"modified_template"'),
+          explanationIndex: cleanedResponse.indexOf('"explanation"'),
+          length: cleanedResponse.length
+        })
         throw new Error(`Failed to parse maestro response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
       }
     }
