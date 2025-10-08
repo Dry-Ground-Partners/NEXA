@@ -573,19 +573,43 @@ export async function maestroTurn(
     console.log(`   Context size: ${conversationContext.length} characters`)
     console.log(`   Template size: ${currentTemplate.length} characters`)
     
-    // Optimize template size for Claude processing
+    // **CRITICAL OPTIMIZATION**: Replace base64 image data with placeholders
+    // Base64 strings eat massive tokens and cause Claude to hallucinate/break JSON
+    const imageDataMap: Map<string, string> = new Map()
+    let placeholderIndex = 0
+    
     let optimizedTemplate = currentTemplate
-    if (currentTemplate.length > 50000) {
-      console.log(`⚠️ Large template detected (${currentTemplate.length} chars), optimizing...`)
+    
+    // Extract and replace data URIs with placeholders
+    const dataUriRegex = /data:image\/[^;]+;base64,[A-Za-z0-9+/=]{100,}/g
+    const matches = Array.from(currentTemplate.matchAll(dataUriRegex))
+    
+    for (const match of matches) {
+      const base64Data = match[0]
+      const placeholder = `__IMAGE_PLACEHOLDER_${placeholderIndex}__`
+      imageDataMap.set(placeholder, base64Data)
+      optimizedTemplate = optimizedTemplate.replace(base64Data, placeholder)
+      placeholderIndex++
+    }
+    
+    if (imageDataMap.size > 0) {
+      console.log(`🖼️ Replaced ${imageDataMap.size} base64 images with placeholders`)
+      console.log(`   Original size: ${currentTemplate.length} chars`)
+      console.log(`   After replacement: ${optimizedTemplate.length} chars`)
+      console.log(`   Saved: ${currentTemplate.length - optimizedTemplate.length} chars (${Math.round((1 - optimizedTemplate.length / currentTemplate.length) * 100)}% reduction)`)
+    }
+    
+    // Additional optimization: Remove excessive whitespace and comments
+    if (optimizedTemplate.length > 50000) {
+      console.log(`⚠️ Large template detected (${optimizedTemplate.length} chars), further optimizing...`)
       
-      // Remove excessive whitespace and comments while preserving structure
-      optimizedTemplate = currentTemplate
+      optimizedTemplate = optimizedTemplate
         .replace(/<!--[\s\S]*?-->/g, '') // Remove HTML comments
         .replace(/\s+/g, ' ')            // Collapse multiple whitespace
         .replace(/>\s+</g, '><')         // Remove whitespace between tags
         .trim()
       
-      console.log(`✅ Template optimized: ${currentTemplate.length} → ${optimizedTemplate.length} chars`)
+      console.log(`✅ Template further optimized: ${optimizedTemplate.length} chars`)
     }
     
     // Configure LangSmith tagging
@@ -819,6 +843,21 @@ export async function maestroTurn(
     if (!maestroResponse.modified_template || !maestroResponse.explanation) {
       throw new Error('Invalid maestro response format')
     }
+    
+    // **CRITICAL**: Restore base64 image data from placeholders
+    let restoredTemplate = maestroResponse.modified_template
+    if (imageDataMap.size > 0) {
+      console.log(`🖼️ Restoring ${imageDataMap.size} base64 images from placeholders...`)
+      
+      for (const [placeholder, base64Data] of Array.from(imageDataMap.entries())) {
+        restoredTemplate = restoredTemplate.replace(placeholder, base64Data)
+      }
+      
+      console.log(`✅ Images restored. Template size: ${restoredTemplate.length} chars`)
+    }
+    
+    // Update the response with restored template
+    maestroResponse.modified_template = restoredTemplate
     
     console.log(`✅ Maestro modification completed: ${maestroResponse.explanation}`)
     
