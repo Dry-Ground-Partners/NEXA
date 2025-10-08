@@ -15,6 +15,7 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@langchain/anthropic": "^0.3.30",
     "@langchain/community": "^0.3.57",
     "@langchain/core": "^0.3.73",
     "@langchain/openai": "^0.6.11",

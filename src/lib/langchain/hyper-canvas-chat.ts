@@ -1,4 +1,5 @@
 import { ChatOpenAI } from '@langchain/openai'
+import { ChatAnthropic } from '@langchain/anthropic'
 import { PromptTemplate } from '@langchain/core/prompts'
 import { RunnableWithMessageHistory } from '@langchain/core/runnables'
 import { RunnableConfig } from '@langchain/core/runnables'
@@ -214,7 +215,7 @@ RULES:
   }
 
   const llm = new ChatOpenAI({
-    modelName: 'gpt-4o',
+    modelName: 'gpt-4o-mini',
     temperature: 0.7,
     openAIApiKey: process.env.OPENAI_API_KEY
   })
@@ -367,13 +368,13 @@ export async function chatTurn(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      maestro: false,
-      message_to_maestro: null,
-      chat_responses: [
-        "I'm having trouble processing that request right now 😅",
-        "Let me try to understand what you're looking for...",
-        "Could you rephrase that for me?"
-      ]
+        maestro: false,
+        message_to_maestro: null,
+        chat_responses: [
+          "I'm having trouble processing that request right now 😅",
+          "Let me try to understand what you're looking for...",
+          "Could you rephrase that for me?"
+        ]
     }
   }
 }
@@ -385,8 +386,8 @@ export async function getMemoryStatus(threadId: string) {
   try {
     const messageHistory = getMessageHistory(threadId)
     const messages = await messageHistory.getMessages()
-    
-    return {
+  
+  return {
       messageCount: messages.length,
       summary: `${messages.length} messages in conversation`,
       tokenBudget: 2000,
@@ -506,14 +507,21 @@ RULES:
 `)
   }
 
-  const llm = new ChatOpenAI({
-    modelName: 'gpt-4o',
-    temperature: 0.3, // Lower temperature for precise modifications
-    openAIApiKey: process.env.OPENAI_API_KEY
-  })
-
-  const chain = promptTemplate.pipe(llm)
-  return chain
+  // If LangSmith prompt includes model, use it directly
+  // Otherwise fall back to local model configuration
+  if (promptTemplate && typeof promptTemplate.invoke === 'function') {
+    // LangSmith prompt with bound model
+    return promptTemplate
+  } else {
+    // Fallback: bind model in code
+    const llm = new ChatAnthropic({
+      modelName: 'claude-3-5-sonnet-20241022',
+      temperature: 0.3,
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY
+    })
+    const chain = promptTemplate.pipe(llm)
+    return chain
+  }
 }
 
 /**
@@ -619,65 +627,135 @@ export async function maestroTurn(
     } catch (parseError) {
       console.warn('⚠️ Standard JSON parsing failed, trying fallback strategies...')
       console.warn('Parse error:', parseError)
-      console.warn('Response preview:', cleanedResponse.substring(0, 500))
+      console.warn('Response length:', cleanedResponse.length)
+      console.warn('Response preview (first 500):', cleanedResponse.substring(0, 500))
+      console.warn('Response preview (last 500):', cleanedResponse.substring(cleanedResponse.length - 500))
       
       try {
-        // Strategy 2: Find the JSON keys and extract based on structure
-        // Even if JSON is malformed, we can find where the fields are
+        // Strategy 2: Extract using more sophisticated logic
         
-        // Find where "modified_template" starts
+        // Find key positions
         const templateKeyIndex = cleanedResponse.indexOf('"modified_template"')
         const explanationKeyIndex = cleanedResponse.indexOf('"explanation"')
         
-        if (templateKeyIndex === -1 || explanationKeyIndex === -1) {
-          throw new Error('Could not find required JSON keys in response')
+        if (templateKeyIndex === -1) {
+          throw new Error('Could not find "modified_template" key in response')
+        }
+        if (explanationKeyIndex === -1) {
+          throw new Error('Could not find "explanation" key in response')
         }
         
-        // Extract HTML: find the value after "modified_template": "
-        const templateValueStart = cleanedResponse.indexOf(':"', templateKeyIndex) + 2
-        // HTML goes until we hit ", "explanation" (but might have escaped quotes)
-        // So we look for the explanation key as our end marker
-        const templateValueEnd = explanationKeyIndex - 3 // Account for ", before explanation
+        console.log(`🔍 Found keys - modified_template at ${templateKeyIndex}, explanation at ${explanationKeyIndex}`)
         
-        let extractedHtml = cleanedResponse.substring(templateValueStart, templateValueEnd)
+        // Extract HTML: find the value after "modified_template":"
+        // Account for possible whitespace
+        let searchStart = templateKeyIndex + '"modified_template"'.length
+        let colonIndex = cleanedResponse.indexOf(':', searchStart)
+        let quoteIndex = cleanedResponse.indexOf('"', colonIndex + 1)
         
-        // Unescape the JSON string
+        if (quoteIndex === -1) {
+          throw new Error('Could not find opening quote for modified_template value')
+        }
+        
+        const templateValueStart = quoteIndex + 1
+        
+        console.log(`🔍 HTML value starts at position ${templateValueStart}`)
+        
+        // Now find the end: we need to find the closing quote before "explanation"
+        // Work backwards from the explanation key to find the last quote
+        let searchEnd = explanationKeyIndex - 1
+        while (searchEnd > templateValueStart && cleanedResponse[searchEnd] !== '"') {
+          searchEnd--
+        }
+        
+        if (searchEnd <= templateValueStart) {
+          throw new Error('Could not find closing quote for modified_template value')
+        }
+        
+        // Now we need to skip back over any escaped quotes
+        // Walk back to find the actual closing quote
+        let actualEnd = searchEnd
+        let escapeCount = 0
+        let checkPos = actualEnd - 1
+        while (checkPos > templateValueStart && cleanedResponse[checkPos] === '\\') {
+          escapeCount++
+          checkPos--
+        }
+        
+        // If odd number of backslashes, the quote is escaped, keep searching
+        if (escapeCount % 2 === 1) {
+          searchEnd--
+          while (searchEnd > templateValueStart && cleanedResponse[searchEnd] !== '"') {
+            searchEnd--
+          }
+          actualEnd = searchEnd
+        }
+        
+        console.log(`🔍 HTML value ends at position ${actualEnd}`)
+        
+        let extractedHtml = cleanedResponse.substring(templateValueStart, actualEnd)
+        
+        console.log(`🔍 Extracted HTML length: ${extractedHtml.length}`)
+        console.log(`🔍 HTML preview (first 100): ${extractedHtml.substring(0, 100)}`)
+        
+        // Unescape the JSON string - do this in correct order to avoid double-unescaping
+        // First handle \\ to a placeholder, then other escapes, then restore backslashes
         extractedHtml = extractedHtml
-          .replace(/\\"/g, '"')     // \" -> "
-          .replace(/\\\\/g, '\\')   // \\ -> \
-          .replace(/\\n/g, '\n')    // \n -> newline
-          .replace(/\\r/g, '\r')    // \r -> carriage return
-          .replace(/\\t/g, '\t')    // \t -> tab
+          .replace(/\\\\/g, '<<<BACKSLASH>>>')   // Protect \\
+          .replace(/\\"/g, '"')                   // \" -> "
+          .replace(/\\n/g, '\n')                  // \n -> newline
+          .replace(/\\r/g, '\r')                  // \r -> carriage return
+          .replace(/\\t/g, '\t')                  // \t -> tab
+          .replace(/<<<BACKSLASH>>>/g, '\\')      // Restore \
         
-        // Extract explanation
-        const explanationValueStart = cleanedResponse.indexOf(':"', explanationKeyIndex) + 2
-        const explanationValueEnd = cleanedResponse.indexOf('"', explanationValueStart)
-        const extractedExplanation = cleanedResponse.substring(explanationValueStart, explanationValueEnd)
+        // Extract explanation - find the quote after "explanation":
+        let explanationColonIndex = cleanedResponse.indexOf(':', explanationKeyIndex + '"explanation"'.length)
+        let explanationQuoteStart = cleanedResponse.indexOf('"', explanationColonIndex + 1)
+        let explanationQuoteEnd = cleanedResponse.indexOf('"', explanationQuoteStart + 1)
+        
+        let extractedExplanation = 'Document modified successfully'
+        if (explanationQuoteStart !== -1 && explanationQuoteEnd !== -1) {
+          extractedExplanation = cleanedResponse.substring(explanationQuoteStart + 1, explanationQuoteEnd)
+          // Unescape explanation too
+          extractedExplanation = extractedExplanation
+            .replace(/\\"/g, '"')
+            .replace(/\\n/g, ' ')
+        }
         
         if (!extractedHtml || extractedHtml.length < 100) {
           throw new Error(`Extracted HTML too short: ${extractedHtml.length} chars`)
         }
         
-        maestroResponse = {
-          modified_template: extractedHtml,
-          explanation: extractedExplanation || 'Document modified successfully'
+        if (!extractedHtml.includes('<!DOCTYPE') && !extractedHtml.includes('<html')) {
+          throw new Error('Extracted HTML does not appear to be valid HTML')
         }
         
-        console.log('✅ Extracted response using smart string parsing')
+        maestroResponse = {
+          modified_template: extractedHtml,
+          explanation: extractedExplanation
+        }
+        
+        console.log('✅ Extracted response using robust string parsing')
         console.log(`   HTML length: ${extractedHtml.length}`)
-        console.log(`   HTML starts with: ${extractedHtml.substring(0, 50)}`)
+        console.log(`   HTML starts with: ${extractedHtml.substring(0, 100)}`)
+        console.log(`   HTML ends with: ${extractedHtml.substring(extractedHtml.length - 100)}`)
         console.log(`   Explanation: ${extractedExplanation}`)
         
       } catch (extractError) {
         console.error('❌ All parsing strategies failed')
         console.error('Extract error:', extractError)
+        console.error('Parse error:', parseError)
         console.error('Full response (first 1000 chars):', cleanedResponse.substring(0, 1000))
+        console.error('Full response (middle 1000 chars):', cleanedResponse.substring(Math.floor(cleanedResponse.length / 2) - 500, Math.floor(cleanedResponse.length / 2) + 500))
+        console.error('Full response (last 1000 chars):', cleanedResponse.substring(cleanedResponse.length - 1000))
         console.error('Response structure:', {
           hasModifiedTemplate: cleanedResponse.includes('"modified_template"'),
           hasExplanation: cleanedResponse.includes('"explanation"'),
           modifiedTemplateIndex: cleanedResponse.indexOf('"modified_template"'),
           explanationIndex: cleanedResponse.indexOf('"explanation"'),
-          length: cleanedResponse.length
+          length: cleanedResponse.length,
+          hasDoctype: cleanedResponse.includes('<!DOCTYPE'),
+          hasHtmlTag: cleanedResponse.includes('<html')
         })
         throw new Error(`Failed to parse maestro response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
       }
