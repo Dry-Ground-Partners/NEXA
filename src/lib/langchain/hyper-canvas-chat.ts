@@ -6,6 +6,7 @@ import { BaseChatMessageHistory } from '@langchain/core/chat_history'
 import { BaseMessage, HumanMessage, AIMessage } from '@langchain/core/messages'
 import { PrismaClient } from '@prisma/client'
 import * as hub from 'langchain/hub/node'
+import { htmlStorage } from '@/lib/hyper-canvas/html-storage'
 
 const prisma = new PrismaClient()
 
@@ -515,22 +516,35 @@ export async function maestroTurn(
   
   console.log(`🎭 Maestro turn started: ${threadId}`)
   console.log(`   Instruction: "${instruction.substring(0, 50)}..."`)
+  console.log(`   Template size: ${currentTemplate.length} characters`)
   
   try {
     // Get maestro chain
     const maestroChain = await createMaestroChain()
     
-    // Get conversation history from the same thread (read-only for maestro context)
+    // Get conversation history (natural language only, NO HTML)
     const messageHistory = getMessageHistory(threadId)
     const messages = await messageHistory.getMessages()
     
-    // Convert messages to a simple context string
-    const conversationContext = messages
-      .slice(-10) // Last 10 messages for context
+    // Filter out any HTML content (defensive - should not be there)
+    const conversationMessages = messages
+      .filter(msg => {
+        const content = msg.content as string
+        // Filter out anything that looks like HTML
+        return !content.includes('<html') && 
+               !content.includes('<!DOCTYPE') &&
+               content.length < 10000 // Also filter unusually long messages
+      })
+      .slice(-10) // Last 10 natural language messages only
+    
+    // Convert to simple context string for Maestro
+    const conversationContext = conversationMessages
       .map(msg => `${msg._getType() === 'human' ? 'User' : 'Assistant'}: ${msg.content}`)
       .join('\n')
     
-    console.log(`🧠 Maestro has context from ${messages.length} previous messages`)
+    console.log(`🧠 Maestro context: ${conversationMessages.length} messages (HTML excluded)`)
+    console.log(`   Context size: ${conversationContext.length} characters`)
+    console.log(`   Template size: ${currentTemplate.length} characters`)
     
     // Configure LangSmith tagging
     const config: RunnableConfig = {
@@ -588,18 +602,38 @@ export async function maestroTurn(
       throw new Error('Invalid maestro response format')
     }
     
-    console.log(`✅ Maestro turn completed: ${maestroResponse.explanation}`)
+    console.log(`✅ Maestro modification completed: ${maestroResponse.explanation}`)
     
-    // Note: Maestro reads from history but doesn't write to it
-    // Only quickshot writes to the conversation history
+    // ✅ STORE LATEST HTML (replaces previous version)
+    console.log(`💾 Storing modified HTML to database...`)
+    try {
+      await htmlStorage.storeLatestHTML(
+        threadId,
+        sessionId,
+        maestroResponse.modified_template,
+        maestroResponse.explanation
+      )
+      
+      const metadata = await htmlStorage.getHTMLMetadata(threadId, sessionId)
+      console.log(`✅ HTML stored successfully!`)
+      console.log(`   Version: ${metadata?.version || 'unknown'}`)
+      console.log(`   Size: ${maestroResponse.modified_template.length} characters`)
+    } catch (storageError) {
+      console.error('⚠️ Warning: Failed to store HTML:', storageError)
+      // Don't fail the whole operation if storage fails
+    }
+    
+    // Note: HTML is stored separately, NOT in conversation history
+    // Maestro reads from conversation (natural language only)
+    // Conversation stays clean and token-efficient
     
     return {
       success: true,
       modified_template: maestroResponse.modified_template,
       explanation: maestroResponse.explanation,
       memoryState: {
-        summary: `${messages.length} messages in conversation`,
-        messageCount: messages.length,
+        summary: `${conversationMessages.length} messages (HTML stored separately)`,
+        messageCount: conversationMessages.length,
         tokenBudget: 2000
       }
     }

@@ -57,7 +57,39 @@ export function useHyperCanvasChat(
     messageTimeouts.current = []
   }, [])
   
-  // Helper function to extract current template from session data
+  /**
+   * Get current HTML template
+   * Priority: 1) Stored HTML, 2) Generate from sessionData
+   */
+  const getCurrentHTML = useCallback(async (threadId: string | null, sessionId: string, sessionData: any): Promise<string> => {
+    // Try to load from storage first (if thread exists)
+    if (threadId) {
+      try {
+        console.log('🔍 Checking for stored HTML...')
+        const response = await fetch('/api/hyper-canvas/html/get-latest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ threadId, sessionId })
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.hasHTML && data.html) {
+            console.log('✅ Loaded HTML from storage (v' + (data.metadata?.version || '?') + ')')
+            console.log('   Size:', data.html.length, 'characters')
+            return data.html
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not load stored HTML, will generate fresh:', error)
+      }
+    }
+    
+    // Fallback: Generate fresh HTML from sessionData
+    return extractCurrentTemplate(sessionData, sessionId)
+  }, [])
+  
+  // Helper function to extract current template from session data (fallback)
   const extractCurrentTemplate = useCallback(async (sessionData: any, sessionId: string): Promise<string> => {
     if (!sessionData) {
       console.error('❌ No session data available for template extraction')
@@ -66,7 +98,7 @@ export function useHyperCanvasChat(
 
     try {
       // Call the SAME API that generates the preview to get the exact HTML template
-      console.log('🎯 Extracting current template via preview API...')
+      console.log('🎯 Generating fresh HTML from sessionData...')
       
       const response = await fetch('/api/solutioning/preview-html', {
         method: 'POST',
@@ -76,14 +108,14 @@ export function useHyperCanvasChat(
       
       if (response.ok) {
         const htmlTemplate = await response.text()
-        console.log('✅ Successfully extracted real template, length:', htmlTemplate.length)
+        console.log('✅ Successfully generated template, length:', htmlTemplate.length)
         return htmlTemplate
       } else {
-        console.error('❌ Failed to extract template via API')
-        throw new Error('Failed to extract template')
+        console.error('❌ Failed to generate template via API')
+        throw new Error('Failed to generate template')
       }
     } catch (error: unknown) {
-      console.error('❌ Error extracting template:', error)
+      console.error('❌ Error generating template:', error)
       throw error
     }
   }, [])
@@ -282,8 +314,8 @@ export function useHyperCanvasChat(
               console.log('🎭 Triggering maestro:', data.message_to_maestro)
               
               try {
-                // Extract current template and call maestro
-                const currentTemplate = await extractCurrentTemplate(sessionData, sessionId)
+                // Get current HTML (from storage or generate fresh)
+                const currentTemplate = await getCurrentHTML(chatState.threadId, sessionId, sessionData)
                 
                 const maestroResponse = await fetch('/api/hyper-canvas/maestro', {
                   method: 'POST',
@@ -302,6 +334,7 @@ export function useHyperCanvasChat(
                 
                 if (maestroData.success) {
                   console.log('✅ Maestro completed:', maestroData.explanation)
+                  console.log('💾 HTML automatically stored by Maestro')
                   
                   // Update document preview
                   await refreshDocumentPreview(maestroData.modified_template)
@@ -509,7 +542,7 @@ export function useHyperCanvasChat(
       
       isProcessing.current = false
     }
-  }, [chatState.threadId, sessionId, userId, organizationId, clearTimeouts, sessionData, extractCurrentTemplate, refreshDocumentPreview])
+  }, [chatState.threadId, sessionId, userId, organizationId, clearTimeouts, sessionData, getCurrentHTML, refreshDocumentPreview])
   
   const clearChat = useCallback(() => {
     clearTimeouts()
