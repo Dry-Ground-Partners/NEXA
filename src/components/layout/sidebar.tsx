@@ -80,17 +80,9 @@ const NavItem = ({ item, isActive, isThin, handleNavClick }: { item: any, isActi
 
 export function Sidebar({ sidebarState, onClose, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showToolsDropdown, setShowToolsDropdown] = useState(false);
   const [dropdownTimeout, setDropdownTimeout] = useState<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Don't render on server to avoid hydration mismatch
-  if (!mounted) return null;
 
   const isCollapsed = sidebarState === 'collapsed';
   const isThin = sidebarState === 'thin';
@@ -105,6 +97,22 @@ export function Sidebar({ sidebarState, onClose, onToggle }: SidebarProps) {
       }
     };
   }, [dropdownTimeout]);
+
+  // Dropdown hover management with 1.5s delay
+  const handleDropdownEnter = () => {
+    if (dropdownTimeout) {
+      clearTimeout(dropdownTimeout);
+      setDropdownTimeout(null);
+    }
+    setShowToolsDropdown(true);
+  };
+
+  const handleDropdownLeave = () => {
+    const timeout = setTimeout(() => {
+      setShowToolsDropdown(false);
+    }, 1500); // 1.5 second delay
+    setDropdownTimeout(timeout);
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -127,6 +135,13 @@ export function Sidebar({ sidebarState, onClose, onToggle }: SidebarProps) {
       console.error("Logout error:", error);
     } finally {
       setIsLoggingOut(false);
+    }
+  };
+
+  const handleNavClick = () => {
+    // Close sidebar on mobile when navigating
+    if (window.innerWidth < 1024) {
+      onClose();
     }
   };
 
@@ -207,29 +222,6 @@ export function Sidebar({ sidebarState, onClose, onToggle }: SidebarProps) {
 
   const isAnyToolActive = () => {
     return toolsItems.some(item => isActivePath(item.href));
-  };
-
-  const handleNavClick = () => {
-    // Close sidebar on mobile when navigating
-    if (window.innerWidth < 1024) {
-      onClose();
-    }
-  };
-
-  // Dropdown hover management with 1.5s delay
-  const handleDropdownEnter = () => {
-    if (dropdownTimeout) {
-      clearTimeout(dropdownTimeout);
-      setDropdownTimeout(null);
-    }
-    setShowToolsDropdown(true);
-  };
-
-  const handleDropdownLeave = () => {
-    const timeout = setTimeout(() => {
-      setShowToolsDropdown(false);
-    }, 1500); // 1.5 second delay
-    setDropdownTimeout(timeout);
   };
 
   return (
@@ -346,7 +338,7 @@ export function Sidebar({ sidebarState, onClose, onToggle }: SidebarProps) {
                 ) : (
                   <div
                     className={`
-                      group flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 cursor-pointer
+                      group flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-300 cursor-pointer
                       ${isAnyToolActive() 
                         ? 'bg-white/10 text-white border border-white/20' 
                         : 'text-nexa-muted hover:text-white hover:bg-white/5'
@@ -381,40 +373,35 @@ export function Sidebar({ sidebarState, onClose, onToggle }: SidebarProps) {
                     onMouseEnter={handleDropdownEnter}
                     onMouseLeave={handleDropdownLeave}
                   >
-                    {toolsItems.map((item) => {
-                const isActive = isActivePath(item.href);
-                const Icon = item.icon;
-                
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                          onClick={() => {
-                            if (dropdownTimeout) {
-                              clearTimeout(dropdownTimeout);
-                              setDropdownTimeout(null);
-                            }
-                            setShowToolsDropdown(false);
-                            handleNavClick();
-                          }}
-                    className={`
-                            group flex items-center gap-3 px-3 py-2 mx-2 rounded-md transition-all duration-200
-                      ${isActive 
-                        ? 'bg-white/10 text-white border border-white/20' 
-                        : 'text-nexa-muted hover:text-white hover:bg-white/5'
-                      }
-                    `}
-                  >
-                          <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-nexa-muted group-hover:text-white'}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">{item.label}</div>
-                            <div className={`text-xs ${isActive ? 'text-white/70' : 'text-nexa-muted/70 group-hover:text-nexa-muted/90'} line-clamp-1`}>
-                        {item.description}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+                    {toolsItems.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => {
+                          if (dropdownTimeout) {
+                            clearTimeout(dropdownTimeout);
+                            setDropdownTimeout(null);
+                          }
+                          setShowToolsDropdown(false);
+                          handleNavClick();
+                        }}
+                        className={`
+                          group flex items-center gap-3 px-3 py-2 mx-2 rounded-md transition-all duration-200
+                          ${isActivePath(item.href) 
+                            ? 'bg-white/10 text-white border border-white/20' 
+                            : 'text-nexa-muted hover:text-white hover:bg-white/5'
+                          }
+                        `}
+                      >
+                        <item.icon className={`h-4 w-4 flex-shrink-0 ${isActivePath(item.href) ? 'text-white' : 'text-nexa-muted group-hover:text-white'}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium">{item.label}</div>
+                          <div className={`text-xs ${isActivePath(item.href) ? 'text-white/70' : 'text-nexa-muted/70 group-hover:text-nexa-muted/90'} line-clamp-1`}>
+                            {item.description}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>
