@@ -217,7 +217,7 @@ export default function ProfilePage() {
 
   return (
     <DashboardLayout>
-      <div className="nexa-background min-h-screen p-6">
+      <div className="nexa-background nexa-page-wrapper p-6">
         <div className="max-w-6xl mx-auto">
           {/* Tab system with seamless folder-like design */}
           <Tabs defaultValue="profile" className="w-full">

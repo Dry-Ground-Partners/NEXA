@@ -896,7 +896,7 @@ export default function StructuringPage() {
     <DashboardLayout 
       currentPage="Structuring"
     >
-      <div className="nexa-background min-h-screen p-6">
+      <div className="nexa-background nexa-page-wrapper p-6">
         <div className="max-w-6xl mx-auto">
           
           {/* Tab Navigation Row */}

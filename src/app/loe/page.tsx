@@ -723,7 +723,7 @@ export default function LOEPage() {
     <DashboardLayout 
       currentPage="Level of Effort" 
     >
-      <div className="nexa-background min-h-screen p-6">
+      <div className="nexa-background nexa-page-wrapper p-6">
         <div className="max-w-6xl mx-auto">
           {/* Tab system matching structuring/visuals/solutioning/sow pattern */}
           <Tabs value={activeMainTab} className="w-full" onValueChange={setActiveMainTab}>

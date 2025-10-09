@@ -88,7 +88,7 @@ function DashboardLayoutInner({
           onSidebarToggle={toggleSidebar}
           isSidebarOpen={false}
         />
-          <main className="flex-1">
+          <main className="flex-1 flex flex-col">
             {children}
           </main>
           <Footer />
@@ -121,7 +121,7 @@ function DashboardLayoutInner({
           isSidebarOpen={isVisible}
         />
         
-        <main className="flex-1">
+        <main className="flex-1 flex flex-col">
           {children}
         </main>
         

@@ -1092,7 +1092,7 @@ export default function VisualsPage() {
     <DashboardLayout 
       currentPage="Visuals"
     >
-      <div className="nexa-background min-h-screen p-6">
+      <div className="nexa-background nexa-page-wrapper p-6">
         <div className="max-w-7xl mx-auto">
           {/* Tab system with seamless folder-like design */}
           <Tabs value={activeMainTab} className="w-full" onValueChange={setActiveMainTab}>

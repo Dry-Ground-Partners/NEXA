@@ -78,6 +78,22 @@
     animation: coolGradientShift 12s ease infinite;
   }
 
+  /* Page content wrapper that fills space to footer 
+   * 
+   * USAGE PATTERN FOR ALL PAGES:
+   * Instead of: <div className="nexa-background min-h-screen p-6">
+   * Use:        <div className="nexa-background nexa-page-wrapper p-6">
+   * 
+   * This ensures content automatically fills the space between header and footer,
+   * eliminating gaps when content is shorter than viewport height.
+   * Maintains fixed width behavior while filling vertical space.
+   */
+  .nexa-page-wrapper {
+    flex: 1 0 auto;
+    width: 100%;
+    min-height: 0;
+  }
+
   .nexa-card {
     background-color: #000000;
     border: 1px solid #495057;
