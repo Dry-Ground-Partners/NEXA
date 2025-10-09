@@ -244,44 +244,45 @@ export function Sidebar({ sidebarState, onClose, onToggle }: SidebarProps) {
         `}
       >
         {/* Sidebar Header */}
-        <div className={`flex items-center h-16 border-b border-nexa-border ${isThin ? 'justify-center px-2' : 'justify-between px-6'}`}>
-          {isThin ? (
-            <div 
-              className="flex items-center justify-center w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity duration-200"
-              onClick={onToggle}
-              title="Expand sidebar"
-            >
-              <img
-                src="/images/nexanonameicon.png?v=1"
-                alt="NEXA"
-                className="w-8 h-8 object-contain"
-              />
-            </div>
-          ) : (
-            <>
+        {isVisible && (
+          <div className={`flex items-center h-16 border-b border-nexa-border ${isThin ? 'justify-center px-2' : 'justify-between px-6'}`}>
+            {isThin ? (
               <div 
-                className="flex-1 flex items-center justify-center gap-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+                className="flex items-center justify-center w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity duration-200"
                 onClick={onToggle}
+                title="Expand sidebar"
               >
                 <img
                   src="/images/nexanonameicon.png?v=1"
                   alt="NEXA"
                   className="w-8 h-8 object-contain"
                 />
-                <span className="text-white text-lg font-bold tracking-wide">
-                  NEXA
-                </span>
               </div>
-              <button
-                onClick={onClose}
-                className="text-nexa-muted hover:text-white transition-colors duration-200 lg:hidden"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </>
-          )}
-        </div>
-
+            ) : (
+              <>
+                <div 
+                  className="flex-1 flex items-center justify-center gap-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+                  onClick={onToggle}
+                >
+                  <img
+                    src="/images/nexanonameicon.png?v=1"
+                    alt="NEXA"
+                    className="w-8 h-8 object-contain"
+                  />
+                  <span className="text-white text-lg font-bold tracking-wide">
+                    NEXA
+                  </span>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="text-nexa-muted hover:text-white transition-colors duration-200 lg:hidden"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {/* Sidebar Content */}
         <div className="flex flex-col h-[calc(100%-4rem)] overflow-y-auto">
           
