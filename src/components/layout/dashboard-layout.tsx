@@ -5,6 +5,7 @@ import { Header } from './header'
 import { Footer } from './footer'
 import { Sidebar } from './sidebar'
 import { useUser } from '@/contexts/user-context'
+import { useSidebarState } from '@/hooks/useSidebarState'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -16,15 +17,16 @@ function DashboardLayoutInner({
   currentPage = 'Dashboard'
 }: DashboardLayoutProps) {
   const { user, selectedOrganization } = useUser()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false)
-  }
+  const { 
+    sidebarState, 
+    toggleSidebar, 
+    closeSidebar, 
+    isCollapsed, 
+    isThin, 
+    isExpanded, 
+    isVisible,
+    mounted 
+  } = useSidebarState()
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -46,8 +48,8 @@ function DashboardLayoutInner({
         return
       }
       
-      // Global navigation shortcuts (only when sidebar is open)
-      if (isSidebarOpen) {
+      // Global navigation shortcuts (only when sidebar is visible)
+      if (isVisible) {
         const navigationMap: { [key: string]: string } = {
           '1': '/grid',
           '2': '/structuring', 
@@ -72,26 +74,51 @@ function DashboardLayoutInner({
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isSidebarOpen])
+  }, [isVisible])
+
+  // Don't render until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex nexa-background">
+        <div className="flex flex-col min-h-screen flex-1">
+        <Header 
+          currentPage={currentPage} 
+          user={user || undefined}
+          selectedOrganization={selectedOrganization}
+          onSidebarToggle={toggleSidebar}
+          isSidebarOpen={false}
+        />
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex nexa-background">
       {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+      <Sidebar 
+        sidebarState={sidebarState}
+        onClose={closeSidebar} 
+        onToggle={toggleSidebar}
+      />
       
       {/* Main content area */}
       <div 
         className={`
           flex flex-col min-h-screen flex-1 transition-all duration-300 ease-in-out
-          ${isSidebarOpen ? 'lg:ml-80' : 'ml-0'}
+          ${isExpanded ? 'lg:ml-80' : isThin ? 'lg:ml-16' : 'ml-0'}
         `}
       >
         <Header 
           currentPage={currentPage} 
-          user={user}
+          user={user || undefined}
           selectedOrganization={selectedOrganization}
           onSidebarToggle={toggleSidebar}
-          isSidebarOpen={isSidebarOpen}
+          isSidebarOpen={isVisible}
         />
         
         <main className="flex-1">

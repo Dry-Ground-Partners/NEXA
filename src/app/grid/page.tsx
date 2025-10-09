@@ -587,10 +587,6 @@ export default function GridPage() {
               {/* Main Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
-                  <TabsTrigger value="command">
-                    <Terminal className="w-4 h-4 mr-2" />
-                    Command
-                  </TabsTrigger>
                   <TabsTrigger value="sessions">
                     <Clock className="w-4 h-4 mr-2" />
                     Sessions
@@ -608,91 +604,6 @@ export default function GridPage() {
           <Card variant="nexa" className="rounded-tr-none border-t border-nexa-border p-8 mt-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               
-              {/* Command Tab Content */}
-              <TabsContent value="command" className="mt-0">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <Terminal className="h-6 w-6 text-white" />
-                    <h3 className="text-lg font-semibold text-white">Command Center</h3>
-                  </div>
-                  
-                  {/* NEXA's Comms Chat Interface */}
-                  <div className="backdrop-blur-md bg-gradient-to-br from-slate-900/40 to-blue-900/20 border border-slate-700/50 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <MessageCircle className="h-5 w-5 text-white" />
-                        <h4 className="text-md font-medium text-white">NEXA's Comms</h4>
-                      </div>
-                      <button
-                        onClick={() => router.push('/profile')}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm rounded-lg transition-all duration-200"
-                      >
-                        Settings
-                        <ArrowRight className="h-3 w-3" />
-                      </button>
-                    </div>
-                    
-                    {/* Chat Messages */}
-                    <div 
-                      ref={chatMessagesRef}
-                      className="space-y-3 mb-4 max-h-[32rem] overflow-y-auto"
-                    >
-                      {chatMessages.length === 0 ? (
-                        <div className="text-center text-nexa-muted py-16">
-                          <p className="text-sm">NEXA's communication interface for quick commands and interactions</p>
-                          <p className="text-xs mt-1">Start typing below to begin...</p>
-                        </div>
-                      ) : (
-                        chatMessages.map(message => (
-                          <div key={message.id} className="bg-white/5 border border-white/10 rounded-lg p-3">
-                            <p className="text-white text-sm">{message.text}</p>
-                            <p className="text-nexa-muted text-xs mt-1">
-                              {message.timestamp.toLocaleTimeString()}
-                            </p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Chat Input */}
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        placeholder="Type a command or message..."
-                        className="flex-1 p-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-nexa-muted focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all"
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && chatInput.trim()) {
-                            setChatMessages(prev => [...prev, {
-                              id: Date.now().toString(),
-                              text: chatInput,
-                              timestamp: new Date()
-                            }])
-                            setChatInput('')
-                          }
-                        }}
-                      />
-                      <button
-                        onClick={() => {
-                          if (chatInput.trim()) {
-                            setChatMessages(prev => [...prev, {
-                              id: Date.now().toString(),
-                              text: chatInput,
-                              timestamp: new Date()
-                            }])
-                            setChatInput('')
-                          }
-                        }}
-                        className="px-4 py-3 backdrop-blur-md bg-gradient-to-br from-slate-600/60 to-blue-600/60 hover:from-slate-500/70 hover:to-blue-500/70 border border-slate-500/50 hover:border-slate-400/60 text-white rounded-lg transition-all duration-200"
-                      >
-                        <Send className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-
               {/* Sessions Tab Content */}
               <TabsContent value="sessions" className="mt-0">
                 <div className="space-y-6">
@@ -898,7 +809,7 @@ export default function GridPage() {
                               {/* Access Level Indicator */}
                               <div className="absolute top-4 right-4 flex items-center gap-2">
                                 {session.isCreator && (
-                                  <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 border border-yellow-400/30 text-yellow-300 text-xs font-medium rounded-full backdrop-blur-sm" title="You created this session">
+                                  <div className="flex items-center gap-1 px-2 py-1 bg-black border border-yellow-400/30 text-yellow-300 text-xs font-medium rounded-full backdrop-blur-sm" title="You created this session">
                                     <Crown className="h-3 w-3" />
                                     <span>Creator</span>
                                   </div>
