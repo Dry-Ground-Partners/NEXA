@@ -92,6 +92,7 @@ export default function VisualsPage() {
   const [generatingDescription, setGeneratingDescription] = useState<number | null>(null)
   const [generatingSketch, setGeneratingSketch] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [transitioning, setTransitioning] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
 
   // Draw.io editor state
@@ -964,6 +965,7 @@ export default function VisualsPage() {
     }
 
     setSaving(true)
+    setTransitioning(true)
     
     try {
       // 1. Filter diagrams with both image and ideation
@@ -1017,24 +1019,26 @@ export default function VisualsPage() {
           await automateImageProcessing(sessionId, validDiagrams)
           console.log(`✅ All automation completed successfully!`)
           
-          // 5. Navigate to solutioning only AFTER automation completes
+          // 5. Navigate to solutioning only AFTER automation completes - animation continues until new page loads
           console.log(`🎯 Redirecting to solutioning with same UUID: ${sessionId}`)
           window.location.href = `/solutioning?session=${sessionId}`
         } catch (automationError: any) {
           console.error('❌ Automation failed:', automationError)
           const errorMessage = automationError instanceof Error ? automationError.message : String(automationError)
           alert(`Automation failed: ${errorMessage}. Some solutions may be incomplete.`)
-          // Still navigate but warn user
+          // Still navigate but warn user - animation continues until new page loads
           window.location.href = `/solutioning?session=${sessionId}`
         }
       } else {
         alert('Failed to add solutioning data to session. Please try again.')
+        setSaving(false)
+        setTransitioning(false)
       }
     } catch (error: unknown) {
       console.error('Error transitioning to solutioning:', error)
       alert('Error transitioning to solutioning. Please try again.')
-    } finally {
       setSaving(false)
+      setTransitioning(false)
     }
   }
 
@@ -1474,23 +1478,25 @@ export default function VisualsPage() {
                   </Button>
                 ) : (
                   hasDiagramsWithImages() ? (
-                    <Button
+                    <button
                       onClick={handleTransitionToSolutioning}
                       disabled={saving}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-600/60 to-blue-600/60 hover:from-slate-500/70 hover:to-blue-500/70 border border-slate-500/50 hover:border-slate-400/60 text-white text-sm font-medium rounded-lg backdrop-blur-sm transition-all duration-200 hover:shadow-lg"
+                      className="group backdrop-blur-md bg-gradient-to-br from-slate-800/50 to-blue-800/30 border border-slate-700/50 rounded-lg px-3 py-1.5 hover:border-slate-600/60 active:from-slate-600/60 active:to-blue-600/60 active:border-blue-500/50 transition-all duration-300 shadow-md hover:shadow-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {saving ? (
-                        <>
-                          <RotateCw className="h-4 w-4 animate-spin" />
-                          Processing & Automating...
-                        </>
-                      ) : (
-                        <>
-                          To solutioning
-                          <ArrowRight className="h-4 w-4" />
-                        </>
-                      )}
-                  </Button>
+                      <div className="flex items-center gap-2">
+                        {saving ? (
+                          <>
+                            <RotateCw className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">Processing & Automating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRight className="h-4 w-4" />
+                            <span className="text-sm">To solutioning</span>
+                          </>
+                        )}
+                      </div>
+                    </button>
                 ) : (
                   <div />
                   )
@@ -1677,6 +1683,25 @@ export default function VisualsPage() {
         }}
         isOpen={drawioOpen}
       />
+      {/* Glass Blur Overlay for Transitioning to Solutioning */}
+      {transitioning && (
+        <div className="glass-blur-overlay">
+          <div className="flex flex-col items-center">
+            <img
+              src="/images/nexanonameicon.png?v=1"
+              alt="NEXA"
+              className="nexa-structuring-icon"
+            />
+            <div className="mt-6 blur-scroll-loading processing-loading">
+              {"Processing & Automating...".split("").map((letter, index) => (
+                <span key={index} className="blur-scroll-letter">
+                  {letter === " " ? "\u00A0" : letter}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }

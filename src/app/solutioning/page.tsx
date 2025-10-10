@@ -33,6 +33,7 @@ import {
   Target,
   Wand2
 } from 'lucide-react'
+import { QuickActionButton } from '@/components/ui/quick-action-button'
 import type { AuthUser } from '@/types'
 import type { SolutioningSessionData, SessionResponse } from '@/lib/sessions'
 import { createDefaultSolutioningData } from '@/lib/sessions'
@@ -72,6 +73,7 @@ export default function SolutioningPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [saving, setSaving] = useState(false)
+  const [transitioning, setTransitioning] = useState(false)
   
   // Tab state
   const [activeMainTab, setActiveMainTab] = useState('basic')
@@ -492,6 +494,7 @@ export default function SolutioningPage() {
     }
 
     setSaving(true)
+    setTransitioning(true)
     
     // Validate organization selection
     if (!selectedOrganization) {
@@ -544,17 +547,19 @@ export default function SolutioningPage() {
       if (sowResult.success) {
         console.log(`✅ Added SOW data to existing session: ${sessionId}`)
         
-        // 3. Navigate to SOW with SAME UUID
+        // 3. Navigate to SOW with SAME UUID - animation continues until new page loads
         window.location.href = `/sow?session=${sessionId}`
       } else {
         alert('Failed to add SOW data to session. Please try again.')
+        setSaving(false)
+        setTransitioning(false)
       }
     } catch (error: unknown) {
       console.error('Error transitioning to SOW:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       alert(`Error transitioning to SOW: ${errorMessage}`)
-    } finally {
       setSaving(false)
+      setTransitioning(false)
     }
   }
 
@@ -1730,133 +1735,100 @@ export default function SolutioningPage() {
                 
                 {/* Quick Access Toolbar */}
                 <div className="flex flex-wrap gap-2 mb-6">
-                  <Button
-                    onClick={() => setModals(prev => ({ ...prev, aiAnalysis: true }))}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
+                  <QuickActionButton
+                    icon={<Cpu className="h-4 w-4" />}
                     title="View/Edit AI Analysis"
-                  >
-                    <Cpu className="h-4 w-4" />
-                  </Button>
+                    description="View or modify the AI-generated analysis of your uploaded image or diagram. The AI analysis provides insights about the visual content, architectural patterns, and technical components identified in your solution diagram."
+                    onClick={() => setModals(prev => ({ ...prev, aiAnalysis: true }))}
+                  />
                   
-                  <Button
-                    onClick={() => setModals(prev => ({ ...prev, explanation: true }))}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
+                  <QuickActionButton
+                    icon={<Edit3 className="h-4 w-4" />}
                     title="View/Edit Solution Explanation"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
+                    description="View or edit the detailed explanation of this solution. This explanation provides context, rationale, and additional details that help stakeholders understand the solution approach and implementation strategy."
+                    onClick={() => setModals(prev => ({ ...prev, explanation: true }))}
+                  />
                   
-                  <Button
+                  <QuickActionButton
+                    icon={<Eye className="h-4 w-4" />}
+                    title="View Solution Image"
+                    description="Preview the uploaded image or diagram associated with this solution. View images in full size to better understand visual components, architectural diagrams, or reference materials that support your solution."
                     onClick={() => setModals(prev => ({ ...prev, imagePreview: true }))}
                     disabled={!currentSolution.additional.imageData}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
-                    title="View Solution Image"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  />
                   
-                  <Button
-                    onClick={() => setModals(prev => ({ ...prev, imageActions: true }))}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
+                  <QuickActionButton
+                    icon={<Camera className="h-4 w-4" />}
                     title="Image Actions"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
+                    description="Manage images for this solution including upload, replace, or remove operations. Upload architectural diagrams, screenshots, or visual references that help explain your solution approach."
+                    onClick={() => setModals(prev => ({ ...prev, imageActions: true }))}
+                  />
                   
-                  <Button
+                  <QuickActionButton
+                    icon={<Zap className="h-4 w-4" />}
+                    title="Restructure Solution"
+                    description="Use AI to analyze and restructure this solution's content for better clarity and organization. The AI will improve the logical flow, enhance technical details, and ensure comprehensive coverage of the solution approach."
                     onClick={structureSolution}
                     disabled={loadingStates.structuring}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-gray-800 border-nexa-border text-white hover:bg-gray-700"
-                    title="Restructure Solution"
-                  >
-                    <Zap className="h-4 w-4" />
-                  </Button>
+                    loading={loadingStates.structuring}
+                    loadingIcon={<RotateCw className="h-4 w-4 animate-spin" />}
+                    className="bg-gray-800 border-nexa-border text-white hover:bg-gray-700"
+                  />
                   
-                  <Button
-                    onClick={() => setModals(prev => ({ ...prev, stackModal: true }))}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
+                  <QuickActionButton
+                    icon={<Layers className="h-4 w-4" />}
                     title="View Per Node Stack"
-                  >
-                    <Layers className="h-4 w-4" />
-                  </Button>
+                    description="Explore the detailed technology stack recommendations for each component of this solution. See specific tools, frameworks, and technologies suggested for different parts of the implementation."
+                    onClick={() => setModals(prev => ({ ...prev, stackModal: true }))}
+                  />
                   
-                  <Button
-                    onClick={() => setModals(prev => ({ ...prev, layoutModal: true }))}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
+                  <QuickActionButton
+                    icon={<Palette className="h-4 w-4" />}
                     title="Select Layout"
-                  >
-                    <Palette className="h-4 w-4" />
-                  </Button>
+                    description="Choose the visual layout for this solution in the PDF export. Different layouts emphasize different aspects of your solution - some focus on diagrams, others on step-by-step processes. Select the layout that best communicates your solution approach."
+                    onClick={() => setModals(prev => ({ ...prev, layoutModal: true }))}
+                  />
                   
-                  <Button
-                    onClick={() => setModals(prev => ({ ...prev, difficultyModal: true }))}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
+                  <QuickActionButton
+                    icon={<Target className="h-4 w-4" />}
                     title="Set Difficulty"
-                  >
-                    <Target className="h-4 w-4" />
-                  </Button>
+                    description="Indicate the implementation difficulty level (0-100%) for this solution. This helps stakeholders understand the complexity and effort required. Higher percentages indicate more complex solutions with potential challenges."
+                    onClick={() => setModals(prev => ({ ...prev, difficultyModal: true }))}
+                  />
                   
-                  <Button
+                  <QuickActionButton
+                    icon={<Wand2 className="h-4 w-4" />}
+                    title="Auto-Formatting"
+                    description="Apply AI-powered formatting to improve the structure and readability of your solution content. The AI will enhance formatting for steps, approach text, and overall presentation while preserving your core content."
                     onClick={autoFormatContent}
                     disabled={loadingStates.autoFormatting}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10"
-                    title="Auto-Formatting"
-                  >
-                    {loadingStates.autoFormatting ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="h-4 w-4" />
-                    )}
-                  </Button>
+                    loading={loadingStates.autoFormatting}
+                    loadingIcon={<RotateCw className="h-4 w-4 animate-spin" />}
+                  />
                   
                   
-                  <Button
-                    onClick={previewPDF}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-blue-900/40 border-blue-600 text-blue-200 hover:bg-blue-800/60"
+                  <QuickActionButton
+                    icon={<FileText className="h-4 w-4" />}
                     title="Preview PDF"
+                    description="Generate and preview a PDF version of your solution document before downloading. This allows you to review the final output format, check layout, and ensure everything looks perfect before sharing with stakeholders."
+                    onClick={previewPDF}
                     disabled={loadingStates.generating}
-                  >
-                    {loadingStates.generating ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                    <FileText className="h-4 w-4" />
-                    )}
-                  </Button>
+                    loading={loadingStates.generating}
+                    loadingIcon={<RotateCw className="h-4 w-4 animate-spin" />}
+                    variant="info"
+                  />
                   
-                  <Button
-                    onClick={generatePDF}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 bg-green-900/40 border-green-600 text-green-200 hover:bg-green-800/60"
+                  <QuickActionButton
+                    icon={<Download className="h-4 w-4" />}
                     title="Generate PDF"
+                    description="Download the complete solution document as a professional PDF file. The PDF includes all solutions with their structure, approach, tech stack, and any attached diagrams. Perfect for sharing with clients and stakeholders."
+                    onClick={generatePDF}
                     disabled={loadingStates.generating}
-                  >
-                    {loadingStates.generating ? (
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                    <Download className="h-4 w-4" />
-                    )}
-                  </Button>
+                    loading={loadingStates.generating}
+                    loadingIcon={<RotateCw className="h-4 w-4 animate-spin" />}
+                    variant="success"
+                    className="bg-black border-green-600 text-green-200 hover:bg-green-900/20"
+                  />
                 </div>
 
                 {/* Structured Content Fields */}
@@ -1970,23 +1942,25 @@ export default function SolutioningPage() {
                               <ArrowRight className="h-4 w-4 ml-2" />
                             </Button>
                           ) : hasValidSolutions() ? (
-                            <Button
+                            <button
                               onClick={handleTransitionToSOW}
                               disabled={saving}
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-600/60 to-blue-600/60 hover:from-slate-500/70 hover:to-blue-500/70 border border-slate-500/50 hover:border-slate-400/60 text-white text-sm font-medium rounded-lg backdrop-blur-sm transition-all duration-200 hover:shadow-lg"
+                              className="group backdrop-blur-md bg-gradient-to-br from-slate-800/50 to-blue-800/30 border border-slate-700/50 rounded-lg px-3 py-1.5 hover:border-slate-600/60 active:from-slate-600/60 active:to-blue-600/60 active:border-blue-500/50 transition-all duration-300 shadow-md hover:shadow-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {saving ? (
-                                <>
-                                  <RotateCw className="h-4 w-4 animate-spin" />
-                                  Generating SOW...
-                                </>
-                              ) : (
-                                <>
-                                  To SOW
-                                  <ArrowRight className="h-4 w-4" />
-                                </>
-                              )}
-                            </Button>
+                              <div className="flex items-center gap-2">
+                                {saving ? (
+                                  <>
+                                    <RotateCw className="h-4 w-4 animate-spin" />
+                                    <span className="text-sm">Generating SOW...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ArrowRight className="h-4 w-4" />
+                                    <span className="text-sm">To SOW</span>
+                                  </>
+                                )}
+                              </div>
+                            </button>
                           ) : (
                             <div />
                           )}
@@ -2349,6 +2323,26 @@ export default function SolutioningPage() {
             />
             <div className="mt-6 blur-scroll-loading structure-loading">
               {"Structuring Solution...".split("").map((letter, index) => (
+                <span key={index} className="blur-scroll-letter">
+                  {letter === " " ? "\u00A0" : letter}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Glass Blur Overlay for Transitioning to SOW */}
+      {transitioning && (
+        <div className="glass-blur-overlay">
+          <div className="flex flex-col items-center">
+            <img
+              src="/images/nexanonameicon.png?v=1"
+              alt="NEXA"
+              className="nexa-structuring-icon"
+            />
+            <div className="mt-6 blur-scroll-loading sow-loading">
+              {"Generating SOW...".split("").map((letter, index) => (
                 <span key={index} className="blur-scroll-letter">
                   {letter === " " ? "\u00A0" : letter}
                 </span>

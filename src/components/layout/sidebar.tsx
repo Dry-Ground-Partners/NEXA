@@ -110,7 +110,7 @@ export function Sidebar({ sidebarState, onClose, onToggle }: SidebarProps) {
   const handleDropdownLeave = () => {
     const timeout = setTimeout(() => {
       setShowToolsDropdown(false);
-    }, 1500); // 1.5 second delay
+    }, 300); // 300ms delay - matches quick action buttons
     setDropdownTimeout(timeout);
   };
 

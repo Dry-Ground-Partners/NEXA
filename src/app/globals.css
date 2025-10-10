@@ -871,6 +871,91 @@
   .structure-loading .blur-scroll-letter:nth-child(20) { animation-delay: calc(3.5s / 21 * (21 - 20) * -1); }
   .structure-loading .blur-scroll-letter:nth-child(21) { animation-delay: calc(3.5s / 21 * (21 - 21) * -1); }
 
+  /* Transition to Visuals loading text - for "Transitioning..." (16 chars) */
+  .transitioning-loading .blur-scroll-letter:nth-child(1) { animation-delay: calc(3.5s / 16 * (16 - 1) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(2) { animation-delay: calc(3.5s / 16 * (16 - 2) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(3) { animation-delay: calc(3.5s / 16 * (16 - 3) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(4) { animation-delay: calc(3.5s / 16 * (16 - 4) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(5) { animation-delay: calc(3.5s / 16 * (16 - 5) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(6) { animation-delay: calc(3.5s / 16 * (16 - 6) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(7) { animation-delay: calc(3.5s / 16 * (16 - 7) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(8) { animation-delay: calc(3.5s / 16 * (16 - 8) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(9) { animation-delay: calc(3.5s / 16 * (16 - 9) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(10) { animation-delay: calc(3.5s / 16 * (16 - 10) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(11) { animation-delay: calc(3.5s / 16 * (16 - 11) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(12) { animation-delay: calc(3.5s / 16 * (16 - 12) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(13) { animation-delay: calc(3.5s / 16 * (16 - 13) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(14) { animation-delay: calc(3.5s / 16 * (16 - 14) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(15) { animation-delay: calc(3.5s / 16 * (16 - 15) * -1); }
+  .transitioning-loading .blur-scroll-letter:nth-child(16) { animation-delay: calc(3.5s / 16 * (16 - 16) * -1); }
+
+  /* Processing & Automating loading text - for "Processing & Automating..." (27 chars) */
+  .processing-loading .blur-scroll-letter:nth-child(1) { animation-delay: calc(3.5s / 27 * (27 - 1) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(2) { animation-delay: calc(3.5s / 27 * (27 - 2) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(3) { animation-delay: calc(3.5s / 27 * (27 - 3) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(4) { animation-delay: calc(3.5s / 27 * (27 - 4) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(5) { animation-delay: calc(3.5s / 27 * (27 - 5) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(6) { animation-delay: calc(3.5s / 27 * (27 - 6) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(7) { animation-delay: calc(3.5s / 27 * (27 - 7) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(8) { animation-delay: calc(3.5s / 27 * (27 - 8) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(9) { animation-delay: calc(3.5s / 27 * (27 - 9) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(10) { animation-delay: calc(3.5s / 27 * (27 - 10) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(11) { animation-delay: calc(3.5s / 27 * (27 - 11) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(12) { animation-delay: calc(3.5s / 27 * (27 - 12) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(13) { animation-delay: calc(3.5s / 27 * (27 - 13) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(14) { animation-delay: calc(3.5s / 27 * (27 - 14) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(15) { animation-delay: calc(3.5s / 27 * (27 - 15) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(16) { animation-delay: calc(3.5s / 27 * (27 - 16) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(17) { animation-delay: calc(3.5s / 27 * (27 - 17) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(18) { animation-delay: calc(3.5s / 27 * (27 - 18) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(19) { animation-delay: calc(3.5s / 27 * (27 - 19) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(20) { animation-delay: calc(3.5s / 27 * (27 - 20) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(21) { animation-delay: calc(3.5s / 27 * (27 - 21) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(22) { animation-delay: calc(3.5s / 27 * (27 - 22) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(23) { animation-delay: calc(3.5s / 27 * (27 - 23) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(24) { animation-delay: calc(3.5s / 27 * (27 - 24) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(25) { animation-delay: calc(3.5s / 27 * (27 - 25) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(26) { animation-delay: calc(3.5s / 27 * (27 - 26) * -1); }
+  .processing-loading .blur-scroll-letter:nth-child(27) { animation-delay: calc(3.5s / 27 * (27 - 27) * -1); }
+
+  /* Generating SOW loading text - for "Generating SOW..." (17 chars) */
+  .sow-loading .blur-scroll-letter:nth-child(1) { animation-delay: calc(3.5s / 17 * (17 - 1) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(2) { animation-delay: calc(3.5s / 17 * (17 - 2) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(3) { animation-delay: calc(3.5s / 17 * (17 - 3) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(4) { animation-delay: calc(3.5s / 17 * (17 - 4) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(5) { animation-delay: calc(3.5s / 17 * (17 - 5) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(6) { animation-delay: calc(3.5s / 17 * (17 - 6) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(7) { animation-delay: calc(3.5s / 17 * (17 - 7) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(8) { animation-delay: calc(3.5s / 17 * (17 - 8) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(9) { animation-delay: calc(3.5s / 17 * (17 - 9) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(10) { animation-delay: calc(3.5s / 17 * (17 - 10) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(11) { animation-delay: calc(3.5s / 17 * (17 - 11) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(12) { animation-delay: calc(3.5s / 17 * (17 - 12) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(13) { animation-delay: calc(3.5s / 17 * (17 - 13) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(14) { animation-delay: calc(3.5s / 17 * (17 - 14) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(15) { animation-delay: calc(3.5s / 17 * (17 - 15) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(16) { animation-delay: calc(3.5s / 17 * (17 - 16) * -1); }
+  .sow-loading .blur-scroll-letter:nth-child(17) { animation-delay: calc(3.5s / 17 * (17 - 17) * -1); }
+
+  /* Generating LOE loading text - for "Generating LOE..." (17 chars) */
+  .loe-loading .blur-scroll-letter:nth-child(1) { animation-delay: calc(3.5s / 17 * (17 - 1) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(2) { animation-delay: calc(3.5s / 17 * (17 - 2) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(3) { animation-delay: calc(3.5s / 17 * (17 - 3) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(4) { animation-delay: calc(3.5s / 17 * (17 - 4) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(5) { animation-delay: calc(3.5s / 17 * (17 - 5) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(6) { animation-delay: calc(3.5s / 17 * (17 - 6) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(7) { animation-delay: calc(3.5s / 17 * (17 - 7) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(8) { animation-delay: calc(3.5s / 17 * (17 - 8) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(9) { animation-delay: calc(3.5s / 17 * (17 - 9) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(10) { animation-delay: calc(3.5s / 17 * (17 - 10) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(11) { animation-delay: calc(3.5s / 17 * (17 - 11) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(12) { animation-delay: calc(3.5s / 17 * (17 - 12) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(13) { animation-delay: calc(3.5s / 17 * (17 - 13) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(14) { animation-delay: calc(3.5s / 17 * (17 - 14) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(15) { animation-delay: calc(3.5s / 17 * (17 - 15) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(16) { animation-delay: calc(3.5s / 17 * (17 - 16) * -1); }
+  .loe-loading .blur-scroll-letter:nth-child(17) { animation-delay: calc(3.5s / 17 * (17 - 17) * -1); }
+
   /* Scrollable Tabs with Fade Effects */
   .scrollable-tabs-container {
     max-width: 450px; /* Reduced width since Basic tab is outside */

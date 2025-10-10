@@ -26,6 +26,7 @@ import {
   Activity,
   BarChart3
 } from 'lucide-react'
+import { QuickActionButton } from '@/components/ui/quick-action-button'
 import type { AuthUser } from '@/types'
 import type { StructuringSessionData, SessionResponse, VisualsSessionData } from '@/lib/sessions'
 import { createDefaultStructuringData } from '@/lib/sessions'
@@ -96,6 +97,8 @@ export default function StructuringPage() {
   const [diagnosing, setDiagnosing] = useState(false)
   const [generatingSolution, setGeneratingSolution] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [transitioning, setTransitioning] = useState(false)
+  const [solutionGenerated, setSolutionGenerated] = useState(false)
 
   // Helper function to create blur-scroll text effect
   const createBlurScrollText = (text: string, className: string) => {
@@ -601,6 +604,7 @@ export default function StructuringPage() {
       setSolutionTabs(newSolutionTabs)
       setActiveSolutionTab(1)
       setIsRolledBack(false)
+      setSolutionGenerated(true)
       
       // Log success (no popup needed)
       console.log(`✅ Solution generation complete! Generated ${result.data.solution_parts.length} solutions with overview.`)
@@ -834,6 +838,7 @@ export default function StructuringPage() {
     }
 
     setSaving(true) // Use existing saving state for UI feedback
+    setTransitioning(true) // Start transition animation
     
     try {
       // 1. Get current structuring data
@@ -871,16 +876,18 @@ export default function StructuringPage() {
       }
       
       if (result.success) {
-        // 4. Navigate to visuals with session loaded
+        // 4. Navigate to visuals with session loaded - animation continues until new page loads
         window.location.href = `/visuals?session=${sessionId}`
       } else {
         alert('Failed to transition to visuals. Please try again.')
+        setSaving(false)
+        setTransitioning(false)
       }
     } catch (error: unknown) {
       console.error('Error transitioning to visuals:', error)
       alert('Error transitioning to visuals. Please try again.')
-    } finally {
       setSaving(false)
+      setTransitioning(false)
     }
   }
 
@@ -1092,81 +1099,59 @@ export default function StructuringPage() {
                     {/* Quick Action Buttons */}
                     <div className="flex flex-wrap gap-2 mb-6">
                       {/* Context Echo Toggle */}
-                      <Button
-                        onClick={() => setUseContextEcho(!useContextEcho)}
-                        variant="outline"
-                        size="sm"
-                        className={`h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10 ${
-                          useContextEcho ? 'bg-blue-600 border-blue-500' : ''
-                        }`}
+                      <QuickActionButton
+                        icon={<Radio className="h-4 w-4" />}
                         title="Context Echo"
-                      >
-                        <Radio className="h-4 w-4" />
-                      </Button>
+                        description="When enabled, the AI will include all content from the Content tab as context when generating solutions. This helps the AI understand the full scope and provide more relevant solutions. Disable to generate solutions based only on pain points."
+                        onClick={() => setUseContextEcho(!useContextEcho)}
+                        variant={useContextEcho ? 'active' : 'default'}
+                      />
                       
                       {/* Traceback Report Toggle */}
-                      <Button
-                        onClick={() => setUseTracebackReport(!useTracebackReport)}
-                        variant="outline"
-                        size="sm"
-                        className={`h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10 ${
-                          useTracebackReport ? 'bg-green-600 border-green-500' : ''
-                        }`}
+                      <QuickActionButton
+                        icon={<Activity className="h-4 w-4" />}
                         title="Traceback Report"
-                      >
-                        <Activity className="h-4 w-4" />
-                      </Button>
+                        description="When enabled, the AI will reference the diagnostic analysis report when generating solutions. This provides continuity and ensures solutions address the identified pain points. Disable for a fresh perspective without prior analysis."
+                        onClick={() => setUseTracebackReport(!useTracebackReport)}
+                        variant={useTracebackReport ? 'active' : 'default'}
+                      />
                       
                       {/* Rollback/Apply Toggle Button */}
-                      <Button
+                      <QuickActionButton
+                        icon={isRolledBack ? <Check className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+                        title={isRolledBack ? 'Apply Solutions' : 'Rollback'}
+                        description={isRolledBack 
+                          ? 'Restore the AI-generated solutions, replacing the current pain points. Use this after reviewing the original pain points to return to the enhanced solutions.'
+                          : 'Revert to the original pain points before AI solution generation. Useful for comparing the raw analysis with the AI-enhanced solutions.'}
                         onClick={() => {
-                          if (originalPainPoints.length === 0) return // No action if no backup
+                          if (originalPainPoints.length === 0) return
                           if (isRolledBack) {
                             handleApply()
                           } else {
                             handleRollback()
                           }
                         }}
-                        variant="outline"
-                        size="sm"
-                        className={`h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10 ${
-                          originalPainPoints.length === 0 ? 'opacity-40 cursor-not-allowed' : ''
-                        } ${
-                          isRolledBack ? 'bg-green-600 border-green-500' : 'bg-yellow-600 border-yellow-500'
-                        }`}
-                        title={originalPainPoints.length === 0 ? 'Generate solutions first' : isRolledBack ? 'Apply Generated Solutions' : 'Rollback to Pain Points'}
                         disabled={originalPainPoints.length === 0}
-                      >
-                        {isRolledBack ? <Check className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
-                      </Button>
+                        variant={isRolledBack ? 'success' : 'warning'}
+                      />
                       
                       {/* Analysis Report Button */}
-                      <Button
+                      <QuickActionButton
+                        icon={<FileText className="h-4 w-4" />}
+                        title="Analysis Report"
+                        description="View the comprehensive diagnostic analysis report generated from your content. This report contains detailed insights, patterns, and pain points identified by the AI. Available after running Diagnose."
                         onClick={reportData ? handleOpenReport : undefined}
-                        variant="outline"
-                        size="sm"
-                        className={`h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10 ${
-                          !reportData ? 'opacity-40 cursor-not-allowed' : ''
-                        }`}
-                        title={reportData ? 'Analysis Report' : 'Run Diagnose first'}
                         disabled={!reportData}
-                      >
-                        <FileText className="h-4 w-4" />
-                      </Button>
+                      />
                       
                       {/* Solution Overview Button */}
-                      <Button
+                      <QuickActionButton
+                        icon={<BarChart3 className="h-4 w-4" />}
+                        title="Solution Overview"
+                        description="View a high-level summary of all generated solutions. This overview provides a bird's-eye view of the recommendations, making it easier to understand the complete solution landscape. Available after generating solutions."
                         onClick={solutionOverview ? handleOpenOverview : undefined}
-                        variant="outline"
-                        size="sm"
-                        className={`h-8 w-8 p-0 border-nexa-border text-white hover:bg-white/10 ${
-                          !solutionOverview ? 'opacity-40 cursor-not-allowed' : ''
-                        }`}
-                        title={solutionOverview ? 'Solution Overview' : 'Generate solutions first'}
                         disabled={!solutionOverview}
-                      >
-                        <BarChart3 className="h-4 w-4" />
-                      </Button>
+                      />
                     </div>
                     
                     <Tabs value={(activeSolutionTab || 1).toString()} onValueChange={(value) => setActiveSolutionTab(parseInt(value))}>
@@ -1260,24 +1245,28 @@ export default function StructuringPage() {
                   Next
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
-              ) : (
-                <Button 
+              ) : solutionGenerated ? (
+                <button
                   onClick={handleTransitionToVisuals}
                   disabled={saving}
-                  className="bg-gradient-to-r from-slate-600/60 to-blue-600/60 hover:from-slate-500/70 hover:to-blue-500/70 border border-slate-500/50 hover:border-slate-400/60 text-white backdrop-blur-sm transition-all duration-200 hover:shadow-lg disabled:opacity-50"
+                  className="group backdrop-blur-md bg-gradient-to-br from-slate-800/50 to-blue-800/30 border border-slate-700/50 rounded-lg px-3 py-1.5 hover:border-slate-600/60 active:from-slate-600/60 active:to-blue-600/60 active:border-blue-500/50 transition-all duration-300 shadow-md hover:shadow-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? (
-                    <>
-                      <RotateCw className="h-4 w-4 mr-2 animate-spin" />
-                      Transitioning...
-                    </>
-                  ) : (
-                    <>
-                      To visuals
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </>
-                  )}
-                </Button>
+                  <div className="flex items-center gap-2">
+                    {saving ? (
+                      <>
+                        <RotateCw className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Transitioning...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRight className="h-4 w-4" />
+                        <span className="text-sm">To visuals</span>
+                      </>
+                    )}
+                  </div>
+                </button>
+              ) : (
+                <div />
               )}
             </div>
 
@@ -1422,6 +1411,26 @@ export default function StructuringPage() {
                   dangerouslySetInnerHTML={{ __html: solutionOverview }}
                 />
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Glass Blur Overlay for Transitioning to Visuals */}
+      {transitioning && (
+        <div className="glass-blur-overlay">
+          <div className="flex flex-col items-center">
+            <img
+              src="/images/nexanonameicon.png?v=1"
+              alt="NEXA"
+              className="nexa-structuring-icon"
+            />
+            <div className="mt-6 blur-scroll-loading transitioning-loading">
+              {"Transitioning...".split("").map((letter, index) => (
+                <span key={index} className="blur-scroll-letter">
+                  {letter === " " ? "\u00A0" : letter}
+                </span>
+              ))}
             </div>
           </div>
         </div>

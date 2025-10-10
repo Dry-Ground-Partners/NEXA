@@ -38,6 +38,7 @@ export default function SOWPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [saving, setSaving] = useState(false)
+  const [transitioning, setTransitioning] = useState(false)
   
   // UI state
   const [activeMainTab, setActiveMainTab] = useState('basic')
@@ -170,6 +171,7 @@ export default function SOWPage() {
     }
 
     setSaving(true)
+    setTransitioning(true)
     
     // Validate organization selection
     if (!selectedOrganization) {
@@ -239,7 +241,7 @@ export default function SOWPage() {
       
       console.log('✅ LOE data saved to session successfully')
       
-      // 3. Navigate to LOE page
+      // 3. Navigate to LOE page - animation continues until new page loads
       console.log('🔗 Redirecting to LOE page...')
       window.location.href = `/loe?session=${sessionId}`
       
@@ -247,8 +249,8 @@ export default function SOWPage() {
       console.error('❌ Error transitioning to LOE:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       alert(`Error transitioning to LOE: ${errorMessage}`)
-    } finally {
       setSaving(false)
+      setTransitioning(false)
     }
   }
 
@@ -1326,24 +1328,25 @@ export default function SOWPage() {
                   
                   {/* "To LOE →" button - only show when SOW data is valid */}
                   {hasValidSOWData() && (
-                    <Button
+                    <button
                       onClick={handleTransitionToLOE}
                       disabled={saving}
-                      className={`
-                        relative overflow-hidden px-6 py-3 rounded-lg font-medium transition-all duration-300
-                        bg-gradient-to-r from-purple-500/20 to-blue-500/20 
-                        border border-purple-400/30 text-white
-                        hover:from-purple-500/30 hover:to-blue-500/30 hover:border-purple-400/50
-                        disabled:opacity-50 disabled:cursor-not-allowed
-                        backdrop-blur-sm
-                        before:absolute before:inset-0 before:bg-gradient-to-r before:from-white/5 before:to-white/10 
-                        before:opacity-0 before:transition-opacity before:duration-300 hover:before:opacity-100
-                      `}
+                      className="group backdrop-blur-md bg-gradient-to-br from-slate-800/50 to-blue-800/30 border border-slate-700/50 rounded-lg px-3 py-1.5 hover:border-slate-600/60 active:from-slate-600/60 active:to-blue-600/60 active:border-blue-500/50 transition-all duration-300 shadow-md hover:shadow-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <span className="relative z-10 flex items-center">
-                        {saving ? 'Generating LOE...' : 'To LOE →'}
-                      </span>
-                    </Button>
+                      <div className="flex items-center gap-2">
+                        {saving ? (
+                          <>
+                            <RotateCw className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">Generating LOE...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRight className="h-4 w-4" />
+                            <span className="text-sm">To LOE</span>
+                          </>
+                        )}
+                      </div>
+                    </button>
                   )}
                 </div>
               </TabsContent>
@@ -1352,6 +1355,26 @@ export default function SOWPage() {
           </Card>
         </div>
       </div>
+
+      {/* Glass Blur Overlay for Transitioning to LOE */}
+      {transitioning && (
+        <div className="glass-blur-overlay">
+          <div className="flex flex-col items-center">
+            <img
+              src="/images/nexanonameicon.png?v=1"
+              alt="NEXA"
+              className="nexa-structuring-icon"
+            />
+            <div className="mt-6 blur-scroll-loading loe-loading">
+              {"Generating LOE...".split("").map((letter, index) => (
+                <span key={index} className="blur-scroll-letter">
+                  {letter === " " ? "\u00A0" : letter}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }
