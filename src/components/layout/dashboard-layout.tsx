@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react'
 import { Header } from './header'
 import { Footer } from './footer'
 import { Sidebar } from './sidebar'
+import { AISidebar } from '@/components/ai-sidebar/AISidebar'
 import { useUser } from '@/contexts/user-context'
 import { useSidebarState } from '@/hooks/useSidebarState'
+import { cn } from '@/lib/utils'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -27,6 +29,28 @@ function DashboardLayoutInner({
     isVisible,
     mounted 
   } = useSidebarState()
+
+  // Track AI sidebar state
+  const [aiSidebarExpanded, setAiSidebarExpanded] = useState(false)
+
+  // Listen for AI sidebar state changes
+  useEffect(() => {
+    // Load initial state
+    const stored = localStorage.getItem('nexa-ai-sidebar-state')
+    if (stored === 'true') {
+      setAiSidebarExpanded(true)
+    }
+
+    // Listen for changes
+    const handleAiSidebarChange = (e: CustomEvent) => {
+      setAiSidebarExpanded(e.detail.isExpanded)
+    }
+
+    window.addEventListener('aiSidebarStateChange', handleAiSidebarChange as EventListener)
+    return () => {
+      window.removeEventListener('aiSidebarStateChange', handleAiSidebarChange as EventListener)
+    }
+  }, [])
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -98,20 +122,26 @@ function DashboardLayoutInner({
   }
 
   return (
-    <div className="min-h-screen flex nexa-background">
-      {/* Sidebar */}
+    <div className="min-h-screen flex nexa-background relative">
+      {/* Left Sidebar */}
       <Sidebar 
         sidebarState={sidebarState}
         onClose={closeSidebar} 
         onToggle={toggleSidebar}
       />
       
+      {/* Right Sidebar - AI Copilot */}
+      <AISidebar />
+      
       {/* Main content area */}
       <div 
-        className={`
-          flex flex-col min-h-screen flex-1 transition-all duration-300 ease-in-out
-          ${isExpanded ? 'lg:ml-80' : isThin ? 'lg:ml-16' : 'ml-0'}
-        `}
+        className={cn(
+          "flex flex-col min-h-screen flex-1 transition-all duration-300 ease-in-out",
+          // Left margin for left sidebar
+          isExpanded ? 'lg:ml-80' : isThin ? 'lg:ml-16' : 'ml-0',
+          // Right margin for AI sidebar (pushes content like left sidebar does)
+          aiSidebarExpanded ? 'mr-96' : 'mr-0'
+        )}
       >
         <Header 
           currentPage={currentPage} 
