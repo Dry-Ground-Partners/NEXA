@@ -9,10 +9,10 @@ interface MarkdownMessageProps {
 
 export function MarkdownMessage({ content }: MarkdownMessageProps) {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      className="text-xs leading-relaxed"
-      components={{
+    <div className="text-xs leading-relaxed">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
         // Paragraphs
         p: ({ children }) => (
           <p className="mb-2 last:mb-0">{children}</p>
@@ -64,9 +64,10 @@ export function MarkdownMessage({ content }: MarkdownMessageProps) {
           </blockquote>
         ),
       }}
-    >
-      {content}
-    </ReactMarkdown>
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
   )
 }
 

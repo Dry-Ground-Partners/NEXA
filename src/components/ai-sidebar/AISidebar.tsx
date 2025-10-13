@@ -21,6 +21,8 @@ export function AISidebar() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [nextHiddenMessage, setNextHiddenMessage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Load state from localStorage on mount
@@ -61,130 +63,250 @@ export function AISidebar() {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [])
 
+  // Helper to stream a message
+  const streamMessage = async (
+    messageType: 'hidden' | 'pre-response' | 'response' | 'next-hidden',
+    userInput: string,
+    previousMessagesText: string,
+    initialContent: string = ''
+  ): Promise<{ content: string; action?: any }> => {
+    const messageId = `${messageType}-${Date.now()}`
+    
+    // Create placeholder message
+    const placeholderMessage: Message = {
+      id: messageId,
+      role: 'assistant',
+      type: messageType === 'next-hidden' ? 'hidden' : messageType,
+      content: initialContent,
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, placeholderMessage])
+    
+    let accumulated = initialContent
+    let action = { type: null, params: {} }
+    
+    try {
+      const response = await fetch('/api/ai-sidebar/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userInput,
+          previousMessages: previousMessagesText,
+          activityLogs: ' ',
+          messageType: messageType === 'next-hidden' ? 'next-hidden' : messageType
+        })
+      })
+      
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      
+      if (!reader) throw new Error('No reader available')
+      
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              
+              if (data.token) {
+                accumulated += data.token
+                // Update message with accumulated content
+                setMessages(prev => prev.map(m => 
+                  m.id === messageId ? { ...m, content: accumulated } : m
+                ))
+              }
+              
+              if (data.done) {
+                if (data.action) {
+                  action = data.action
+                }
+              }
+              
+              if (data.error) {
+                throw new Error(data.error)
+              }
+            } catch (e) {
+              // Skip invalid JSON lines
+            }
+          }
+        }
+      }
+      
+      return { content: accumulated, action }
+      
+    } catch (error) {
+      console.error(`Error streaming ${messageType}:`, error)
+      throw error
+    }
+  }
+
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return
+    if (!inputValue.trim() || isProcessing) return
 
     const trimmedInput = inputValue.trim()
     setInputValue('')
-
-    // 1. Add user message
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      type: 'user',
-      content: trimmedInput,
-      timestamp: new Date()
-    }
-    setMessages(prev => [...prev, userMessage])
-
-    // 2. Check input complexity
-    const isComplex = trimmedInput.length >= MIN_COMPLEXITY_THRESHOLD
-
-    // 3. If complex, show hidden message from pool
-    if (isComplex) {
-      const hiddenText = getHiddenMessage()
-      const hiddenMessage: Message = {
-        id: `hidden-${Date.now()}`,
-        role: 'assistant',
-        type: 'hidden',
-        content: hiddenText,
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, hiddenMessage])
-    }
-
-    // 4. Format context (last 8 messages)
-    const last8Messages = messages.slice(-8)
-    const previousMessagesText = last8Messages
-      .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
-      .join('\n')
+    setIsProcessing(true)
 
     try {
-      // 5. Fire both requests in parallel
-      const [preResponsePromise, responsePromise] = await Promise.allSettled([
-        // Pre-response
-        fetch('/api/ai-sidebar/message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userInput: trimmedInput,
-            previousMessages: previousMessagesText,
-            activityLogs: ' ', // Empty for now
-            messageType: 'pre-response'
-          })
-        }).then(res => res.json()),
-        
-        // Full response
-        fetch('/api/ai-sidebar/message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userInput: trimmedInput,
-            previousMessages: previousMessagesText,
-            activityLogs: ' ', // Empty for now
-            messageType: 'response'
-          })
-        }).then(res => res.json())
-      ])
+      // 1. Add user message
+      const userMessage: Message = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        type: 'user',
+        content: trimmedInput,
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, userMessage])
 
-      // 6. Post pre-response if successful
-      if (preResponsePromise.status === 'fulfilled' && preResponsePromise.value.success) {
-        const preResponseMessage: Message = {
-          id: `pre-${Date.now()}`,
+      // 2. Format context (last 8 messages)
+      const last8Messages = messages.slice(-8)
+      const previousMessagesText = last8Messages
+        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+        .join('\n')
+
+      // 3. Check input complexity
+      const isComplex = trimmedInput.length >= MIN_COMPLEXITY_THRESHOLD
+
+      // 4. If complex, show hidden message (use saved, or fall back to pool)
+      if (isComplex) {
+        let hiddenText = nextHiddenMessage
+        
+        // If no saved hidden message, use pool
+        if (!hiddenText) {
+          hiddenText = getHiddenMessage()
+          console.log('Using pool hidden message (no saved message)')
+        } else {
+          console.log('Using saved hidden message')
+        }
+        
+        // Clear the saved hidden message
+        setNextHiddenMessage(null)
+        
+        // Stream the hidden message character by character (faster: 10ms)
+        const hiddenId = `hidden-${Date.now()}`
+        const hiddenMessage: Message = {
+          id: hiddenId,
           role: 'assistant',
-          type: 'pre-response',
-          content: preResponsePromise.value.preResponse,
+          type: 'hidden',
+          content: '',
           timestamp: new Date()
         }
-        setMessages(prev => [...prev, preResponseMessage])
+        setMessages(prev => [...prev, hiddenMessage])
+        
+        // Stream character by character
+        let accumulated = ''
+        for (let i = 0; i < hiddenText.length; i++) {
+          accumulated += hiddenText[i]
+          setMessages(prev => prev.map(m => 
+            m.id === hiddenId ? { ...m, content: accumulated } : m
+          ))
+          await new Promise(resolve => setTimeout(resolve, 10))
+        }
+        
+        // Small delay before starting pre-response
+        await new Promise(resolve => setTimeout(resolve, 100))
       }
 
-      // 7. Post full response if successful
-      if (responsePromise.status === 'fulfilled' && responsePromise.value.success) {
-        const responseMessage: Message = {
-          id: `response-${Date.now()}`,
-          role: 'assistant',
-          type: 'response',
-          content: responsePromise.value.response,
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, responseMessage])
-        
-        // Log action (for future use)
-        if (responsePromise.value.action && responsePromise.value.action.type) {
-          console.log('Action received:', responsePromise.value.action)
-        }
-      }
-
-      // 8. Handle errors
-      if (preResponsePromise.status === 'rejected') {
-        console.error('Pre-response failed:', preResponsePromise.reason)
-      }
-      if (responsePromise.status === 'rejected') {
-        console.error('Response failed:', responsePromise.reason)
-        
-        // Show error message
-        const errorMessage: Message = {
-          id: `error-${Date.now()}`,
-          role: 'assistant',
-          type: 'response',
-          content: "I'm having trouble processing your request. Please try again in a moment.",
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, errorMessage])
+      // 5. Stream pre-response (WAIT for it to complete)
+      await streamMessage('pre-response', trimmedInput, previousMessagesText)
+      
+      // Small delay before response
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // 6. Stream full response (WAIT for it to complete)
+      const responseResult = await streamMessage('response', trimmedInput, previousMessagesText)
+      
+      // Log action if present
+      if (responseResult.action && responseResult.action.type) {
+        console.log('Action received:', responseResult.action)
       }
       
+      // 7. After response completes, generate and SAVE next hidden message (don't display)
+      const updatedMessages = [...messages, userMessage]
+      const updatedContext = updatedMessages.slice(-8)
+        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+        .join('\n')
+      
+      // Generate next hidden in background and save it (don't display)
+      generateAndSaveNextHidden(trimmedInput, updatedContext)
+      
     } catch (error) {
-      console.error('Error sending message:', error)
+      console.error('Error in message flow:', error)
       
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',
         type: 'response',
-        content: "Something went wrong. Please try again.",
+        content: "I'm having trouble processing your request. Please try again in a moment.",
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Helper to generate and save next hidden message (don't display it)
+  const generateAndSaveNextHidden = async (userInput: string, previousMessagesText: string) => {
+    try {
+      const response = await fetch('/api/ai-sidebar/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userInput,
+          previousMessages: previousMessagesText,
+          activityLogs: ' ',
+          messageType: 'next-hidden'
+        })
+      })
+      
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      
+      if (!reader) {
+        console.error('No reader for next hidden generation')
+        return
+      }
+      
+      let accumulated = ''
+      
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              
+              if (data.token) {
+                accumulated += data.token
+              }
+              
+              if (data.done) {
+                // Save the generated hidden message for next use
+                setNextHiddenMessage(accumulated)
+                console.log('Saved next hidden message:', accumulated.substring(0, 50) + '...')
+              }
+            } catch (e) {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to generate next hidden message:', error)
+      // Don't set anything - will fall back to pool next time
     }
   }
 
@@ -298,15 +420,15 @@ export function AISidebar() {
                     ) : (
                       /* AI message: full width, blended with background, markdown rendered */
                       <div className="w-full">
-                        <div
-                          className={cn(
-                            "p-3 rounded-lg",
-                            "bg-black/95 border border-black",
-                            message.type === 'hidden' && "italic text-white/60",
-                            message.type === 'pre-response' && "text-purple-100",
-                            message.type === 'response' && "text-white"
-                          )}
-                        >
+                      <div
+                        className={cn(
+                          "p-3 rounded-lg",
+                          "bg-black/95 border border-black",
+                          message.type === 'pre-response' && "text-purple-100",
+                          message.type === 'response' && "text-white",
+                          message.type === 'hidden' && "text-white"
+                        )}
+                      >
                           {message.type === 'response' ? (
                             <MarkdownMessage content={message.content} />
                           ) : (
@@ -332,12 +454,13 @@ export function AISidebar() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === 'Enter' && !e.shiftKey && !isProcessing) {
                       e.preventDefault()
                       handleSendMessage()
                     }
                   }}
-                  placeholder="Type your message..."
+                  placeholder={isProcessing ? "Processing..." : "Type your message..."}
+                  disabled={isProcessing}
                   className={cn(
                     "flex-1 bg-black/50 backdrop-blur-sm",
                     "border border-white/10 rounded-lg",
@@ -345,12 +468,13 @@ export function AISidebar() {
                     "placeholder:text-white/30",
                     "focus:outline-none focus:border-cyan-400/50",
                     "focus:shadow-[0_0_10px_rgba(34,211,238,0.2)]",
-                    "transition-all"
+                    "transition-all",
+                    isProcessing && "opacity-50 cursor-not-allowed"
                   )}
                 />
                 <button
                   onClick={handleSendMessage}
-                  disabled={!inputValue.trim()}
+                  disabled={!inputValue.trim() || isProcessing}
                   className={cn(
                     "p-2 rounded-lg",
                     "bg-cyan-500/20 border border-cyan-400/30",
