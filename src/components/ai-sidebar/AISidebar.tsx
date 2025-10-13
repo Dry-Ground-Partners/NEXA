@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Speech, X, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { MarkdownMessage } from './MarkdownMessage'
+import { getHiddenMessage } from '@/lib/ai-sidebar/message-generators'
 
 interface Message {
   id: string
@@ -13,6 +15,7 @@ interface Message {
 }
 
 const AI_SIDEBAR_STORAGE_KEY = 'nexa-ai-sidebar-state'
+const MIN_COMPLEXITY_THRESHOLD = 60
 
 export function AISidebar() {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -58,45 +61,131 @@ export function AISidebar() {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [])
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim()) return
 
-    // Add user message (ephemeral for now)
+    const trimmedInput = inputValue.trim()
+    setInputValue('')
+
+    // 1. Add user message
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
       type: 'user',
-      content: inputValue,
+      content: trimmedInput,
       timestamp: new Date()
     }
-
     setMessages(prev => [...prev, userMessage])
 
-    // Simulate log message
-    setTimeout(() => {
-      const logMessage: Message = {
-        id: `log-${Date.now()}`,
-        role: 'log',
-        type: 'log',
-        content: '[2:34 PM] User sent message',
+    // 2. Check input complexity
+    const isComplex = trimmedInput.length >= MIN_COMPLEXITY_THRESHOLD
+
+    // 3. If complex, show hidden message from pool
+    if (isComplex) {
+      const hiddenText = getHiddenMessage()
+      const hiddenMessage: Message = {
+        id: `hidden-${Date.now()}`,
+        role: 'assistant',
+        type: 'hidden',
+        content: hiddenText,
         timestamp: new Date()
       }
-      setMessages(prev => [...prev, logMessage])
-    }, 100)
+      setMessages(prev => [...prev, hiddenMessage])
+    }
 
-    // Simulate AI response after a short delay (ephemeral)
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: `ai-${Date.now()}`,
+    // 4. Format context (last 8 messages)
+    const last8Messages = messages.slice(-8)
+    const previousMessagesText = last8Messages
+      .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+      .join('\n')
+
+    try {
+      // 5. Fire both requests in parallel
+      const [preResponsePromise, responsePromise] = await Promise.allSettled([
+        // Pre-response
+        fetch('/api/ai-sidebar/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userInput: trimmedInput,
+            previousMessages: previousMessagesText,
+            activityLogs: ' ', // Empty for now
+            messageType: 'pre-response'
+          })
+        }).then(res => res.json()),
+        
+        // Full response
+        fetch('/api/ai-sidebar/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userInput: trimmedInput,
+            previousMessages: previousMessagesText,
+            activityLogs: ' ', // Empty for now
+            messageType: 'response'
+          })
+        }).then(res => res.json())
+      ])
+
+      // 6. Post pre-response if successful
+      if (preResponsePromise.status === 'fulfilled' && preResponsePromise.value.success) {
+        const preResponseMessage: Message = {
+          id: `pre-${Date.now()}`,
+          role: 'assistant',
+          type: 'pre-response',
+          content: preResponsePromise.value.preResponse,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, preResponseMessage])
+      }
+
+      // 7. Post full response if successful
+      if (responsePromise.status === 'fulfilled' && responsePromise.value.success) {
+        const responseMessage: Message = {
+          id: `response-${Date.now()}`,
+          role: 'assistant',
+          type: 'response',
+          content: responsePromise.value.response,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, responseMessage])
+        
+        // Log action (for future use)
+        if (responsePromise.value.action && responsePromise.value.action.type) {
+          console.log('Action received:', responsePromise.value.action)
+        }
+      }
+
+      // 8. Handle errors
+      if (preResponsePromise.status === 'rejected') {
+        console.error('Pre-response failed:', preResponsePromise.reason)
+      }
+      if (responsePromise.status === 'rejected') {
+        console.error('Response failed:', responsePromise.reason)
+        
+        // Show error message
+        const errorMessage: Message = {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          type: 'response',
+          content: "I'm having trouble processing your request. Please try again in a moment.",
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, errorMessage])
+      }
+      
+    } catch (error) {
+      console.error('Error sending message:', error)
+      
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
         role: 'assistant',
         type: 'response',
-        content: 'This is a mock response. The AI functionality will be implemented in later phases.',
+        content: "Something went wrong. Please try again.",
         timestamp: new Date()
       }
-      setMessages(prev => [...prev, aiMessage])
-    }, 500)
-
-    setInputValue('')
+      setMessages(prev => [...prev, errorMessage])
+    }
   }
 
   const formatTime = (date: Date) => {
@@ -207,7 +296,7 @@ export function AISidebar() {
                         </div>
                       </div>
                     ) : (
-                      /* AI message: full width, blended with background */
+                      /* AI message: full width, blended with background, markdown rendered */
                       <div className="w-full">
                         <div
                           className={cn(
@@ -218,9 +307,13 @@ export function AISidebar() {
                             message.type === 'response' && "text-white"
                           )}
                         >
-                          <div className="text-xs leading-relaxed whitespace-pre-wrap">
-                            {message.content}
-                          </div>
+                          {message.type === 'response' ? (
+                            <MarkdownMessage content={message.content} />
+                          ) : (
+                            <div className="text-xs leading-relaxed whitespace-pre-wrap">
+                              {message.content}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
