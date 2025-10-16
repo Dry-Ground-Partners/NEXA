@@ -1,10 +1,19 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Speech, X, Send } from 'lucide-react'
+import { Speech, X, Send, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MarkdownMessage } from './MarkdownMessage'
+import { LoadingIndicator } from './LoadingIndicator'
 import { getHiddenMessage } from '@/lib/ai-sidebar/message-generators'
+import { textToSpeech, playAudio, stopAudio } from '@/lib/ai-sidebar/audio-utils'
+import { 
+  generateAmbientPool, 
+  getRandomPoolAudio, 
+  removeFromPool,
+  AMBIENT_POOL_CONFIG,
+  type PoolAudio
+} from '@/lib/ai-sidebar/ambient-pool-utils'
 
 interface Message {
   id: string
@@ -23,7 +32,13 @@ export function AISidebar() {
   const [inputValue, setInputValue] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [nextHiddenMessage, setNextHiddenMessage] = useState<string | null>(null)
+  const [voiceMode, setVoiceMode] = useState(false)
+  const [nextHiddenAudio, setNextHiddenAudio] = useState<AudioBuffer | null>(null)
+  const [ambientAudioPool, setAmbientAudioPool] = useState<PoolAudio[]>([])
+  const [isGeneratingPool, setIsGeneratingPool] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const audioQueueRef = useRef<AudioBuffer[]>([])
+  const isPlayingRef = useRef(false)
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -45,6 +60,13 @@ export function AISidebar() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      stopAudio()
+    }
+  }, [])
+
   // Toggle with 'W' key
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -63,6 +85,148 @@ export function AISidebar() {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [])
 
+  // Helper to queue and play audio sequentially
+  const queueAndPlayAudio = async (audioBuffer: AudioBuffer) => {
+    try {
+      await playAudio(audioBuffer)
+    } catch (error) {
+      console.error('Audio playback error:', error)
+    }
+  }
+
+  // Refill ambient audio pool
+  const refillAmbientPool = async () => {
+    if (isGeneratingPool) {
+      return // Already generating
+    }
+
+    setIsGeneratingPool(true)
+    console.log('[Ambient Pool] Refilling pool...')
+
+    try {
+      const newAudios = await generateAmbientPool()
+      
+      if (newAudios.length > 0) {
+        setAmbientAudioPool(prev => {
+          const combined = [...prev, ...newAudios]
+          const limited = combined.slice(0, AMBIENT_POOL_CONFIG.MAX_SIZE)
+          console.log(`[Ambient Pool] Pool refilled (+${newAudios.length} clips, pool now: ${limited.length})`)
+          console.log(`[Ambient Pool] New audio IDs:`, newAudios.map(a => `${a.id.substring(0, 20)}... ("${a.phrase}")`))
+          return limited
+        })
+      } else {
+        console.warn('[Ambient Pool] No audios generated')
+      }
+    } catch (error) {
+      console.error('[Ambient Pool] Refill error:', error)
+    } finally {
+      setIsGeneratingPool(false)
+    }
+  }
+
+  // Wait for audio with pool fallback, then stream text + play audio TOGETHER
+  // This ensures audio plays FIRST or TOGETHER with text, never AFTER
+  const waitForAudioAndStreamText = async (
+    getTargetAudio: () => AudioBuffer | null,
+    text: string,
+    messageId: string,
+    audioName: string
+  ): Promise<void> => {
+    console.log(`[Voice Mode] Waiting for ${audioName} audio...`)
+
+    let targetAudio = getTargetAudio()
+
+    // If audio is ready immediately, skip pool entirely!
+    if (targetAudio) {
+      console.log(`[Voice Mode] ${audioName} audio ready immediately, skipping pool`)
+    } else {
+      // Audio not ready yet - play pool fillers while waiting
+      while (!targetAudio && voiceMode) {
+        // Random delay before filler (0.8-2.0 seconds)
+        const randomDelay = 800 + Math.random() * 1200 // 800-2000ms
+        console.log(`[Ambient Pool] Waiting ${randomDelay.toFixed(0)}ms before checking...`)
+        await new Promise(resolve => setTimeout(resolve, randomDelay))
+
+        // Check if audio became ready during delay
+        targetAudio = getTargetAudio()
+        if (targetAudio) {
+          console.log(`[Voice Mode] ${audioName} audio ready during delay, skipping pool`)
+          break
+        }
+
+        // Get a pool audio
+        const poolAudio = getRandomPoolAudio(ambientAudioPool)
+
+        if (!poolAudio) {
+          // Pool empty, wait a bit
+          console.log(`[Ambient Pool] Pool empty (${ambientAudioPool.length}), waiting...`)
+          await new Promise(resolve => setTimeout(resolve, AMBIENT_POOL_CONFIG.EMPTY_WAIT_MS))
+
+          // Trigger refill if needed
+          if (ambientAudioPool.length < AMBIENT_POOL_CONFIG.MIN_SIZE && !isGeneratingPool) {
+            refillAmbientPool()
+          }
+        } else {
+          // Play pool audio to completion
+          console.log(`[Ambient Pool] Playing pool filler "${poolAudio.phrase}" (ID: ${poolAudio.id}, pool: ${ambientAudioPool.length}) while waiting for ${audioName}`)
+
+          try {
+            await playAudio(poolAudio.buffer)
+
+            // Remove played audio from pool using ID (prevents replays!)
+            setAmbientAudioPool(prev => {
+              const updated = removeFromPool(prev, poolAudio.id)
+              console.log(`[Ambient Pool] Pool filler done, removed ID: ${poolAudio.id} (pool: ${updated.length} remaining)`)
+              
+              // Trigger refill if pool getting low
+              if (updated.length < AMBIENT_POOL_CONFIG.MIN_SIZE && !isGeneratingPool) {
+                console.log(`[Ambient Pool] Pool low (${updated.length}), triggering refill...`)
+                refillAmbientPool()
+              }
+              
+              return updated
+            })
+          } catch (error) {
+            console.error('[Ambient Pool] Pool playback error:', error)
+          }
+        }
+
+        // Check again if target audio is ready
+        targetAudio = getTargetAudio()
+      }
+    }
+
+    // Audio is ready! Now stream text AND play audio TOGETHER
+    if (targetAudio) {
+      console.log(`[Voice Mode] ${audioName} audio ready, streaming text + playing audio TOGETHER`)
+
+      // Start audio playback immediately (non-blocking)
+      const audioPlayPromise = playAudio(targetAudio)
+
+      // Stream text character-by-character simultaneously
+      let accumulated = ''
+      for (let i = 0; i < text.length; i++) {
+        accumulated += text[i]
+        setMessages(prev => prev.map(m => 
+          m.id === messageId ? { ...m, content: accumulated } : m
+        ))
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+
+      // Wait for audio to finish
+      await audioPlayPromise
+      console.log(`[Voice Mode] ${audioName} complete (text + audio)`)
+    }
+  }
+
+  // Generate initial pool when voice mode activates
+  useEffect(() => {
+    if (voiceMode && ambientAudioPool.length === 0 && !isGeneratingPool) {
+      console.log('[Ambient Pool] Voice mode activated, generating initial pool...')
+      refillAmbientPool()
+    }
+  }, [voiceMode])
+
   // Helper to stream a message
   const streamMessage = async (
     messageType: 'hidden' | 'pre-response' | 'response' | 'next-hidden',
@@ -72,20 +236,11 @@ export function AISidebar() {
   ): Promise<{ content: string; action?: any }> => {
     const messageId = `${messageType}-${Date.now()}`
     
-    // Create placeholder message
-    const placeholderMessage: Message = {
-      id: messageId,
-      role: 'assistant',
-      type: messageType === 'next-hidden' ? 'hidden' : messageType,
-      content: initialContent,
-      timestamp: new Date()
-    }
-    setMessages(prev => [...prev, placeholderMessage])
-    
-    let accumulated = initialContent
     let action = { type: null, params: {} }
+    let fullText = initialContent
     
     try {
+      // Step 1: Fetch complete text from API
       const response = await fetch('/api/ai-sidebar/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -102,6 +257,7 @@ export function AISidebar() {
       
       if (!reader) throw new Error('No reader available')
       
+      // Read all chunks to get complete text
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -115,30 +271,66 @@ export function AISidebar() {
               const data = JSON.parse(line.slice(6))
               
               if (data.token) {
-                accumulated += data.token
-                // Update message with accumulated content
-                setMessages(prev => prev.map(m => 
-                  m.id === messageId ? { ...m, content: accumulated } : m
-                ))
+                fullText += data.token
               }
               
-              if (data.done) {
-                if (data.action) {
-                  action = data.action
-                }
-              }
-              
-              if (data.error) {
-                throw new Error(data.error)
+              if (data.done && data.action) {
+                action = data.action
               }
             } catch (e) {
-              // Skip invalid JSON lines
+              // Skip invalid JSON
             }
           }
         }
       }
       
-      return { content: accumulated, action }
+      // Step 2: In voice mode, generate audio from complete text
+      let audioPromise: Promise<AudioBuffer> | null = null
+      if (voiceMode && fullText) {
+        audioPromise = textToSpeech(fullText).catch(err => {
+          console.error('Audio generation error:', err)
+          return null as any
+        })
+        console.log(`[Voice Mode] Generating audio for complete ${messageType} (${fullText.length} chars)`)
+      }
+      
+      // Step 3: Create placeholder message
+      const placeholderMessage: Message = {
+        id: messageId,
+        role: 'assistant',
+        type: messageType === 'next-hidden' ? 'hidden' : messageType,
+        content: '',
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, placeholderMessage])
+      
+      // Step 4: Stream text character-by-character AND play audio together
+      let accumulated = ''
+      let audioStarted = false
+      
+      for (let i = 0; i < fullText.length; i++) {
+        accumulated += fullText[i]
+        setMessages(prev => prev.map(m => 
+          m.id === messageId ? { ...m, content: accumulated } : m
+        ))
+        
+        // Start audio playback when first character streams
+        if (voiceMode && !audioStarted && audioPromise && i === 0) {
+          audioStarted = true
+          audioPromise.then(buffer => {
+            if (buffer) {
+              queueAndPlayAudio(buffer)
+              console.log(`[Voice Mode] Audio started playing for ${messageType}`)
+            }
+          }).catch(err => {
+            console.error('Failed to play audio:', err)
+          })
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+      
+      return { content: fullText, action }
       
     } catch (error) {
       console.error(`Error streaming ${messageType}:`, error)
@@ -173,61 +365,219 @@ export function AISidebar() {
       // 3. Check input complexity
       const isComplex = trimmedInput.length >= MIN_COMPLEXITY_THRESHOLD
 
-      // 4. If complex, show hidden message (use saved, or fall back to pool)
-      if (isComplex) {
-        let hiddenText = nextHiddenMessage
+      // 4. VOICE MODE: Use pool fallback system
+      if (voiceMode) {
+        // Refs to store generated audios
+        let hiddenAudioReady: AudioBuffer | null = null
+        let preResponseAudioReady: AudioBuffer | null = null
+        let responseAudioReady: AudioBuffer | null = null
         
-        // If no saved hidden message, use pool
-        if (!hiddenText) {
-          hiddenText = getHiddenMessage()
-          console.log('Using pool hidden message (no saved message)')
-        } else {
-          console.log('Using saved hidden message')
+        // Start all text generations in parallel (same as current system)
+        const preResponseTextPromise = fetch('/api/ai-sidebar/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userInput: trimmedInput,
+            previousMessages: previousMessagesText,
+            activityLogs: ' ',
+            messageType: 'pre-response'
+          })
+        })
+        
+        const responseTextPromise = fetch('/api/ai-sidebar/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userInput: trimmedInput,
+            previousMessages: previousMessagesText,
+            activityLogs: ' ',
+            messageType: 'response'
+          })
+        })
+        
+        // Hidden message
+        if (isComplex) {
+          let hiddenText = nextHiddenMessage
+          hiddenAudioReady = nextHiddenAudio
+          
+          if (!hiddenText) {
+            console.log('[Voice Mode] No saved hidden message, using pool')
+            hiddenText = getHiddenMessage()
+            
+            // Generate audio in background
+            textToSpeech(hiddenText).then(audio => {
+              hiddenAudioReady = audio
+            }).catch(err => console.error('Hidden audio gen error:', err))
+          } else {
+            console.log('[Voice Mode] Using saved hidden message with audio')
+          }
+          
+          setNextHiddenMessage(null)
+          setNextHiddenAudio(null)
+          
+          // Create placeholder message
+          const hiddenId = `hidden-${Date.now()}`
+          const hiddenMessage: Message = {
+            id: hiddenId,
+            role: 'assistant',
+            type: 'hidden',
+            content: '',
+            timestamp: new Date()
+          }
+          setMessages(prev => [...prev, hiddenMessage])
+          
+          // Wait for audio, then stream text + play audio TOGETHER
+          await waitForAudioAndStreamText(() => hiddenAudioReady, hiddenText, hiddenId, 'hidden')
+          await new Promise(resolve => setTimeout(resolve, 100))
         }
         
-        // Clear the saved hidden message
-        setNextHiddenMessage(null)
+        // Pre-response
+        const preResponseText = await (async () => {
+          const response = await preResponseTextPromise
+          const reader = response.body?.getReader()
+          const decoder = new TextDecoder()
+          let fullText = ''
+          
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
+              
+              const chunk = decoder.decode(value)
+              const lines = chunk.split('\n')
+              
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const data = JSON.parse(line.slice(6))
+                    if (data.token) fullText += data.token
+                  } catch (e) {}
+                }
+              }
+            }
+          }
+          
+          return fullText
+        })()
         
-        // Stream the hidden message character by character (faster: 10ms)
-        const hiddenId = `hidden-${Date.now()}`
-        const hiddenMessage: Message = {
-          id: hiddenId,
+        // Generate pre-response audio in background
+        textToSpeech(preResponseText).then(audio => {
+          preResponseAudioReady = audio
+        }).catch(err => console.error('Pre-response audio gen error:', err))
+        
+        // Create placeholder message
+        const preResponseId = `pre-response-${Date.now()}`
+        const preResponseMessage: Message = {
+          id: preResponseId,
           role: 'assistant',
-          type: 'hidden',
+          type: 'pre-response',
           content: '',
           timestamp: new Date()
         }
-        setMessages(prev => [...prev, hiddenMessage])
+        setMessages(prev => [...prev, preResponseMessage])
         
-        // Stream character by character
-        let accumulated = ''
-        for (let i = 0; i < hiddenText.length; i++) {
-          accumulated += hiddenText[i]
-          setMessages(prev => prev.map(m => 
-            m.id === hiddenId ? { ...m, content: accumulated } : m
-          ))
-          await new Promise(resolve => setTimeout(resolve, 10))
-        }
-        
-        // Small delay before starting pre-response
+        // Wait for audio, then stream text + play audio TOGETHER
+        await waitForAudioAndStreamText(() => preResponseAudioReady, preResponseText, preResponseId, 'pre-response')
         await new Promise(resolve => setTimeout(resolve, 100))
-      }
+        
+        // Response
+        const responseText = await (async () => {
+          const response = await responseTextPromise
+          const reader = response.body?.getReader()
+          const decoder = new TextDecoder()
+          let fullText = ''
+          
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
+              
+              const chunk = decoder.decode(value)
+              const lines = chunk.split('\n')
+              
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const data = JSON.parse(line.slice(6))
+                    if (data.token) fullText += data.token
+                  } catch (e) {}
+                }
+              }
+            }
+          }
+          
+          return fullText
+        })()
+        
+        // Generate response audio in background
+        textToSpeech(responseText).then(audio => {
+          responseAudioReady = audio
+        }).catch(err => console.error('Response audio gen error:', err))
+        
+        // Create placeholder message
+        const responseId = `response-${Date.now()}`
+        const responseMessage: Message = {
+          id: responseId,
+          role: 'assistant',
+          type: 'response',
+          content: '',
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, responseMessage])
+        
+        // Wait for audio, then stream text + play audio TOGETHER
+        await waitForAudioAndStreamText(() => responseAudioReady, responseText, responseId, 'response')
+        
+      } else {
+        // 5. TEXT MODE: Use existing flow (no changes)
+        if (isComplex) {
+          let hiddenText = nextHiddenMessage
+          
+          if (!hiddenText) {
+            hiddenText = getHiddenMessage()
+            console.log('Using pool hidden message (no saved message)')
+          } else {
+            console.log('Using saved hidden message')
+          }
+          
+          setNextHiddenMessage(null)
+          setNextHiddenAudio(null)
+          
+          if (hiddenText) {
+            const hiddenId = `hidden-${Date.now()}`
+            const hiddenMessage: Message = {
+              id: hiddenId,
+              role: 'assistant',
+              type: 'hidden',
+              content: '',
+              timestamp: new Date()
+            }
+            setMessages(prev => [...prev, hiddenMessage])
+            
+            let accumulated = ''
+            for (let i = 0; i < hiddenText.length; i++) {
+              accumulated += hiddenText[i]
+              setMessages(prev => prev.map(m => 
+                m.id === hiddenId ? { ...m, content: accumulated } : m
+              ))
+              await new Promise(resolve => setTimeout(resolve, 10))
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 100))
+          }
+        }
 
-      // 5. Stream pre-response (WAIT for it to complete)
-      await streamMessage('pre-response', trimmedInput, previousMessagesText)
-      
-      // Small delay before response
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      // 6. Stream full response (WAIT for it to complete)
-      const responseResult = await streamMessage('response', trimmedInput, previousMessagesText)
-      
-      // Log action if present
-      if (responseResult.action && responseResult.action.type) {
-        console.log('Action received:', responseResult.action)
+        await streamMessage('pre-response', trimmedInput, previousMessagesText)
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        const responseResult = await streamMessage('response', trimmedInput, previousMessagesText)
+        
+        if (responseResult.action && responseResult.action.type) {
+          console.log('Action received:', responseResult.action)
+        }
       }
       
-      // 7. After response completes, generate and SAVE next hidden message (don't display)
+      // 6. After response completes, generate and SAVE next hidden message (don't display)
       const updatedMessages = [...messages, userMessage]
       const updatedContext = updatedMessages.slice(-8)
         .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
@@ -296,6 +646,18 @@ export function AISidebar() {
                 // Save the generated hidden message for next use
                 setNextHiddenMessage(accumulated)
                 console.log('Saved next hidden message:', accumulated.substring(0, 50) + '...')
+                
+                // In voice mode: also generate and save audio
+                if (voiceMode && accumulated) {
+                  try {
+                    const audio = await textToSpeech(accumulated)
+                    setNextHiddenAudio(audio)
+                    console.log('Saved next hidden audio')
+                  } catch (error) {
+                    console.error('Failed to generate next hidden audio:', error)
+                    // Continue without audio
+                  }
+                }
               }
             } catch (e) {
               // Skip invalid JSON
@@ -347,7 +709,6 @@ export function AISidebar() {
         className={cn(
           "fixed right-0 top-0 bottom-0 z-40",
           "transition-all duration-300 ease-in-out",
-          "bg-black/95 backdrop-blur-xl",
           "border-l border-white/10",
           "shadow-[0_0_15px_rgba(255,255,255,0.1)]",
           isExpanded ? "w-96" : "w-0"
@@ -355,24 +716,41 @@ export function AISidebar() {
       >
         {isExpanded && (
           <div className="h-full flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-white/10 bg-white/5">
-              <div className="flex items-center justify-between">
+            {/* Header - glassmorphism, matches main header height (h-16) */}
+            <div className="h-16 px-4 border-b border-white/10 bg-black/30 backdrop-blur-xl">
+              <div className="flex items-center justify-between h-full">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
                   <h3 className="text-white font-medium text-sm">NEXA Liaison</h3>
                 </div>
-                <button
-                  onClick={() => setIsExpanded(false)}
-                  className="text-white/60 hover:text-white transition-colors p-1 rounded hover:bg-white/5"
-                >
-                  <X size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Voice Mode Toggle */}
+                  <button
+                    onClick={() => setVoiceMode(!voiceMode)}
+                    className={cn(
+                      "transition-colors p-1.5 rounded",
+                      voiceMode 
+                        ? "text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/20" 
+                        : "text-white/60 hover:text-white hover:bg-white/5"
+                    )}
+                    title={voiceMode ? "Voice mode enabled" : "Voice mode disabled"}
+                  >
+                    {voiceMode ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                  </button>
+                  
+                  {/* Close Button */}
+                  <button
+                    onClick={() => setIsExpanded(false)}
+                    className="text-white/60 hover:text-white transition-colors p-1 rounded hover:bg-white/5"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {/* Messages - solid black background */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-black/95">
               {messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center space-y-2">
@@ -420,23 +798,26 @@ export function AISidebar() {
                     ) : (
                       /* AI message: full width, blended with background, markdown rendered */
                       <div className="w-full">
-                      <div
-                        className={cn(
-                          "p-3 rounded-lg",
-                          "bg-black/95 border border-black",
-                          message.type === 'pre-response' && "text-purple-100",
-                          message.type === 'response' && "text-white",
-                          message.type === 'hidden' && "text-white"
+                        {/* Show loading indicator if message has no content yet */}
+                        {!message.content ? (
+                          <LoadingIndicator />
+                        ) : (
+                          <div
+                            className={cn(
+                              "p-3 rounded-lg",
+                              "bg-black/95 border border-black",
+                              "text-white"
+                            )}
+                          >
+                            {message.type === 'response' ? (
+                              <MarkdownMessage content={message.content} />
+                            ) : (
+                              <div className="text-xs leading-relaxed whitespace-pre-wrap">
+                                {message.content}
+                              </div>
+                            )}
+                          </div>
                         )}
-                      >
-                          {message.type === 'response' ? (
-                            <MarkdownMessage content={message.content} />
-                          ) : (
-                            <div className="text-xs leading-relaxed whitespace-pre-wrap">
-                              {message.content}
-                            </div>
-                          )}
-                        </div>
                       </div>
                     )}
                   </div>
@@ -446,8 +827,16 @@ export function AISidebar() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
-            <div className="p-4 border-t border-white/10 bg-white/5">
+            {/* Input - glassmorphism footer */}
+            <div className="p-4 border-t border-white/10 bg-black/30 backdrop-blur-xl">
+              {/* Pool status indicator (dev mode only) */}
+              {process.env.NODE_ENV === 'development' && voiceMode && (
+                <div className="text-[10px] text-white/30 mb-2 font-mono">
+                  Ambient Pool: {ambientAudioPool.length}/10
+                  {isGeneratingPool && ' (generating...)'}
+                </div>
+              )}
+              
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -487,9 +876,6 @@ export function AISidebar() {
                   <Send size={16} />
                 </button>
               </div>
-              <p className="text-[10px] text-white/30 mt-2 text-center">
-                Mock mode • Messages are ephemeral
-              </p>
             </div>
           </div>
         )}
