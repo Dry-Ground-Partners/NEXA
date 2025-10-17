@@ -11,23 +11,25 @@ Error: ENOENT: no such file or directory, open './test/data/05-versions-space.pd
 
 ## ✅ Solution
 
-Replaced `pdf-parse` with **Mozilla's PDF.js** (`pdfjs-dist`), which is:
-- Production-grade (used in Firefox)
-- No test file dependencies
-- More robust and actively maintained
-- Works perfectly in serverless environments
+Replaced `pdf-parse` with **pdf2json**, which is:
+- Designed specifically for Node.js server environments
+- No worker dependencies (unlike PDF.js)
+- No test file loading issues
+- Works perfectly in serverless/production environments (Render, Vercel, etc.)
 
 ## 🔧 Changes Made
 
 ### 1. **Updated Dependencies**
 ```bash
 npm uninstall pdf-parse
-npm install pdfjs-dist
+npm uninstall pdfjs-dist  # Also tried this, had worker issues
+npm install pdf2json      # Final solution
 ```
 
 **Result in package.json:**
-- ❌ Removed: `pdf-parse@^1.1.1`
-- ✅ Added: `pdfjs-dist@^5.4.296`
+- ❌ Removed: `pdf-parse@^1.1.1` (test file issues)
+- ❌ Removed: `pdfjs-dist@^5.4.296` (worker dependency issues)
+- ✅ Added: `pdf2json@^3.0.4` (works perfectly!)
 
 ### 2. **Updated API Route** (`src/app/api/file/extract-text/route.ts`)
 

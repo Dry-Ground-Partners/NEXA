@@ -11,42 +11,68 @@ const FILE_SIZE_LIMITS = {
 }
 
 /**
- * Extract text from PDF files using Mozilla's PDF.js
- * Uses dynamic import to avoid build-time issues
+ * Extract text from PDF files using pdf2json
+ * Node.js-native library, no worker dependencies
  */
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
     console.log('📄 Extracting text from PDF...')
-    // Dynamic import to avoid build-time issues
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
     
-    // Load the PDF document
-    const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(buffer),
-      useSystemFonts: true,
-      standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/',
+    // Dynamic import
+    const PDFParser = (await import('pdf2json')).default
+    
+    return new Promise((resolve, reject) => {
+      const pdfParser = new PDFParser()
+      
+      // Success handler
+      pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+        try {
+          // Extract text from all pages
+          const pageTexts: string[] = []
+          
+          if (pdfData.Pages && Array.isArray(pdfData.Pages)) {
+            for (const page of pdfData.Pages) {
+              const pageText: string[] = []
+              
+              if (page.Texts && Array.isArray(page.Texts)) {
+                for (const text of page.Texts) {
+                  if (text.R && Array.isArray(text.R)) {
+                    for (const run of text.R) {
+                      if (run.T) {
+                        // Decode URI component (pdf2json encodes text)
+                        pageText.push(decodeURIComponent(run.T))
+                      }
+                    }
+                  }
+                }
+              }
+              
+              pageTexts.push(pageText.join(' '))
+            }
+          }
+          
+          const fullText = pageTexts.join('\n\n').trim()
+          
+          if (!fullText) {
+            throw new Error('No text content found in PDF')
+          }
+          
+          console.log(`✅ PDF extraction successful: ${pdfData.Pages?.length || 0} pages, ${fullText.length} characters`)
+          resolve(fullText)
+        } catch (err) {
+          reject(err)
+        }
+      })
+      
+      // Error handler
+      pdfParser.on('pdfParser_dataError', (error: any) => {
+        console.error('❌ PDF parsing error:', error)
+        reject(new Error(`PDF parsing failed: ${error.parserError || 'Unknown error'}`))
+      })
+      
+      // Parse the buffer
+      pdfParser.parseBuffer(buffer)
     })
-    
-    const pdfDocument = await loadingTask.promise
-    const numPages = pdfDocument.numPages
-    console.log(`📊 PDF has ${numPages} pages`)
-    
-    // Extract text from all pages
-    const textPromises: Promise<string>[] = []
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      textPromises.push(
-        pdfDocument.getPage(pageNum).then(async (page) => {
-          const textContent = await page.getTextContent()
-          return textContent.items.map((item: any) => item.str).join(' ')
-        })
-      )
-    }
-    
-    const pageTexts = await Promise.all(textPromises)
-    const fullText = pageTexts.join('\n\n')
-    
-    console.log(`✅ PDF extraction successful: ${numPages} pages, ${fullText.length} characters`)
-    return fullText
   } catch (error) {
     console.error('❌ PDF extraction failed:', error)
     throw new Error('Failed to extract text from PDF. The file may be corrupted or password-protected.')

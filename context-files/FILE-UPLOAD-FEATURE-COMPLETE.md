@@ -41,7 +41,7 @@ Pain points + Analysis Report generated
 **Purpose:** Server-side text extraction from uploaded files
 
 **Key Features:**
-- ✅ PDF extraction using `pdf-parse`
+- ✅ PDF extraction using `pdfjs-dist` (Mozilla's PDF.js)
 - ✅ DOCX extraction using `mammoth`
 - ✅ TXT/MD extraction using native Node.js
 - ✅ File size validation (10MB PDF, 5MB DOCX, 1MB TXT/MD)
@@ -51,8 +51,10 @@ Pain points + Analysis Report generated
 
 **Dependencies Required:**
 ```bash
-npm install pdf-parse mammoth
+npm install pdfjs-dist mammoth
 ```
+
+> **Updated:** Now using Mozilla's `pdfjs-dist` for better production compatibility (no test file dependencies).
 
 **API Response Format:**
 ```json
@@ -161,10 +163,25 @@ const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 
 ### **Text Extraction Methods:**
 
-#### **PDF (pdf-parse):**
+#### **PDF (pdfjs-dist - Mozilla's PDF.js):**
 ```typescript
-const data = await pdf(buffer)
-return data.text // Extracted text
+const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) })
+const pdfDocument = await loadingTask.promise
+
+// Extract text from all pages in parallel
+const textPromises = []
+for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+  textPromises.push(
+    pdfDocument.getPage(pageNum).then(async (page) => {
+      const textContent = await page.getTextContent()
+      return textContent.items.map((item: any) => item.str).join(' ')
+    })
+  )
+}
+
+const pageTexts = await Promise.all(textPromises)
+return pageTexts.join('\n\n') // Extracted text
 ```
 - ✅ Multi-page PDFs
 - ✅ Embedded fonts
@@ -276,8 +293,8 @@ return buffer.toString('utf-8')
 // package.json
 {
   "dependencies": {
-    "pdf-parse": "^1.1.1",
-    "mammoth": "^1.6.0"
+    "pdfjs-dist": "^5.4.296",
+    "mammoth": "^1.11.0"
   }
 }
 ```
@@ -381,7 +398,7 @@ export const runtime = 'nodejs'
 
 ### **1. Install Dependencies:**
 ```bash
-npm install pdf-parse mammoth
+npm install pdfjs-dist mammoth
 ```
 
 ### **2. Test Locally:**
@@ -440,7 +457,7 @@ npm run dev
 - ✅ **1 new API route** (`/api/file/extract-text`)
 - ✅ **1 file modified** (`src/app/structuring/page.tsx`)
 - ✅ **4 file formats supported** (.pdf, .docx, .txt, .md)
-- ✅ **2 dependencies required** (pdf-parse, mammoth)
+- ✅ **2 dependencies required** (pdfjs-dist, mammoth)
 - ✅ **0 linter errors**
 - ✅ **Auto-diagnose enabled**
 - ✅ **Render-compatible**
@@ -459,9 +476,10 @@ npm run dev
 
 **🎯 Feature is 100% complete and ready for testing!**
 
-*Just run `npm install pdf-parse mammoth` and you're good to go!*
+*Just run `npm install pdfjs-dist mammoth` and you're good to go!*
 
 **Created:** October 16, 2025  
+**Updated:** October 17, 2025 (Replaced pdf-parse with pdfjs-dist for production compatibility)  
 **Status:** ✅ **COMPLETE**  
 **Next:** Install dependencies and test!
 

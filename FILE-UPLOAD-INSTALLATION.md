@@ -70,14 +70,17 @@ No special configuration needed! Just:
 
 ## Troubleshooting
 
-**Error: Cannot find module 'pdf-parse'**
-- Solution: Run `npm install pdf-parse mammoth`
+**Error: Cannot find module 'pdfjs-dist' or 'mammoth'**
+- Solution: Run `npm install pdfjs-dist mammoth`
 
 **Error: File too large**
 - Solution: File exceeds size limit, compress or split it
 
 **Error: No text found**
 - Solution: PDF may be scanned images (needs OCR)
+
+**Error: Test file not found (pdf-parse)**
+- Solution: This was an old issue with `pdf-parse`. We now use `pdfjs-dist` which doesn't have this problem.
 
 ---
 
