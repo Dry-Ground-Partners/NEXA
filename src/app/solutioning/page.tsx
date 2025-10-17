@@ -2538,9 +2538,12 @@ export default function SolutioningPage() {
 
       {/* Hyper-Canvas Modal - Positioned to account for Liaison sidebar (w-96 = 384px) */}
       {showHyperCanvas && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center z-50">
+        <>
+          {/* Backdrop - Only covers Canvas area, leaves sidebar accessible */}
+          <div className="fixed top-0 bottom-0 left-0 right-96 bg-black/30 backdrop-blur-md z-50" />
+          
           {/* Modal positioned to leave space for sidebar */}
-          <div className="fixed top-0 bottom-0 left-0 right-96 bg-white/10 backdrop-blur-xl border-r border-white/20 shadow-2xl overflow-hidden">
+          <div className="fixed top-0 bottom-0 left-0 right-96 bg-white/10 backdrop-blur-xl border-r border-white/20 shadow-2xl overflow-hidden z-50">
             {/* Modal Header */}
             <div className="bg-white/5 backdrop-blur-sm border-b border-white/10 p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -2643,7 +2646,7 @@ export default function SolutioningPage() {
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
     </DashboardLayout>
