@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import pdf from 'pdf-parse'
-import mammoth from 'mammoth'
 
 export const runtime = 'nodejs'
 
@@ -14,10 +12,13 @@ const FILE_SIZE_LIMITS = {
 
 /**
  * Extract text from PDF files using pdf-parse
+ * Uses dynamic import to avoid build-time issues
  */
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
     console.log('📄 Extracting text from PDF...')
+    // Dynamic import to avoid build-time issues with pdf-parse test files
+    const pdf = (await import('pdf-parse')).default
     const data = await pdf(buffer)
     console.log(`✅ PDF extraction successful: ${data.numpages} pages, ${data.text.length} characters`)
     return data.text
@@ -29,10 +30,13 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
 
 /**
  * Extract text from DOCX files using mammoth
+ * Uses dynamic import to avoid build-time issues
  */
 async function extractDocxText(buffer: Buffer): Promise<string> {
   try {
     console.log('📝 Extracting text from DOCX...')
+    // Dynamic import to avoid build-time issues
+    const mammoth = (await import('mammoth')).default
     const result = await mammoth.extractRawText({ buffer })
     
     // Check for warnings
