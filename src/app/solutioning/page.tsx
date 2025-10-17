@@ -39,7 +39,6 @@ import type { AuthUser } from '@/types'
 import type { SolutioningSessionData, SessionResponse } from '@/lib/sessions'
 import { createDefaultSolutioningData } from '@/lib/sessions'
 import { useHyperCanvasChat } from '@/hooks/useHyperCanvasChat'
-import { ChatInterface } from '@/components/hyper-canvas/ChatInterface'
 import { useUser } from '@/contexts/user-context'
 
 interface Solution {
@@ -2537,10 +2536,11 @@ export default function SolutioningPage() {
         </div>
       )}
 
-      {/* Hyper-Canvas Modal */}
+      {/* Hyper-Canvas Modal - Positioned to account for Liaison sidebar (w-96 = 384px) */}
       {showHyperCanvas && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="w-full h-full max-w-none max-h-none bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center z-50">
+          {/* Modal positioned to leave space for sidebar */}
+          <div className="fixed top-0 bottom-0 left-0 right-96 bg-white/10 backdrop-blur-xl border-r border-white/20 shadow-2xl overflow-hidden">
             {/* Modal Header */}
             <div className="bg-white/5 backdrop-blur-sm border-b border-white/10 p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -2606,57 +2606,40 @@ export default function SolutioningPage() {
               </div>
             </div>
 
-            {/* Main Content Area */}
-            <div className="flex h-[calc(100%-4rem)]">
-              {/* Document Preview - 75% */}
-              <div className="w-3/4 border-r border-white/10 bg-white/5 backdrop-blur-sm">
-                <div className="p-6 h-full flex flex-col">
-                  {/* PDF Preview Area */}
-                  <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-4 overflow-hidden">
-                    {previewLoading ? (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="text-white text-center">
-                          <div className="relative">
-                            <div className="w-16 h-16 border-4 border-blue-500/30 rounded-full mx-auto mb-4 animate-pulse"></div>
-                            <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-blue-400 rounded-full mx-auto animate-spin"></div>
-                          </div>
-                          <p className="text-lg font-medium">Generating Preview...</p>
-                          <p className="text-sm text-white/60">Please wait</p>
+            {/* PDF Preview - Full Width */}
+            <div className="h-[calc(100%-4rem)] bg-white/5 backdrop-blur-sm">
+              <div className="p-6 h-full flex flex-col">
+                {/* PDF Preview Area */}
+                <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-4 overflow-hidden">
+                  {previewLoading ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="text-white text-center">
+                        <div className="relative">
+                          <div className="w-16 h-16 border-4 border-blue-500/30 rounded-full mx-auto mb-4 animate-pulse"></div>
+                          <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-blue-400 rounded-full mx-auto animate-spin"></div>
                         </div>
+                        <p className="text-lg font-medium">Generating Preview...</p>
+                        <p className="text-sm text-white/60">Please wait</p>
                       </div>
-                    ) : previewBlob ? (
-                      <div className="w-full h-full bg-white rounded-lg shadow-2xl overflow-hidden">
-                        <iframe
-                          src={previewBlob}
-                          className="w-full h-full border-0"
-                          title="PDF Preview"
-                        />
+                    </div>
+                  ) : previewBlob ? (
+                    <div className="w-full h-full bg-white rounded-lg shadow-2xl overflow-hidden">
+                      <iframe
+                        src={previewBlob}
+                        className="w-full h-full border-0"
+                        title="PDF Preview"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="text-white/60 text-center">
+                        <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg font-medium">PDF Preview</p>
+                        <p className="text-sm">Click Refresh to generate preview</p>
                       </div>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="text-white/60 text-center">
-                          <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                          <p className="text-lg font-medium">PDF Preview</p>
-                          <p className="text-sm">Click to generate preview</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              {/* AI Chat Assistant - 25% */}
-              <div className="w-1/4 bg-white/5 backdrop-blur-sm">
-                <ChatInterface
-                  messages={chatState.messages}
-                  isTyping={chatState.isTyping}
-                  onSendMessage={sendMessage}
-                  memoryState={chatState.memoryState}
-                  canSendMessage={canSendMessage}
-                  isInitializing={chatState.isInitializing}
-                  error={chatState.error}
-                />
               </div>
             </div>
           </div>
