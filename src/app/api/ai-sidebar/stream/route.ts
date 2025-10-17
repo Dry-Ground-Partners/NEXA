@@ -5,7 +5,10 @@ export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userInput, previousMessages, activityLogs, messageType } = await request.json()
+    const { userInput, previousMessages, activityLogs, messageType, canvasActive } = await request.json()
+    
+    // Log canvas state for debugging
+    console.log('[Liaison API] Canvas active:', canvasActive)
     
     // Set up SSE headers
     const encoder = new TextEncoder()
@@ -35,7 +38,8 @@ export async function POST(request: NextRequest) {
           const result = await prompt.invoke({
             previous_messages: previousMessages || '',
             activity_logs: activityLogs || ' ',
-            user_input: userInput || ''
+            user_input: userInput || '',
+            canvas_active: canvasActive ? 'true' : 'false' // Pass canvas state to prompt
           })
           
           const content = result.content || result.text || String(result)

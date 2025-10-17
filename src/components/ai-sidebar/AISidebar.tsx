@@ -490,6 +490,9 @@ ${previousMessagesText}`
       // Get recent activity logs for AI context
       const recentActivityLogs = activityLogger.getRecentLogs(10)
       
+      // Get canvas state to pass to API
+      const { canvasActive } = getCanvasState()
+      
       const response = await fetch('/api/ai-sidebar/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -497,7 +500,8 @@ ${previousMessagesText}`
           userInput,
           previousMessages: previousMessagesText,
           activityLogs: recentActivityLogs || 'No recent activity',
-          messageType: messageType === 'next-hidden' ? 'next-hidden' : messageType
+          messageType: messageType === 'next-hidden' ? 'next-hidden' : messageType,
+          canvasActive: canvasActive // Pass canvas state to API
         })
       })
       
@@ -574,6 +578,118 @@ ${previousMessagesText}`
     } catch (error) {
       console.error(`Error streaming ${messageType}:`, error)
       throw error
+    }
+  }
+
+  // Helper: Get canvas state (detect if Canvas modal is open)
+  const getCanvasState = () => {
+    const canvasModal = document.querySelector('[data-canvas-modal="true"]')
+    
+    if (!canvasModal) {
+      return { canvasActive: false, sessionId: null, sessionData: null }
+    }
+    
+    const sessionId = canvasModal.getAttribute('data-session-id') || null
+    const sessionDataStr = canvasModal.getAttribute('data-session-data') || null
+    
+    let sessionData = null
+    if (sessionDataStr) {
+      try {
+        sessionData = JSON.parse(sessionDataStr)
+      } catch (e) {
+        console.error('[Canvas State] Failed to parse sessionData:', e)
+      }
+    }
+    
+    console.log('[Canvas State] Canvas is open:', { sessionId, hasSessionData: !!sessionData })
+    return { canvasActive: true, sessionId, sessionData }
+  }
+
+  // Helper: Handle canvas actions (Maestro workflow)
+  const handleAction = async (action: any) => {
+    if (!action || action.type === null) return
+    
+    if (action.type === 'canvas_modify') {
+      console.log('[Canvas Action] 🎨 Canvas modification requested')
+      console.log('[Canvas Action] Instruction:', action.params?.maestroInstruction)
+      
+      const { sessionId, sessionData } = getCanvasState()
+      
+      if (!sessionId || !sessionData) {
+        console.error('[Canvas Action] ❌ Cannot modify canvas: missing session data')
+        return
+      }
+      
+      try {
+        // 1. Get current HTML template
+        console.log('[Canvas Action] 📄 Getting current HTML template...')
+        const htmlResponse = await fetch('/api/solutioning/preview-html', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionData, sessionId })
+        })
+        
+        if (!htmlResponse.ok) {
+          throw new Error('Failed to get current HTML')
+        }
+        
+        const currentHTML = await htmlResponse.text()
+        console.log('[Canvas Action] ✅ Got HTML template:', currentHTML.length, 'characters')
+        
+        // 2. Call Maestro
+        console.log('[Canvas Action] 🎭 Calling Maestro...')
+        const maestroResponse = await fetch('/api/hyper-canvas/maestro', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentTemplate: currentHTML,
+            maestroInstruction: action.params.maestroInstruction,
+            sessionId: sessionId,
+            userId: user?.id || '',
+            organizationId: selectedOrganization?.id || ''
+          })
+        })
+        
+        if (!maestroResponse.ok) {
+          throw new Error('Maestro API failed')
+        }
+        
+        const maestroData = await maestroResponse.json()
+        
+        if (!maestroData.success) {
+          throw new Error(maestroData.error || 'Maestro failed')
+        }
+        
+        console.log('[Canvas Action] ✅ Maestro completed:', maestroData.explanation)
+        
+        // 3. Convert modified HTML to PDF blob
+        console.log('[Canvas Action] 📄 Converting to PDF...')
+        const pdfResponse = await fetch('/api/hyper-canvas/template-to-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ htmlTemplate: maestroData.modified_template })
+        })
+        
+        if (!pdfResponse.ok) {
+          throw new Error('PDF conversion failed')
+        }
+        
+        const pdfBlob = await pdfResponse.blob()
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+        
+        console.log('[Canvas Action] ✅ PDF generated, dispatching update event')
+        
+        // 4. Dispatch event for Canvas to update
+        window.dispatchEvent(new CustomEvent('canvas-pdf-update', {
+          detail: { pdfUrl }
+        }))
+        
+        console.log('[Canvas Action] 🎉 Canvas modification complete!')
+        
+      } catch (error) {
+        console.error('[Canvas Action] ❌ Failed:', error)
+        // For proof of concept, just log errors - no fancy error handling yet
+      }
     }
   }
 
@@ -824,8 +940,10 @@ ${previousMessagesText}`
         
         const responseResult = await streamMessage('response', trimmedInput, previousMessagesText)
         
+        // Handle canvas actions
         if (responseResult.action && responseResult.action.type) {
-          console.log('Action received:', responseResult.action)
+          console.log('[Action] Detected:', responseResult.action)
+          await handleAction(responseResult.action)
         }
       }
       

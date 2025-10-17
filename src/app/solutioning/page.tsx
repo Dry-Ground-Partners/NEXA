@@ -158,6 +158,29 @@ export default function SolutioningPage() {
     }
   }, [generatePreviewBlob, initializeChat, sessionId, user?.id])
 
+  // Listen for PDF updates from Liaison (when Maestro completes)
+  useEffect(() => {
+    const handlePDFUpdate = (event: any) => {
+      const { pdfUrl } = event.detail
+      console.log('[Canvas] 🎨 Received PDF update from Liaison:', pdfUrl)
+      
+      // Revoke old blob URL to prevent memory leaks
+      if (previewBlob) {
+        URL.revokeObjectURL(previewBlob)
+      }
+      
+      // Set new PDF blob URL
+      setPreviewBlob(pdfUrl)
+      setPreviewLoading(false)
+    }
+    
+    window.addEventListener('canvas-pdf-update', handlePDFUpdate)
+    
+    return () => {
+      window.removeEventListener('canvas-pdf-update', handlePDFUpdate)
+    }
+  }, [previewBlob])
+
   // Close Hyper-Canvas modal and cleanup
   const closeHyperCanvas = useCallback(() => {
     setShowHyperCanvas(false)
@@ -2543,7 +2566,11 @@ export default function SolutioningPage() {
           <div className="fixed top-0 bottom-0 left-0 right-96 bg-black/30 backdrop-blur-md z-50" />
           
           {/* Modal positioned to leave space for sidebar */}
-          <div className="fixed top-0 bottom-0 left-0 right-96 bg-white/10 backdrop-blur-xl border-r border-white/20 shadow-2xl overflow-hidden z-50">
+          <div 
+            data-canvas-modal="true"
+            data-session-id={sessionId || ''}
+            data-session-data={JSON.stringify(sessionData)}
+            className="fixed top-0 bottom-0 left-0 right-96 bg-white/10 backdrop-blur-xl border-r border-white/20 shadow-2xl overflow-hidden z-50">
             {/* Modal Header */}
             <div className="bg-white/5 backdrop-blur-sm border-b border-white/10 p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
