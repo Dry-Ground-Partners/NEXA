@@ -227,21 +227,14 @@ export async function generateSolution(
         error: 'Invalid response format from AI - missing solution_parts array'
       }
     }
-    
-    if (!parsedResult.overview || typeof parsedResult.overview !== 'string') {
-      console.error('❌ Missing or invalid overview in parsed result:', parsedResult)
-      return {
-        success: false,
-        error: 'Invalid response format from AI - missing overview string'
-      }
-    }
 
     console.log(`📊 Generated ${parsedResult.solution_parts.length} solution parts`)
-    console.log(`📄 Overview length: ${parsedResult.overview.length} characters`)
     
     return {
       success: true,
-      data: parsedResult
+      data: {
+        solution_parts: parsedResult.solution_parts
+      }
     }
     
   } catch (error: unknown) {
@@ -274,6 +267,269 @@ export async function generateSolution(
     return {
       success: false,
       error: `Solution generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Generate analysis report from pain points
+ * Returns markdown-formatted report
+ */
+export async function generateAnalysisReport(
+  painPoints: string[],
+  organizationId?: string
+): Promise<StructuringResponse<{ report: string }>> {
+  try {
+    console.log('🔍 Starting analysis report generation with LangChain...')
+    
+    // Validate inputs
+    if (!painPoints || painPoints.length === 0) {
+      return {
+        success: false,
+        error: 'No pain points provided for analysis report'
+      }
+    }
+
+    // Concatenate pain points
+    const combinedPainPoints = painPoints
+      .filter(pp => pp && pp.trim())
+      .join('\n\n')
+      .trim()
+
+    if (!combinedPainPoints) {
+      return {
+        success: false,
+        error: 'All pain points are empty'
+      }
+    }
+
+    console.log(`📝 Generating analysis report for ${painPoints.length} pain points...`)
+    console.log(`📊 Total content: ${combinedPainPoints.length} characters`)
+
+    // Pull the prompt from LangSmith
+    console.log('🚀 Pulling analysis report prompt from LangSmith...')
+    const promptWithModel = await hub.pull("nexa-structuring-analysis-report", {
+      includeModel: true
+    })
+
+    console.log('✅ Successfully pulled analysis report prompt from LangSmith')
+
+    // Since we're expecting plain markdown string, use JSON parser to extract it
+    const parser = new JsonOutputParser<{ report: string }>()
+    const chain = promptWithModel.pipe(parser)
+
+    console.log('🤖 Executing LangChain analysis report generation...')
+
+    // Execute the chain
+    const result = await chain.invoke({
+      pain_points: combinedPainPoints
+    })
+
+    console.log('✅ Analysis report generation completed successfully')
+    console.log('🔍 Raw LangChain result type:', typeof result)
+    
+    // Handle different response formats from LangChain
+    let parsedResult: any = result
+    
+    // If result is an array with text field, extract the JSON
+    if (Array.isArray(result) && result.length > 0 && result[0].text) {
+      console.log('🔧 Extracting JSON from text field...')
+      try {
+        parsedResult = JSON.parse(result[0].text)
+        console.log('✅ Successfully parsed JSON from text field')
+      } catch (parseError) {
+        console.error('❌ Failed to parse JSON from text field:', parseError)
+        console.log('📝 Raw text:', result[0].text.substring(0, 500))
+        return {
+          success: false,
+          error: 'Invalid JSON format in AI response text field'
+        }
+      }
+    }
+    
+    // Extract report from result
+    let report = ''
+    if (typeof parsedResult === 'object' && parsedResult !== null && 'report' in parsedResult) {
+      report = parsedResult.report
+    } else if (typeof parsedResult === 'string') {
+      // If result is already a string, use it directly
+      report = parsedResult
+    } else {
+      console.error('❌ Invalid result format from LangChain:', parsedResult)
+      return {
+        success: false,
+        error: 'Invalid response format from AI'
+      }
+    }
+
+    console.log(`📄 Report length: ${report.length} characters`)
+
+    return {
+      success: true,
+      data: { report }
+    }
+
+  } catch (error: unknown) {
+    console.error('❌ Error in analysis report generation:', error)
+    
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        return {
+          success: false,
+          error: 'OpenAI API key not configured properly'
+        }
+      }
+      
+      if (error.message.includes('LangSmith') || error.message.includes('hub')) {
+        return {
+          success: false,
+          error: 'Failed to pull analysis report prompt from LangSmith. Check LANGSMITH_API_KEY.'
+        }
+      }
+      
+      if (error.message.includes('JSON')) {
+        return {
+          success: false,
+          error: 'AI response was not in valid JSON format'
+        }
+      }
+    }
+
+    return {
+      success: false,
+      error: `Analysis report generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+  }
+}
+
+/**
+ * Generate solution overview from solutions only
+ * Returns markdown-formatted overview
+ * Note: Prompt only takes {solutions} variable
+ */
+export async function generateSolutionOverview(
+  solutions: string[],
+  organizationId?: string
+): Promise<StructuringResponse<{ overview: string }>> {
+  try {
+    console.log('🔍 Starting solution overview generation with LangChain...')
+    
+    // Validate inputs
+    if (!solutions || solutions.length === 0) {
+      return {
+        success: false,
+        error: 'No solutions provided for solution overview'
+      }
+    }
+
+    // Concatenate solutions
+    const combinedSolutions = solutions
+      .filter(sol => sol && sol.trim())
+      .join('\n\n---\n\n')
+      .trim()
+
+    if (!combinedSolutions) {
+      return {
+        success: false,
+        error: 'All solutions are empty'
+      }
+    }
+
+    console.log(`📝 Generating solution overview for ${solutions.length} solutions...`)
+    console.log(`📊 Total content: ${combinedSolutions.length} characters`)
+
+    // Pull the prompt from LangSmith
+    console.log('🚀 Pulling solution overview prompt from LangSmith...')
+    const promptWithModel = await hub.pull("nexa-structuring-solution-overview", {
+      includeModel: true
+    })
+
+    console.log('✅ Successfully pulled solution overview prompt from LangSmith')
+
+    // Since we're expecting plain markdown string, use JSON parser to extract it
+    const parser = new JsonOutputParser<{ overview: string }>()
+    const chain = promptWithModel.pipe(parser)
+
+    console.log('🤖 Executing LangChain solution overview generation...')
+
+    // Execute the chain (prompt only takes {solutions} variable)
+    const result = await chain.invoke({
+      solutions: combinedSolutions
+    })
+
+    console.log('✅ Solution overview generation completed successfully')
+    console.log('🔍 Raw LangChain result type:', typeof result)
+    
+    // Handle different response formats from LangChain
+    let parsedResult: any = result
+    
+    // If result is an array with text field, extract the JSON
+    if (Array.isArray(result) && result.length > 0 && result[0].text) {
+      console.log('🔧 Extracting JSON from text field...')
+      try {
+        parsedResult = JSON.parse(result[0].text)
+        console.log('✅ Successfully parsed JSON from text field')
+      } catch (parseError) {
+        console.error('❌ Failed to parse JSON from text field:', parseError)
+        console.log('📝 Raw text:', result[0].text.substring(0, 500))
+        return {
+          success: false,
+          error: 'Invalid JSON format in AI response text field'
+        }
+      }
+    }
+    
+    // Extract overview from result
+    let overview = ''
+    if (typeof parsedResult === 'object' && parsedResult !== null && 'overview' in parsedResult) {
+      overview = parsedResult.overview
+    } else if (typeof parsedResult === 'string') {
+      // If result is already a string, use it directly
+      overview = parsedResult
+    } else {
+      console.error('❌ Invalid result format from LangChain:', parsedResult)
+      return {
+        success: false,
+        error: 'Invalid response format from AI'
+      }
+    }
+
+    console.log(`📄 Overview length: ${overview.length} characters`)
+
+    return {
+      success: true,
+      data: { overview }
+    }
+
+  } catch (error: unknown) {
+    console.error('❌ Error in solution overview generation:', error)
+    
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        return {
+          success: false,
+          error: 'OpenAI API key not configured properly'
+        }
+      }
+      
+      if (error.message.includes('LangSmith') || error.message.includes('hub')) {
+        return {
+          success: false,
+          error: 'Failed to pull solution overview prompt from LangSmith. Check LANGSMITH_API_KEY.'
+        }
+      }
+      
+      if (error.message.includes('JSON')) {
+        return {
+          success: false,
+          error: 'AI response was not in valid JSON format'
+        }
+      }
+    }
+
+    return {
+      success: false,
+      error: `Solution overview generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
 }

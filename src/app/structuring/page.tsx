@@ -24,13 +24,17 @@ import {
   Settings,
   Radio,
   Activity,
-  BarChart3
+  BarChart3,
+  Edit,
+  Eye
 } from 'lucide-react'
 import { QuickActionButton } from '@/components/ui/quick-action-button'
+import { fetchWithLogging, activityLogger } from '@/lib/activity-logger'
 import type { AuthUser } from '@/types'
 import type { StructuringSessionData, SessionResponse, VisualsSessionData } from '@/lib/sessions'
 import { createDefaultStructuringData } from '@/lib/sessions'
 import { useUser } from '@/contexts/user-context'
+import { MarkdownRenderer } from '@/components/structuring/MarkdownRenderer'
 
 interface ContentTab {
   id: number
@@ -67,10 +71,12 @@ export default function StructuringPage() {
   // Content tabs state
   const [contentTabs, setContentTabs] = useState<ContentTab[]>([{ id: 1, text: '' }])
   const [activeContentTab, setActiveContentTab] = useState(1)
+  const [editingContentTab, setEditingContentTab] = useState<number | null>(null) // Track which content tab is in edit mode
   
   // Solution tabs state
   const [solutionTabs, setSolutionTabs] = useState<SolutionTab[]>([{ id: 1, text: '' }])
   const [activeSolutionTab, setActiveSolutionTab] = useState(1)
+  const [editingSolutionTab, setEditingSolutionTab] = useState<number | null>(null) // Track which solution tab is in edit mode
   
   // Report state
   const [reportData, setReportData] = useState<string>('')
@@ -99,6 +105,13 @@ export default function StructuringPage() {
   const [saving, setSaving] = useState(false)
   const [transitioning, setTransitioning] = useState(false)
   const [solutionGenerated, setSolutionGenerated] = useState(false)
+
+  // Streaming states
+  const [streamingReport, setStreamingReport] = useState(false)
+  const [streamingOverview, setStreamingOverview] = useState(false)
+
+  // Helper function to stream text character-by-character (blazingly fast - 3ms per char)
+  // Removed streaming simulation - instant display for better performance
 
   // Helper function to create blur-scroll text effect
   const createBlurScrollText = (text: string, className: string) => {
@@ -374,29 +387,36 @@ export default function StructuringPage() {
         sessionId: sessionId
       }
       
-      console.log('📡 Sending request to organization-scoped API...')
+      console.log('📡 Step 1/2: Getting pain points...')
       console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
       
-      // Call the organization-scoped LangChain API endpoint with usage tracking
-      const response = await fetch(`/api/organizations/${orgId}/structuring/analyze-pain-points`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // STEP 1: Get pain points
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/structuring/analyze-pain-points`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestPayload)
         },
-        body: JSON.stringify(requestPayload)
-      })
+        {
+          workflow: 'structuring',
+          actionLabel: 'Diagnosed pain points'
+        }
+      )
       
       const result = await response.json()
       
       if (!result.success) {
         console.error('❌ Pain point analysis failed:', result.error)
         alert(`Analysis failed: ${result.error}`)
+        setDiagnosing(false)
         return
       }
       
       console.log('✅ Pain point analysis completed!')
       console.log(`📊 Found ${result.data.pain_points.length} pain points`)
-      console.log(`📄 Report length: ${result.data.report?.length || 0} characters`)
       
       // Log usage tracking info
       if (result.usage) {
@@ -413,12 +433,12 @@ export default function StructuringPage() {
         // Block if over limit
         if (result.usage.warning?.isOverLimit) {
           alert(`🚫 Credit limit exceeded! ${result.usage.warning.recommendedAction}`)
+          setDiagnosing(false)
           return
         }
       }
       
-      // Store the report data
-      setReportData(result.data.report || '')
+      // Store pain points in solution tabs (no streaming for pain points)
       
       // Replace solution tabs with pain points (start fresh)
       const newSolutionTabs: SolutionTab[] = result.data.pain_points.map((painPoint: string, index: number) => ({
@@ -432,8 +452,51 @@ export default function StructuringPage() {
       // Switch to solution tab to show results
       setActiveMainTab('solution')
       
-      // Auto-switch to solution tab (no popup needed)
-      console.log(`✅ Analysis complete! Found ${result.data.pain_points.length} pain points. Auto-switching to Solution tab.`)
+      console.log(`✅ Step 1/2 complete! Found ${result.data.pain_points.length} pain points.`)
+      
+      // STEP 2: Generate analysis report (sequential, after pain points)
+      console.log('📡 Step 2/2: Generating analysis report...')
+      setStreamingReport(true)
+      
+      try {
+        const reportResponse = await fetchWithLogging(
+          `/api/organizations/${orgId}/structuring/generate-analysis-report`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pain_points: result.data.pain_points,
+              sessionId: sessionId
+            })
+          },
+          {
+            workflow: 'structuring',
+            actionLabel: 'Generated analysis report'
+          }
+        )
+        
+        const reportResult = await reportResponse.json()
+        
+        if (reportResult.success && reportResult.data?.report) {
+          console.log('✅ Analysis report received!')
+          console.log(`📄 Report length: ${reportResult.data.report.length} characters`)
+          
+          // Instant display for better performance
+          setReportData(reportResult.data.report)
+          
+          console.log('✨ Report displayed!')
+        } else {
+          console.warn('⚠️ Analysis report generation failed, using fallback')
+          setReportData('Analysis report could not be generated.')
+        }
+      } catch (reportError) {
+        console.error('⚠️ Error generating analysis report:', reportError)
+        setReportData('Analysis report could not be generated.')
+      } finally {
+        setStreamingReport(false)
+      }
+      
+      console.log(`🎉 Diagnosis complete! ${newSolutionTabs.length} pain points analyzed.`)
       
     } catch (error: unknown) {
       console.error('💥 Error during pain point analysis:', error)
@@ -530,19 +593,32 @@ export default function StructuringPage() {
       console.log(`📄 Traceback Report: ${useTracebackReport ? 'ON' : 'OFF'} (${reportContent.length} chars)`)
       console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
       
+      // Build action label with feature flags
+      const features: string[] = []
+      if (useContextEcho) features.push('with context')
+      if (useTracebackReport) features.push('with traceback')
+      const actionLabel = `Generated solution${features.length > 0 ? ' ' + features.join(' ') : ''}`
+      
       // Call organization-scoped API with usage tracking
-      const response = await fetch(`/api/organizations/${orgId}/structuring/generate-solution`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          solutionContent,
-          content: contextContent,
-          report: reportContent,
-          echo: useContextEcho,
-          traceback: useTracebackReport,
-          sessionId: sessionId
-        })
-      })
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/structuring/generate-solution`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            solutionContent,
+            content: contextContent,
+            report: reportContent,
+            echo: useContextEcho,
+            traceback: useTracebackReport,
+            sessionId: sessionId
+          })
+        },
+        {
+          workflow: 'structuring',
+          actionLabel
+        }
+      )
       
       const result = await response.json()
       console.log('📦 Raw API response:', result)
@@ -553,7 +629,7 @@ export default function StructuringPage() {
         return
       }
       
-      console.log('✅ Solution generation completed!')
+      console.log('✅ Step 1/2: Solution generation completed!')
       console.log('🔍 Full API response:', result)
       
       // Log usage tracking info
@@ -571,6 +647,7 @@ export default function StructuringPage() {
         // Block if over limit
         if (result.usage.warning?.isOverLimit) {
           alert(`🚫 Credit limit exceeded! ${result.usage.warning.recommendedAction}`)
+          setGeneratingSolution(false)
           return
         }
       }
@@ -579,21 +656,21 @@ export default function StructuringPage() {
       if (!result.data) {
         console.error('❌ No data in response:', result)
         alert('Solution generation failed: No data received from API')
+        setGeneratingSolution(false)
         return
       }
       
       if (!result.data.solution_parts || !Array.isArray(result.data.solution_parts)) {
         console.error('❌ Invalid solution_parts in response:', result.data)
         alert('Solution generation failed: Invalid response format - missing solution_parts array')
-      return
-    }
+        setGeneratingSolution(false)
+        return
+      }
 
       console.log(`📊 Generated ${result.data.solution_parts.length} solution parts`)
-      console.log(`📄 Overview length: ${result.data.overview?.length || 0} characters`)
       
       // Store generated data
       setGeneratedSolutions(result.data.solution_parts)
-      setSolutionOverview(result.data.overview || '')
       
       // Replace solution tabs with generated solutions
       const newSolutionTabs: SolutionTab[] = result.data.solution_parts.map((solution: string, index: number) => ({
@@ -606,8 +683,51 @@ export default function StructuringPage() {
       setIsRolledBack(false)
       setSolutionGenerated(true)
       
-      // Log success (no popup needed)
-      console.log(`✅ Solution generation complete! Generated ${result.data.solution_parts.length} solutions with overview.`)
+      console.log(`✅ Step 1/2 complete! Generated ${result.data.solution_parts.length} solutions.`)
+      
+      // STEP 2: Generate solution overview (sequential, after solutions)
+      console.log('📡 Step 2/2: Generating solution overview...')
+      setStreamingOverview(true)
+      
+      try {
+        const overviewResponse = await fetchWithLogging(
+          `/api/organizations/${orgId}/structuring/generate-solution-overview`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              solutions: result.data.solution_parts,
+              sessionId: sessionId
+            })
+          },
+          {
+            workflow: 'structuring',
+            actionLabel: 'Generated solution overview'
+          }
+        )
+        
+        const overviewResult = await overviewResponse.json()
+        
+        if (overviewResult.success && overviewResult.data?.overview) {
+          console.log('✅ Solution overview received!')
+          console.log(`📄 Overview length: ${overviewResult.data.overview.length} characters`)
+          
+          // Instant display for better performance
+          setSolutionOverview(overviewResult.data.overview)
+          
+          console.log('✨ Overview displayed!')
+        } else {
+          console.warn('⚠️ Solution overview generation failed, using fallback')
+          setSolutionOverview('Solution overview could not be generated.')
+        }
+      } catch (overviewError) {
+        console.error('⚠️ Error generating solution overview:', overviewError)
+        setSolutionOverview('Solution overview could not be generated.')
+      } finally {
+        setStreamingOverview(false)
+      }
+      
+      console.log(`🎉 Solution generation complete! ${newSolutionTabs.length} solutions created.`)
       
     } catch (error: unknown) {
       console.error('💥 Error during solution generation:', error)
@@ -623,6 +743,13 @@ export default function StructuringPage() {
     setActiveSolutionTab(1)
     setIsRolledBack(true)
     console.log('🔄 Rolled back to original pain points')
+    
+    // Log activity
+    activityLogger.log({
+      workflow: 'structuring',
+      action: 'Rolled back to original pain points',
+      status: 'success'
+    })
   }
 
   const handleApply = () => {
@@ -636,6 +763,13 @@ export default function StructuringPage() {
     setActiveSolutionTab(1)
     setIsRolledBack(false)
     console.log('✅ Applied generated solutions')
+    
+    // Log activity
+    activityLogger.log({
+      workflow: 'structuring',
+      action: 'Applied generated solutions',
+      status: 'success'
+    })
   }
 
 
@@ -857,11 +991,18 @@ export default function StructuringPage() {
       const visualsData = createVisualsDataFromStructuring(currentStructuringData)
       
       // 3. Update same session row with visual data (org-scoped)
-      const response = await fetch(`/api/organizations/${orgId}/sessions/${sessionId}/add-visuals`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visualsData })
-      })
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/sessions/${sessionId}/add-visuals`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ visualsData })
+        },
+        {
+          workflow: 'structuring',
+          actionLabel: 'Pushed to Visuals'
+        }
+      )
       
       const result = await response.json()
       
@@ -1056,14 +1197,50 @@ export default function StructuringPage() {
                       {/* Content Tab Areas */}
                       {contentTabs.map((tab) => (
                         <TabsContent key={tab.id} value={tab.id.toString()}>
-                          <Textarea
-                            variant="nexa"
-                            placeholder="Enter your content here..."
-                            rows={8}
-                            value={tab.text}
-                            onChange={(e) => updateContentTab(tab.id, e.target.value)}
-                            className="resize-none"
-                          />
+                          <div className="relative">
+                            {/* Toggle Button (top-right) */}
+                            <div className="absolute top-2 right-2 z-10">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingContentTab(
+                                  editingContentTab === tab.id ? null : tab.id
+                                )}
+                                className="bg-black/50 backdrop-blur-sm border border-nexa-border hover:bg-black/70"
+                              >
+                                {editingContentTab === tab.id ? (
+                                  <>
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    Display
+                                  </>
+                                ) : (
+                                  <>
+                                    <Edit className="h-4 w-4 mr-1" />
+                                    Edit
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            
+                            {/* Content: Edit or Display Mode */}
+                            {editingContentTab === tab.id ? (
+                              <Textarea
+                                variant="nexa"
+                                placeholder="Enter your content here (markdown supported)..."
+                                value={tab.text}
+                                onChange={(e) => updateContentTab(tab.id, e.target.value)}
+                                className="resize-none min-h-[400px] h-auto"
+                              />
+                            ) : (
+                              <div className="border border-nexa-border rounded-lg p-4 bg-black/50 min-h-[400px] overflow-auto">
+                                {tab.text ? (
+                                  <MarkdownRenderer content={tab.text} />
+                                ) : (
+                                  <p className="text-nexa-text-secondary italic">No content yet. Click "Edit" to add content...</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </TabsContent>
                       ))}
                     </Tabs>
@@ -1183,14 +1360,50 @@ export default function StructuringPage() {
                       {/* Solution Tab Areas */}
                       {solutionTabs.map((tab) => (
                         <TabsContent key={tab.id} value={tab.id.toString()}>
-                          <Textarea
-                            variant="nexa"
-                            placeholder="Enter your solution here..."
-                            rows={8}
-                            value={tab.text}
-                            onChange={(e) => updateSolutionTab(tab.id, e.target.value)}
-                            className="resize-none"
-                          />
+                          <div className="relative">
+                            {/* Toggle Button (top-right) */}
+                            <div className="absolute top-2 right-2 z-10">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingSolutionTab(
+                                  editingSolutionTab === tab.id ? null : tab.id
+                                )}
+                                className="bg-black/50 backdrop-blur-sm border border-nexa-border hover:bg-black/70"
+                              >
+                                {editingSolutionTab === tab.id ? (
+                                  <>
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    Display
+                                  </>
+                                ) : (
+                                  <>
+                                    <Edit className="h-4 w-4 mr-1" />
+                                    Edit
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            
+                            {/* Content: Edit or Display Mode */}
+                            {editingSolutionTab === tab.id ? (
+                              <Textarea
+                                variant="nexa"
+                                placeholder="Enter your solution here (markdown supported)..."
+                                value={tab.text}
+                                onChange={(e) => updateSolutionTab(tab.id, e.target.value)}
+                                className="resize-none min-h-[400px] h-auto"
+                              />
+                            ) : (
+                              <div className="border border-nexa-border rounded-lg p-4 bg-black/50 min-h-[400px] overflow-auto">
+                                {tab.text ? (
+                                  <MarkdownRenderer content={tab.text} />
+                                ) : (
+                                  <p className="text-nexa-text-secondary italic">No solution yet. Click "Edit" to add a solution...</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </TabsContent>
                       ))}
                     </Tabs>
@@ -1331,13 +1544,13 @@ export default function StructuringPage() {
                 <Textarea
                   value={editedReport}
                   onChange={(e) => setEditedReport(e.target.value)}
-                  className="w-full h-96 bg-black border-nexa-border text-white resize-none"
-                  placeholder="Enter report content..."
+                  className="w-full min-h-[600px] h-auto bg-black border-nexa-border text-white resize-none"
+                  placeholder="Enter report content (markdown supported)..."
                 />
               ) : (
-                <div 
-                  className="prose prose-invert max-w-none text-nexa-text-primary"
-                  dangerouslySetInnerHTML={{ __html: reportData }}
+                <MarkdownRenderer 
+                  content={reportData}
+                  className="text-nexa-text-primary"
                 />
               )}
             </div>
@@ -1402,13 +1615,13 @@ export default function StructuringPage() {
                 <Textarea
                   value={editedOverview}
                   onChange={(e) => setEditedOverview(e.target.value)}
-                  className="w-full h-96 bg-nexa-dark border-nexa-border text-white resize-none"
-                  placeholder="Enter solution overview..."
+                  className="w-full min-h-[600px] h-auto bg-nexa-dark border-nexa-border text-white resize-none"
+                  placeholder="Enter solution overview (markdown supported)..."
                 />
               ) : (
-                <div 
-                  className="prose prose-invert max-w-none text-nexa-text-primary"
-                  dangerouslySetInnerHTML={{ __html: solutionOverview }}
+                <MarkdownRenderer 
+                  content={solutionOverview}
+                  className="text-nexa-text-primary"
                 />
               )}
             </div>

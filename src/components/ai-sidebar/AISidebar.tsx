@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Speech, X, Send, Volume2, VolumeX } from 'lucide-react'
+import { Speech, X, Send, Volume2, VolumeX, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MarkdownMessage } from './MarkdownMessage'
 import { LoadingIndicator } from './LoadingIndicator'
@@ -14,6 +14,9 @@ import {
   AMBIENT_POOL_CONFIG,
   type PoolAudio
 } from '@/lib/ai-sidebar/ambient-pool-utils'
+import { activityLogger, type ActivityLog } from '@/lib/activity-logger'
+import { useUser } from '@/contexts/user-context'
+import { usePreferences } from '@/hooks/use-preferences'
 
 interface Message {
   id: string
@@ -23,12 +26,58 @@ interface Message {
   timestamp: Date
 }
 
+type HiddenMessageStatus = 'none' | 'generating' | 'ready' | 'lost'
+
 const AI_SIDEBAR_STORAGE_KEY = 'nexa-ai-sidebar-state'
+const AI_SIDEBAR_MESSAGES_KEY = 'nexa-ai-sidebar-messages'
+const AI_SIDEBAR_HIDDEN_STATUS_KEY = 'nexa-ai-sidebar-hidden-status'
+const MAX_STORED_MESSAGES = 100 // Limit to prevent localStorage overflow
 const MIN_COMPLEXITY_THRESHOLD = 60
 
+// Helper functions for localStorage serialization
+function saveMessagesToStorage(messages: Message[]) {
+  try {
+    // Keep only the last MAX_STORED_MESSAGES to prevent localStorage overflow
+    const messagesToStore = messages.slice(-MAX_STORED_MESSAGES)
+    
+    // Convert Date objects to ISO strings for JSON serialization
+    const serializedMessages = messagesToStore.map(msg => ({
+      ...msg,
+      timestamp: msg.timestamp.toISOString()
+    }))
+    
+    localStorage.setItem(AI_SIDEBAR_MESSAGES_KEY, JSON.stringify(serializedMessages))
+  } catch (error) {
+    console.error('[AI Sidebar] Failed to save messages to localStorage:', error)
+  }
+}
+
+function loadMessagesFromStorage(): Message[] {
+  try {
+    const stored = localStorage.getItem(AI_SIDEBAR_MESSAGES_KEY)
+    if (!stored) return []
+    
+    const parsed = JSON.parse(stored)
+    
+    // Convert ISO strings back to Date objects
+    return parsed.map((msg: any) => ({
+      ...msg,
+      timestamp: new Date(msg.timestamp)
+    }))
+  } catch (error) {
+    console.error('[AI Sidebar] Failed to load messages from localStorage:', error)
+    return []
+  }
+}
+
 export function AISidebar() {
+  // Context hooks for user and org data
+  const { user, selectedOrganization } = useUser()
+  const { preferences } = usePreferences()
+  
+  // Component state
   const [isExpanded, setIsExpanded] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>(() => loadMessagesFromStorage())
   const [inputValue, setInputValue] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [nextHiddenMessage, setNextHiddenMessage] = useState<string | null>(null)
@@ -36,6 +85,11 @@ export function AISidebar() {
   const [nextHiddenAudio, setNextHiddenAudio] = useState<AudioBuffer | null>(null)
   const [ambientAudioPool, setAmbientAudioPool] = useState<PoolAudio[]>([])
   const [isGeneratingPool, setIsGeneratingPool] = useState(false)
+  const [hiddenMessageStatus, setHiddenMessageStatus] = useState<HiddenMessageStatus>(() => {
+    // Load status from localStorage
+    const stored = localStorage.getItem(AI_SIDEBAR_HIDDEN_STATUS_KEY)
+    return (stored as HiddenMessageStatus) || 'none'
+  })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const audioQueueRef = useRef<AudioBuffer[]>([])
   const isPlayingRef = useRef(false)
@@ -58,6 +112,14 @@ export function AISidebar() {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveMessagesToStorage(messages)
+      console.log(`[AI Sidebar] Saved ${messages.length} messages to localStorage`)
+    }
   }, [messages])
 
   // Cleanup audio on unmount
@@ -84,6 +146,21 @@ export function AISidebar() {
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [])
+
+  // Persist hidden message status to localStorage
+  useEffect(() => {
+    localStorage.setItem(AI_SIDEBAR_HIDDEN_STATUS_KEY, hiddenMessageStatus)
+    console.log('[Hidden Message Status] Changed to:', hiddenMessageStatus)
+  }, [hiddenMessageStatus])
+
+  // Recovery mechanism: Check if we need to recover hidden message
+  useEffect(() => {
+    // Only trigger recovery if status is 'lost' or 'none'
+    if (hiddenMessageStatus === 'lost' || (hiddenMessageStatus === 'none' && !nextHiddenMessage)) {
+      console.log('[Hidden Message Recovery] Triggered for status:', hiddenMessageStatus)
+      recoverHiddenMessage()
+    }
+  }, [hiddenMessageStatus, nextHiddenMessage])
 
   // Helper to queue and play audio sequentially
   const queueAndPlayAudio = async (audioBuffer: AudioBuffer) => {
@@ -124,6 +201,115 @@ export function AISidebar() {
     }
   }
 
+  // Recovery mechanism for hidden message
+  const recoverHiddenMessage = async () => {
+    // Don't recover if already generating or have a message
+    if (hiddenMessageStatus === 'generating' || nextHiddenMessage) {
+      console.log('[Hidden Message Recovery] Skipped - already generating or have message')
+      return
+    }
+
+    console.log('[Hidden Message Recovery] 🔄 Starting recovery...')
+    setHiddenMessageStatus('generating')
+
+    try {
+      // Build enhanced context with user and org info
+      const userName = user?.fullName || user?.firstName || user?.email?.split('@')[0] || 'User'
+      const orgName = selectedOrganization?.organization?.name || 'Organization'
+      const orgApproach = preferences?.generalApproach || 'professional and efficient'
+
+      // Get recent message context
+      const recentMessages = messages.slice(-6)
+      const previousMessagesText = recentMessages.length > 0
+        ? recentMessages
+            .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+            .join('\n')
+        : 'No previous conversation yet'
+
+      const enhancedContext = `User: ${userName}
+Organization: ${orgName}
+Organization Approach: ${orgApproach}
+
+Recent Conversation:
+${previousMessagesText}`
+
+      console.log('[Hidden Message Recovery] Enhanced context:', enhancedContext.substring(0, 150) + '...')
+
+      // Generate hidden message with enhanced context
+      const response = await fetch('/api/ai-sidebar/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userInput: `Generate a context-aware hidden message for ${userName} at ${orgName}`,
+          previousMessages: enhancedContext,
+          activityLogs: activityLogger.getRecentLogs(5) || 'No recent activity',
+          messageType: 'next-hidden'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Recovery API error: ${response.status}`)
+      }
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        throw new Error('No reader available')
+      }
+
+      let accumulated = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.token) {
+                accumulated += data.token
+              }
+            } catch (e) {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+
+      if (accumulated && accumulated.length > 0) {
+        setNextHiddenMessage(accumulated)
+        console.log('[Hidden Message Recovery] ✅ Recovered message:', accumulated.substring(0, 80) + '...')
+
+        // Generate audio if in voice mode
+        if (voiceMode) {
+          console.log('[Hidden Message Recovery] 🔊 Generating audio...')
+          try {
+            const audio = await textToSpeech(accumulated)
+            setNextHiddenAudio(audio)
+            console.log('[Hidden Message Recovery] ✅ Audio generated')
+          } catch (audioError) {
+            console.error('[Hidden Message Recovery] ❌ Audio generation failed:', audioError)
+            // Continue without audio
+          }
+        }
+
+        setHiddenMessageStatus('ready')
+        console.log('[Hidden Message Recovery] ✅ Recovery complete - status: ready')
+      } else {
+        throw new Error('Generated text is empty')
+      }
+    } catch (error) {
+      console.error('[Hidden Message Recovery] ❌ Recovery failed:', error)
+      // Set back to 'lost' to retry later
+      setHiddenMessageStatus('lost')
+    }
+  }
+
   // Wait for audio with pool fallback, then stream text + play audio TOGETHER
   // This ensures audio plays FIRST or TOGETHER with text, never AFTER
   const waitForAudioAndStreamText = async (
@@ -141,7 +327,13 @@ export function AISidebar() {
       console.log(`[Voice Mode] ${audioName} audio ready immediately, skipping pool`)
     } else {
       // Audio not ready yet - play pool fillers while waiting
-      while (!targetAudio && voiceMode) {
+      const MAX_WAIT_ITERATIONS = 20 // Prevent infinite loops (20 iterations = ~40 seconds max)
+      let iterations = 0
+      
+      while (!targetAudio && voiceMode && iterations < MAX_WAIT_ITERATIONS) {
+        iterations++
+        console.log(`[Voice Mode] Waiting iteration ${iterations}/${MAX_WAIT_ITERATIONS} for ${audioName}...`)
+        
         // Random delay before filler (0.8-2.0 seconds)
         const randomDelay = 800 + Math.random() * 1200 // 800-2000ms
         console.log(`[Ambient Pool] Waiting ${randomDelay.toFixed(0)}ms before checking...`)
@@ -194,6 +386,12 @@ export function AISidebar() {
         // Check again if target audio is ready
         targetAudio = getTargetAudio()
       }
+      
+      // Check if we hit the max iterations (timeout)
+      if (!targetAudio && iterations >= MAX_WAIT_ITERATIONS) {
+        console.error(`[Voice Mode] ⚠️ TIMEOUT: ${audioName} audio not ready after ${MAX_WAIT_ITERATIONS} iterations (~${MAX_WAIT_ITERATIONS * 2}s)`)
+        console.error(`[Voice Mode] Falling back to text-only for ${audioName}`)
+      }
     }
 
     // Audio is ready! Now stream text AND play audio TOGETHER
@@ -216,6 +414,18 @@ export function AISidebar() {
       // Wait for audio to finish
       await audioPlayPromise
       console.log(`[Voice Mode] ${audioName} complete (text + audio)`)
+    } else {
+      // Fallback: Audio generation failed or timed out, stream text only
+      console.warn(`[Voice Mode] ⚠️ No audio available for ${audioName}, streaming text only`)
+      let accumulated = ''
+      for (let i = 0; i < text.length; i++) {
+        accumulated += text[i]
+        setMessages(prev => prev.map(m => 
+          m.id === messageId ? { ...m, content: accumulated } : m
+        ))
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+      console.log(`[Voice Mode] ${audioName} complete (text only - audio failed)`)
     }
   }
 
@@ -226,6 +436,32 @@ export function AISidebar() {
       refillAmbientPool()
     }
   }, [voiceMode])
+
+  // Listen for activity log events
+  useEffect(() => {
+    const handleActivityLog = (e: CustomEvent<ActivityLog>) => {
+      const log = e.detail
+      
+      console.log('[Activity Log] Received:', log)
+      
+      // Add log message to chat
+      const logMessage: Message = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        role: 'log',
+        type: 'log',
+        content: activityLogger.formatForChat(log),
+        timestamp: log.timestamp
+      }
+      
+      setMessages(prev => [...prev, logMessage])
+    }
+    
+    window.addEventListener('activityLog', handleActivityLog as EventListener)
+    
+    return () => {
+      window.removeEventListener('activityLog', handleActivityLog as EventListener)
+    }
+  }, [])
 
   // Helper to stream a message
   const streamMessage = async (
@@ -240,14 +476,27 @@ export function AISidebar() {
     let fullText = initialContent
     
     try {
-      // Step 1: Fetch complete text from API
+      // Step 1: Create placeholder message FIRST (so loading indicator shows)
+      const placeholderMessage: Message = {
+        id: messageId,
+        role: 'assistant',
+        type: messageType === 'next-hidden' ? 'hidden' : messageType,
+        content: '',
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, placeholderMessage])
+      
+      // Step 2: Fetch complete text from API (loading indicator is now visible!)
+      // Get recent activity logs for AI context
+      const recentActivityLogs = activityLogger.getRecentLogs(10)
+      
       const response = await fetch('/api/ai-sidebar/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userInput,
           previousMessages: previousMessagesText,
-          activityLogs: ' ',
+          activityLogs: recentActivityLogs || 'No recent activity',
           messageType: messageType === 'next-hidden' ? 'next-hidden' : messageType
         })
       })
@@ -284,7 +533,7 @@ export function AISidebar() {
         }
       }
       
-      // Step 2: In voice mode, generate audio from complete text
+      // Step 3: In voice mode, generate audio from complete text
       let audioPromise: Promise<AudioBuffer> | null = null
       if (voiceMode && fullText) {
         audioPromise = textToSpeech(fullText).catch(err => {
@@ -293,16 +542,6 @@ export function AISidebar() {
         })
         console.log(`[Voice Mode] Generating audio for complete ${messageType} (${fullText.length} chars)`)
       }
-      
-      // Step 3: Create placeholder message
-      const placeholderMessage: Message = {
-        id: messageId,
-        role: 'assistant',
-        type: messageType === 'next-hidden' ? 'hidden' : messageType,
-        content: '',
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, placeholderMessage])
       
       // Step 4: Stream text character-by-character AND play audio together
       let accumulated = ''
@@ -401,19 +640,27 @@ export function AISidebar() {
           hiddenAudioReady = nextHiddenAudio
           
           if (!hiddenText) {
-            console.log('[Voice Mode] No saved hidden message, using pool')
+            console.log('[Hidden Message] ⚠️ No saved message found in VOICE MODE, using pool fallback')
             hiddenText = getHiddenMessage()
+            console.log('[Hidden Message] Pool message:', hiddenText.substring(0, 50) + '...')
             
             // Generate audio in background
+            console.log('[Hidden Message] 🔊 Generating audio for pool message...')
             textToSpeech(hiddenText).then(audio => {
               hiddenAudioReady = audio
-            }).catch(err => console.error('Hidden audio gen error:', err))
+              console.log('[Hidden Message] ✅ Pool audio ready')
+            }).catch(err => console.error('[Hidden Message] ❌ Pool audio gen error:', err))
           } else {
-            console.log('[Voice Mode] Using saved hidden message with audio')
+            console.log('[Hidden Message] ✅ Using SAVED hidden message with audio (generated after last response)')
+            console.log('[Hidden Message] Saved message:', hiddenText.substring(0, 80) + '...')
+            console.log('[Hidden Message] Audio pre-generated:', !!hiddenAudioReady)
           }
           
+          // Clear saved message after use
           setNextHiddenMessage(null)
           setNextHiddenAudio(null)
+          setHiddenMessageStatus('none')
+          console.log('[Hidden Message] Used and cleared - status now: none')
           
           // Create placeholder message
           const hiddenId = `hidden-${Date.now()}`
@@ -535,13 +782,18 @@ export function AISidebar() {
           
           if (!hiddenText) {
             hiddenText = getHiddenMessage()
-            console.log('Using pool hidden message (no saved message)')
+            console.log('[Hidden Message] ⚠️ No saved message found, using pool fallback')
+            console.log('[Hidden Message] Pool message:', hiddenText.substring(0, 50) + '...')
           } else {
-            console.log('Using saved hidden message')
+            console.log('[Hidden Message] ✅ Using SAVED hidden message (generated after last response)')
+            console.log('[Hidden Message] Saved message:', hiddenText.substring(0, 80) + '...')
           }
           
+          // Clear saved message after use
           setNextHiddenMessage(null)
           setNextHiddenAudio(null)
+          setHiddenMessageStatus('none')
+          console.log('[Hidden Message] Used and cleared - status now: none')
           
           if (hiddenText) {
             const hiddenId = `hidden-${Date.now()}`
@@ -578,13 +830,23 @@ export function AISidebar() {
       }
       
       // 6. After response completes, generate and SAVE next hidden message (don't display)
-      const updatedMessages = [...messages, userMessage]
-      const updatedContext = updatedMessages.slice(-8)
-        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
-        .join('\n')
-      
-      // Generate next hidden in background and save it (don't display)
-      generateAndSaveNextHidden(trimmedInput, updatedContext)
+      // Use setMessages callback to get current messages state (not stale closure)
+      setMessages(currentMessages => {
+        const updatedContext = currentMessages.slice(-8)
+          .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+          .join('\n')
+        
+        console.log('[Hidden Message] Generating next hidden message with current context')
+        console.log('[Hidden Message] Context includes:', currentMessages.slice(-3).map(m => m.type))
+        
+        // Set status to 'generating' before starting
+        setHiddenMessageStatus('generating')
+        
+        // Generate next hidden in background and save it (don't display)
+        generateAndSaveNextHidden(trimmedInput, updatedContext)
+        
+        return currentMessages // Don't modify state, just use it to get context
+      })
       
     } catch (error) {
       console.error('Error in message flow:', error)
@@ -604,6 +866,9 @@ export function AISidebar() {
 
   // Helper to generate and save next hidden message (don't display it)
   const generateAndSaveNextHidden = async (userInput: string, previousMessagesText: string) => {
+    console.log('[Hidden Message] 🔄 Starting generation for NEXT user message...')
+    console.log('[Hidden Message] Context preview:', previousMessagesText.substring(0, 100) + '...')
+    
     try {
       const response = await fetch('/api/ai-sidebar/stream', {
         method: 'POST',
@@ -616,11 +881,16 @@ export function AISidebar() {
         })
       })
       
+      if (!response.ok) {
+        console.error('[Hidden Message] ❌ API error:', response.status, response.statusText)
+        return
+      }
+      
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
       
       if (!reader) {
-        console.error('No reader for next hidden generation')
+        console.error('[Hidden Message] ❌ No reader for next hidden generation')
         return
       }
       
@@ -644,31 +914,52 @@ export function AISidebar() {
               
               if (data.done) {
                 // Save the generated hidden message for next use
-                setNextHiddenMessage(accumulated)
-                console.log('Saved next hidden message:', accumulated.substring(0, 50) + '...')
-                
-                // In voice mode: also generate and save audio
-                if (voiceMode && accumulated) {
-                  try {
-                    const audio = await textToSpeech(accumulated)
-                    setNextHiddenAudio(audio)
-                    console.log('Saved next hidden audio')
-                  } catch (error) {
-                    console.error('Failed to generate next hidden audio:', error)
-                    // Continue without audio
+                if (accumulated && accumulated.length > 0) {
+                  setNextHiddenMessage(accumulated)
+                  console.log('[Hidden Message] ✅ SAVED next hidden message:', accumulated.substring(0, 80) + '...')
+                  console.log('[Hidden Message] Length:', accumulated.length, 'characters')
+                  
+                  // In voice mode: also generate and save audio
+                  if (voiceMode && accumulated) {
+                    console.log('[Hidden Message] 🔊 Generating audio for next hidden message...')
+                    try {
+                      const audio = await textToSpeech(accumulated)
+                      setNextHiddenAudio(audio)
+                      console.log('[Hidden Message] ✅ SAVED next hidden audio')
+                    } catch (error) {
+                      console.error('[Hidden Message] ❌ Failed to generate next hidden audio:', error)
+                      // Continue without audio
+                    }
                   }
+                  
+                  // Mark status as ready
+                  setHiddenMessageStatus('ready')
+                  console.log('[Hidden Message] ✅ Status set to: ready')
+                } else {
+                  console.error('[Hidden Message] ❌ Generated text is empty!')
                 }
               }
             } catch (e) {
               // Skip invalid JSON
+              console.debug('[Hidden Message] Skipped invalid JSON chunk')
             }
           }
         }
       }
       
+      console.log('[Hidden Message] ✅ Generation complete')
+      
     } catch (error) {
-      console.error('Failed to generate next hidden message:', error)
+      console.error('[Hidden Message] ❌ Failed to generate next hidden message:', error)
       // Don't set anything - will fall back to pool next time
+    }
+  }
+
+  const clearHistory = () => {
+    if (confirm('Are you sure you want to clear all chat history? This action cannot be undone.')) {
+      setMessages([])
+      localStorage.removeItem(AI_SIDEBAR_MESSAGES_KEY)
+      console.log('[AI Sidebar] Chat history cleared')
     }
   }
 
@@ -724,6 +1015,15 @@ export function AISidebar() {
                   <h3 className="text-white font-medium text-sm">NEXA Liaison</h3>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Clear History Button */}
+                  <button
+                    onClick={clearHistory}
+                    className="text-white/60 hover:text-red-400 transition-colors p-1.5 rounded hover:bg-red-400/10"
+                    title="Clear chat history"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                  
                   {/* Voice Mode Toggle */}
                   <button
                     onClick={() => setVoiceMode(!voiceMode)}
@@ -829,14 +1129,6 @@ export function AISidebar() {
 
             {/* Input - glassmorphism footer */}
             <div className="p-4 border-t border-white/10 bg-black/30 backdrop-blur-xl">
-              {/* Pool status indicator (dev mode only) */}
-              {process.env.NODE_ENV === 'development' && voiceMode && (
-                <div className="text-[10px] text-white/30 mb-2 font-mono">
-                  Ambient Pool: {ambientAudioPool.length}/10
-                  {isGeneratingPool && ' (generating...)'}
-                </div>
-              )}
-              
               <div className="flex gap-2">
                 <input
                   type="text"

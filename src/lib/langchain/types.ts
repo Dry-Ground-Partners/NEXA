@@ -24,6 +24,5 @@ export interface GenerateSolutionRequest {
 }
 
 export interface GenerateSolutionResponse {
-  overview: string         // HTML overview from LangSmith
-  solution_parts: string[] // Array of solution items
+  solution_parts: string[] // Array of solution items (overview is now a separate call)
 }

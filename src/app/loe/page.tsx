@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { fetchWithLogging } from '@/lib/activity-logger'
 import { 
   ArrowRight,
   ArrowLeft,
@@ -532,13 +533,20 @@ export default function LOEPage() {
     try {
       console.log('🔍 LOE Preview PDF: Starting preview generation')
       
-      const response = await fetch('/api/loe/preview-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        '/api/loe/preview-pdf',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ loeData })
         },
-        body: JSON.stringify({ loeData })
-      })
+        {
+          workflow: 'loe',
+          actionLabel: 'Previewed LOE PDF'
+        }
+      )
 
       if (response.ok) {
         console.log('✅ LOE Preview PDF: Response received successfully')
@@ -574,13 +582,20 @@ export default function LOEPage() {
     try {
       console.log('🔍 LOE Generate PDF: Starting download generation')
       
-      const response = await fetch('/api/loe/generate-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        '/api/loe/generate-pdf',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ loeData })
         },
-        body: JSON.stringify({ loeData })
-      })
+        {
+          workflow: 'loe',
+          actionLabel: 'Generated LOE PDF'
+        }
+      )
 
       if (response.ok) {
         console.log('✅ LOE Generate PDF: Response received successfully')

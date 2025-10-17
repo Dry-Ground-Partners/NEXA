@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { fetchWithLogging } from '@/lib/activity-logger'
 import { 
   ArrowRight, 
   ArrowDown,
@@ -521,16 +522,23 @@ export default function VisualsPage() {
       console.log('📝 Ideation content:', diagramSet.ideation)
       console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
 
-      const response = await fetch(`/api/organizations/${orgId}/visuals/generate-planning`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/visuals/generate-planning`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            solution: diagramSet.ideation,
+            sessionId: sessionId
+          })
         },
-        body: JSON.stringify({
-          solution: diagramSet.ideation,
-          sessionId: sessionId
-        })
-      })
+        {
+          workflow: 'visuals',
+          actionLabel: 'Generated planning diagram'
+        }
+      )
 
       const result = await response.json()
       console.log('📊 API response:', result)
@@ -595,16 +603,23 @@ export default function VisualsPage() {
       console.log('📝 Planning content:', diagramSet.planning)
       console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
 
-      const response = await fetch(`/api/organizations/${orgId}/visuals/generate-sketch`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/visuals/generate-sketch`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            planning: diagramSet.planning,
+            sessionId: sessionId
+          })
         },
-        body: JSON.stringify({
-          planning: diagramSet.planning,
-          sessionId: sessionId
-        })
-      })
+        {
+          workflow: 'visuals',
+          actionLabel: 'Generated sketch diagram'
+        }
+      )
 
       const result = await response.json()
       console.log('📊 API response:', result)
@@ -992,11 +1007,18 @@ export default function VisualsPage() {
       const solutioningData = createSolutioningDataFromVisuals(validDiagrams)
       
       // 3. Update existing session with solutioning data (org-scoped)
-      const response = await fetch(`/api/organizations/${orgId}/sessions/${sessionId}/add-solutioning`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ solutioningData })
-      })
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/sessions/${sessionId}/add-solutioning`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ solutioningData })
+        },
+        {
+          workflow: 'visuals',
+          actionLabel: 'Pushed to Solutioning'
+        }
+      )
       
       const result = await response.json()
       

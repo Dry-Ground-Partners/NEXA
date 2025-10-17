@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { fetchWithLogging } from '@/lib/activity-logger'
 import { 
   FileText,
   Plus,
@@ -185,11 +186,18 @@ export default function SOWPage() {
       
       // 1. Generate LOE data from SOW (org-scoped)
       console.log('📊 Generating LOE from SOW data...')
-      const response = await fetch(`/api/organizations/${orgId}/sow/generate-loe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sowData: sessionData })
-      })
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/sow/generate-loe`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sowData: sessionData })
+        },
+        {
+          workflow: 'sow',
+          actionLabel: 'Generated LOE'
+        }
+      )
       
       if (!response.ok) {
         const errorText = await response.text()
@@ -607,16 +615,23 @@ export default function SOWPage() {
     try {
       console.log('🔍 Previewing SOW PDF...')
       
-      const response = await fetch('/api/sow/preview-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        '/api/sow/preview-pdf',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sessionData: collectCurrentData(),
+            sessionId
+          }),
         },
-        body: JSON.stringify({
-          sessionData: collectCurrentData(),
-          sessionId
-        }),
-      })
+        {
+          workflow: 'sow',
+          actionLabel: 'Previewed SOW PDF'
+        }
+      )
       
       if (response.ok) {
         // Get PDF blob from response
@@ -649,16 +664,23 @@ export default function SOWPage() {
     try {
       console.log('💾 Downloading SOW PDF...')
       
-      const response = await fetch('/api/sow/generate-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        '/api/sow/generate-pdf',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sessionData: collectCurrentData(),
+            sessionId
+          }),
         },
-        body: JSON.stringify({
-          sessionData: collectCurrentData(),
-          sessionId
-        }),
-      })
+        {
+          workflow: 'sow',
+          actionLabel: 'Generated SOW PDF'
+        }
+      )
       
       if (response.ok) {
         const pdfBlob = await response.blob()

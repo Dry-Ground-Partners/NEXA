@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { fetchWithLogging, activityLogger } from '@/lib/activity-logger'
 import { 
   Info,
   Plus,
@@ -507,11 +508,18 @@ export default function SolutioningPage() {
       console.log(`🚀 Pushing to SOW for org ${orgId}...`)
 
       // 1. Generate SOW data from current solutioning data (org-scoped)
-      const response = await fetch(`/api/organizations/${orgId}/solutioning/generate-sow`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ solutioningData: sessionData })
-      })
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/solutioning/generate-sow`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ solutioningData: sessionData })
+        },
+        {
+          workflow: 'solutioning',
+          actionLabel: 'Generated SOW'
+        }
+      )
       
       const result = await response.json()
       
@@ -680,17 +688,24 @@ export default function SolutioningPage() {
       console.log(`🔍 Starting vision analysis for org ${orgId}...`)
       console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
       
-      const response = await fetch(`/api/organizations/${orgId}/solutioning/analyze-image`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/solutioning/analyze-image`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageData: imageData,
+            additionalContext: currentSolution.variables.solutionExplanation || 'No additional context provided',
+            sessionId: sessionId
+          })
         },
-        body: JSON.stringify({
-          imageData: imageData,
-          additionalContext: currentSolution.variables.solutionExplanation || 'No additional context provided',
-          sessionId: sessionId
-        })
-      })
+        {
+          workflow: 'solutioning',
+          actionLabel: 'AI analyzed solution'
+        }
+      )
 
       const result = await response.json()
 
@@ -784,18 +799,25 @@ export default function SolutioningPage() {
       console.log(`🎨 Starting auto-formatting for org ${orgId}...`)
       console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
       
-      const response = await fetch(`/api/organizations/${orgId}/solutioning/auto-format`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/solutioning/auto-format`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title,
+            steps,
+            approach,
+            sessionId: sessionId
+          })
         },
-        body: JSON.stringify({
-          title,
-          steps,
-          approach,
-          sessionId: sessionId
-        })
-      })
+        {
+          workflow: 'solutioning',
+          actionLabel: 'Auto-formatted solution'
+        }
+      )
 
       const result = await response.json()
 
@@ -868,17 +890,24 @@ export default function SolutioningPage() {
       console.log(`📐 Starting solution structuring for org ${orgId}...`)
       console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
       
-      const response = await fetch(`/api/organizations/${orgId}/solutioning/structure-solution`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/solutioning/structure-solution`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            aiAnalysis: analysis,
+            solutionExplanation: explanation,
+            sessionId: sessionId
+          })
         },
-        body: JSON.stringify({
-          aiAnalysis: analysis,
-          solutionExplanation: explanation,
-          sessionId: sessionId
-        })
-      })
+        {
+          workflow: 'solutioning',
+          actionLabel: 'Structured solution'
+        }
+      )
 
       const result = await response.json()
 
@@ -949,16 +978,23 @@ export default function SolutioningPage() {
       console.log(`✨ Starting text enhancement for org ${orgId}...`)
       console.log(`🏛️ Organization: ${selectedOrganization.organization.name}`)
       
-      const response = await fetch(`/api/organizations/${orgId}/solutioning/enhance-text`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/solutioning/enhance-text`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: currentSolution.variables.solutionExplanation,
+            sessionId: sessionId
+          })
         },
-        body: JSON.stringify({
-          text: currentSolution.variables.solutionExplanation,
-          sessionId: sessionId
-        })
-      })
+        {
+          workflow: 'solutioning',
+          actionLabel: 'Enhanced solution text'
+        }
+      )
 
       const result = await response.json()
 
@@ -1033,16 +1069,23 @@ export default function SolutioningPage() {
         steps && `SOLUTION STEPS: ${steps}`
       ].filter(Boolean).join('\n\n')
 
-      const response = await fetch(`/api/organizations/${orgId}/solutioning/analyze-pernode`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithLogging(
+        `/api/organizations/${orgId}/solutioning/analyze-pernode`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            context: context,
+            sessionId: sessionId
+          })
         },
-        body: JSON.stringify({
-          context: context,
-          sessionId: sessionId
-        })
-      })
+        {
+          workflow: 'solutioning',
+          actionLabel: 'Analyzed per-node stack'
+        }
+      )
 
       const result = await response.json()
 
@@ -2300,7 +2343,15 @@ export default function SolutioningPage() {
               
               <div className="mt-6 pt-4 border-t border-nexa-border flex justify-end">
                 <Button
-                  onClick={() => setModals(prev => ({ ...prev, difficultyModal: false }))}
+                  onClick={() => {
+                    // Log activity
+                    activityLogger.log({
+                      workflow: 'solutioning',
+                      action: `Set difficulty to ${currentSolution.structure.difficulty}%`,
+                      status: 'success'
+                    })
+                    setModals(prev => ({ ...prev, difficultyModal: false }))
+                  }}
                   variant="outline"
                   className="border-nexa-border text-white hover:bg-white/10"
                 >
