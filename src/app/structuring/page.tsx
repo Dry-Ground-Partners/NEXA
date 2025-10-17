@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -26,7 +26,9 @@ import {
   Activity,
   BarChart3,
   Edit,
-  Eye
+  Eye,
+  Upload,
+  Loader2
 } from 'lucide-react'
 import { QuickActionButton } from '@/components/ui/quick-action-button'
 import { fetchWithLogging, activityLogger } from '@/lib/activity-logger'
@@ -109,6 +111,10 @@ export default function StructuringPage() {
   // Streaming states
   const [streamingReport, setStreamingReport] = useState(false)
   const [streamingOverview, setStreamingOverview] = useState(false)
+  
+  // File upload state
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Helper function to stream text character-by-character (blazingly fast - 3ms per char)
   // Removed streaming simulation - instant display for better performance
@@ -355,6 +361,64 @@ export default function StructuringPage() {
     setSolutionTabs(solutionTabs.map(tab => 
       tab.id === id ? { ...tab, text } : tab
     ))
+  }
+
+  // File Upload Handler
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    
+    setUploadingFile(true)
+    console.log(`📁 Starting file upload: ${file.name} (${file.size} bytes)`)
+    
+    try {
+      // Create form data
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      // Upload to API
+      const response = await fetch('/api/file/extract-text', {
+        method: 'POST',
+        body: formData
+      })
+      
+      const result = await response.json()
+      
+      if (!result.success) {
+        console.error('❌ File extraction failed:', result.error)
+        alert(`File extraction failed:\n\n${result.error}\n\nPlease try again or paste text manually.`)
+        return
+      }
+      
+      console.log(`✅ Text extracted successfully: ${result.metadata.characterCount} characters`)
+      
+      // Auto-fill first content tab with extracted text
+      updateContentTab(contentTabs[0].id, result.text)
+      
+      // Switch to project tab if not already there
+      if (activeMainTab !== 'project') {
+        setActiveMainTab('project')
+      }
+      
+      // Show success message
+      alert(`✅ Successfully extracted ${result.metadata.characterCount.toLocaleString()} characters from ${result.metadata.fileName}`)
+      
+      // Auto-trigger diagnose immediately
+      console.log('🚀 Auto-triggering diagnose...')
+      setTimeout(() => {
+        handleDiagnose()
+      }, 100) // Small delay to ensure state is updated
+      
+    } catch (error) {
+      console.error('💥 Unexpected error during file upload:', error)
+      alert(`Unexpected error during file upload:\n\n${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or paste text manually.`)
+    } finally {
+      setUploadingFile(false)
+      // Reset file input so same file can be uploaded again if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
   }
 
   // AI Functions - Real LangChain Integration
@@ -1246,11 +1310,50 @@ export default function StructuringPage() {
                     </Tabs>
                   </div>
 
+                  {/* File Upload Section */}
+                  <div className="space-y-4">
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.docx,.txt,.md"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    
+                    {/* Upload File Button */}
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingFile || diagnosing}
+                      variant="outline"
+                      className="w-full p-6 text-lg font-medium"
+                    >
+                      {uploadingFile ? (
+                        <>
+                          <Loader2 className="h-6 w-6 mr-3 animate-spin" />
+                          <span>Extracting text...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-6 w-6 mr-3" />
+                          <span>Upload File (.pdf, .docx, .txt, .md)</span>
+                        </>
+                      )}
+                    </Button>
+                    
+                    {/* Divider */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 h-px bg-nexa-border"></div>
+                      <span className="text-nexa-text-secondary text-sm">or</span>
+                      <div className="flex-1 h-px bg-nexa-border"></div>
+                    </div>
+                  </div>
+
                   {/* Diagnose Section */}
                   <div>
                     <Button
                       onClick={handleDiagnose}
-                      disabled={diagnosing}
+                      disabled={diagnosing || uploadingFile}
                       className="w-full border border-nexa-border text-white bg-transparent p-6 text-lg font-medium rounded-xl border-draw-button diagnose-button"
                     >
                       {diagnosing ? (

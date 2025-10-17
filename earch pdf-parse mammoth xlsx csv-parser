@@ -1,0 +1,8 @@
+          event_type           | credits |                       description                       
+-------------------------------+---------+---------------------------------------------------------
+ structuring_analysis_report   | 15      | Generate detailed DMA analysis report after pain points
+ structuring_diagnose          | 10      | Problem analysis in Structuring
+ structuring_generate_solution | 15      | Solution generation with optional enhancements
+ structuring_solution_overview | 12      | Generate Improve/Control overview after solutions
+(4 rows)
+
