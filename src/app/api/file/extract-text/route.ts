@@ -11,17 +11,42 @@ const FILE_SIZE_LIMITS = {
 }
 
 /**
- * Extract text from PDF files using pdf-parse
+ * Extract text from PDF files using Mozilla's PDF.js
  * Uses dynamic import to avoid build-time issues
  */
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
     console.log('📄 Extracting text from PDF...')
-    // Dynamic import to avoid build-time issues with pdf-parse test files
-    const pdf = (await import('pdf-parse')).default
-    const data = await pdf(buffer)
-    console.log(`✅ PDF extraction successful: ${data.numpages} pages, ${data.text.length} characters`)
-    return data.text
+    // Dynamic import to avoid build-time issues
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    
+    // Load the PDF document
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(buffer),
+      useSystemFonts: true,
+      standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/',
+    })
+    
+    const pdfDocument = await loadingTask.promise
+    const numPages = pdfDocument.numPages
+    console.log(`📊 PDF has ${numPages} pages`)
+    
+    // Extract text from all pages
+    const textPromises: Promise<string>[] = []
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      textPromises.push(
+        pdfDocument.getPage(pageNum).then(async (page) => {
+          const textContent = await page.getTextContent()
+          return textContent.items.map((item: any) => item.str).join(' ')
+        })
+      )
+    }
+    
+    const pageTexts = await Promise.all(textPromises)
+    const fullText = pageTexts.join('\n\n')
+    
+    console.log(`✅ PDF extraction successful: ${numPages} pages, ${fullText.length} characters`)
+    return fullText
   } catch (error) {
     console.error('❌ PDF extraction failed:', error)
     throw new Error('Failed to extract text from PDF. The file may be corrupted or password-protected.')

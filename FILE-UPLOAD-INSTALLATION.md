@@ -4,8 +4,10 @@
 
 ### 1. Install Dependencies
 ```bash
-npm install pdf-parse mammoth
+npm install pdfjs-dist mammoth
 ```
+
+> **Note:** We use Mozilla's PDF.js (`pdfjs-dist`) instead of `pdf-parse` for better production compatibility and reliability.
 
 ### 2. Test Locally
 ```bash

@@ -403,11 +403,11 @@ export default function StructuringPage() {
       // Show success message
       alert(`✅ Successfully extracted ${result.metadata.characterCount.toLocaleString()} characters from ${result.metadata.fileName}`)
       
-      // Auto-trigger diagnose immediately
-      console.log('🚀 Auto-triggering diagnose...')
+      // Auto-trigger diagnose after delay to ensure state is fully updated
+      console.log('🚀 Auto-triggering diagnose in 500ms...')
       setTimeout(() => {
         handleDiagnose()
-      }, 100) // Small delay to ensure state is updated
+      }, 500) // Wait for React state to fully update
       
     } catch (error) {
       console.error('💥 Unexpected error during file upload:', error)
