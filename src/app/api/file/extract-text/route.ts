@@ -24,45 +24,51 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
     return new Promise((resolve, reject) => {
       const pdfParser = new PDFParser()
       
-      // Success handler
-      pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
-        try {
-          // Extract text from all pages
-          const pageTexts: string[] = []
-          
-          if (pdfData.Pages && Array.isArray(pdfData.Pages)) {
-            for (const page of pdfData.Pages) {
-              const pageText: string[] = []
-              
-              if (page.Texts && Array.isArray(page.Texts)) {
-                for (const text of page.Texts) {
-                  if (text.R && Array.isArray(text.R)) {
-                    for (const run of text.R) {
-                      if (run.T) {
-                        // Decode URI component (pdf2json encodes text)
+    // Success handler
+    pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+      try {
+        // Extract text from all pages
+        const pageTexts: string[] = []
+        
+        if (pdfData.Pages && Array.isArray(pdfData.Pages)) {
+          for (const page of pdfData.Pages) {
+            const pageText: string[] = []
+            
+            if (page.Texts && Array.isArray(page.Texts)) {
+              for (const text of page.Texts) {
+                if (text.R && Array.isArray(text.R)) {
+                  for (const run of text.R) {
+                    if (run.T) {
+                      try {
+                        // Try to decode URI component (pdf2json encodes text)
                         pageText.push(decodeURIComponent(run.T))
+                      } catch (decodeError) {
+                        // If decoding fails, use the raw text
+                        // Some PDFs have malformed URI encoding
+                        pageText.push(run.T.replace(/%[0-9A-F]{2}/gi, ' '))
                       }
                     }
                   }
                 }
               }
-              
-              pageTexts.push(pageText.join(' '))
             }
+            
+            pageTexts.push(pageText.join(' '))
           }
-          
-          const fullText = pageTexts.join('\n\n').trim()
-          
-          if (!fullText) {
-            throw new Error('No text content found in PDF')
-          }
-          
-          console.log(`✅ PDF extraction successful: ${pdfData.Pages?.length || 0} pages, ${fullText.length} characters`)
-          resolve(fullText)
-        } catch (err) {
-          reject(err)
         }
-      })
+        
+        const fullText = pageTexts.join('\n\n').trim()
+        
+        if (!fullText) {
+          throw new Error('No text content found in PDF')
+        }
+        
+        console.log(`✅ PDF extraction successful: ${pdfData.Pages?.length || 0} pages, ${fullText.length} characters`)
+        resolve(fullText)
+      } catch (err) {
+        reject(err)
+      }
+    })
       
       // Error handler
       pdfParser.on('pdfParser_dataError', (error: any) => {

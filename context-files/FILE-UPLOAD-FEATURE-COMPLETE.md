@@ -41,7 +41,7 @@ Pain points + Analysis Report generated
 **Purpose:** Server-side text extraction from uploaded files
 
 **Key Features:**
-- ✅ PDF extraction using `pdfjs-dist` (Mozilla's PDF.js)
+- ✅ PDF extraction using `pdf2json` (Node.js-native, no workers)
 - ✅ DOCX extraction using `mammoth`
 - ✅ TXT/MD extraction using native Node.js
 - ✅ File size validation (10MB PDF, 5MB DOCX, 1MB TXT/MD)
@@ -51,10 +51,10 @@ Pain points + Analysis Report generated
 
 **Dependencies Required:**
 ```bash
-npm install pdfjs-dist mammoth
+npm install pdf2json mammoth
 ```
 
-> **Updated:** Now using Mozilla's `pdfjs-dist` for better production compatibility (no test file dependencies).
+> **Updated:** Now using `pdf2json` for best production compatibility (no test file or worker dependencies).
 
 **API Response Format:**
 ```json
@@ -163,29 +163,42 @@ const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
 
 ### **Text Extraction Methods:**
 
-#### **PDF (pdfjs-dist - Mozilla's PDF.js):**
+#### **PDF (pdf2json - Node.js native):**
 ```typescript
-const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
-const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) })
-const pdfDocument = await loadingTask.promise
+const PDFParser = (await import('pdf2json')).default
 
-// Extract text from all pages in parallel
-const textPromises = []
-for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
-  textPromises.push(
-    pdfDocument.getPage(pageNum).then(async (page) => {
-      const textContent = await page.getTextContent()
-      return textContent.items.map((item: any) => item.str).join(' ')
-    })
-  )
-}
-
-const pageTexts = await Promise.all(textPromises)
-return pageTexts.join('\n\n') // Extracted text
+return new Promise((resolve, reject) => {
+  const pdfParser = new PDFParser()
+  
+  pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+    const pageTexts: string[] = []
+    
+    for (const page of pdfData.Pages) {
+      const pageText: string[] = []
+      for (const text of page.Texts) {
+        for (const run of text.R) {
+          if (run.T) {
+            pageText.push(decodeURIComponent(run.T))
+          }
+        }
+      }
+      pageTexts.push(pageText.join(' '))
+    }
+    
+    resolve(pageTexts.join('\n\n'))
+  })
+  
+  pdfParser.on('pdfParser_dataError', (error: any) => {
+    reject(new Error(`PDF parsing failed: ${error.parserError}`))
+  })
+  
+  pdfParser.parseBuffer(buffer)
+})
 ```
 - ✅ Multi-page PDFs
-- ✅ Embedded fonts
+- ✅ Event-driven parsing
 - ✅ Text-based content
+- ✅ No worker dependencies
 - ❌ Scanned images (needs OCR)
 
 #### **DOCX (mammoth):**
@@ -293,7 +306,7 @@ return buffer.toString('utf-8')
 // package.json
 {
   "dependencies": {
-    "pdfjs-dist": "^5.4.296",
+    "pdf2json": "^3.0.4",
     "mammoth": "^1.11.0"
   }
 }
@@ -398,7 +411,7 @@ export const runtime = 'nodejs'
 
 ### **1. Install Dependencies:**
 ```bash
-npm install pdfjs-dist mammoth
+npm install pdf2json mammoth
 ```
 
 ### **2. Test Locally:**
@@ -457,7 +470,7 @@ npm run dev
 - ✅ **1 new API route** (`/api/file/extract-text`)
 - ✅ **1 file modified** (`src/app/structuring/page.tsx`)
 - ✅ **4 file formats supported** (.pdf, .docx, .txt, .md)
-- ✅ **2 dependencies required** (pdfjs-dist, mammoth)
+- ✅ **2 dependencies required** (pdf2json, mammoth)
 - ✅ **0 linter errors**
 - ✅ **Auto-diagnose enabled**
 - ✅ **Render-compatible**

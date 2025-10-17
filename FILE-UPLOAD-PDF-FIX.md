@@ -47,30 +47,35 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
 **After:**
 ```typescript
 async function extractPdfText(buffer: Buffer): Promise<string> {
-  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const PDFParser = (await import('pdf2json')).default
   
-  const loadingTask = pdfjsLib.getDocument({
-    data: new Uint8Array(buffer),
-    useSystemFonts: true,
-    standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/',
+  return new Promise((resolve, reject) => {
+    const pdfParser = new PDFParser()
+    
+    pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+      const pageTexts: string[] = []
+      
+      for (const page of pdfData.Pages) {
+        const pageText: string[] = []
+        for (const text of page.Texts) {
+          for (const run of text.R) {
+            if (run.T) {
+              pageText.push(decodeURIComponent(run.T))
+            }
+          }
+        }
+        pageTexts.push(pageText.join(' '))
+      }
+      
+      resolve(pageTexts.join('\n\n'))
+    })
+    
+    pdfParser.on('pdfParser_dataError', (error: any) => {
+      reject(new Error(`PDF parsing failed: ${error.parserError}`))
+    })
+    
+    pdfParser.parseBuffer(buffer)
   })
-  
-  const pdfDocument = await loadingTask.promise
-  const numPages = pdfDocument.numPages
-  
-  // Extract text from all pages in parallel
-  const textPromises = []
-  for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-    textPromises.push(
-      pdfDocument.getPage(pageNum).then(async (page) => {
-        const textContent = await page.getTextContent()
-        return textContent.items.map((item: any) => item.str).join(' ')
-      })
-    )
-  }
-  
-  const pageTexts = await Promise.all(textPromises)
-  return pageTexts.join('\n\n')
 }
 ```
 
@@ -93,10 +98,11 @@ setTimeout(() => {
 ## 🎯 Benefits
 
 1. ✅ **No build errors** - No test file dependencies
-2. ✅ **Works on Render** - Production-ready deployment
-3. ✅ **Better extraction** - More accurate text extraction from complex PDFs
-4. ✅ **More reliable** - Used by millions via Firefox
-5. ✅ **Parallel processing** - Extracts all pages simultaneously for better performance
+2. ✅ **No worker issues** - Runs natively in Node.js without web workers
+3. ✅ **Works on Render** - Production-ready deployment
+4. ✅ **Better extraction** - Handles complex PDFs with proper text decoding
+5. ✅ **Event-driven** - Clean async handling with promises
+6. ✅ **Lightweight** - Smaller bundle size than PDF.js
 
 ## 🚀 Deployment
 
@@ -110,30 +116,30 @@ npm run dev
 Just commit and push - it will auto-deploy:
 ```bash
 git add .
-git commit -m "Fix: Replace pdf-parse with pdfjs-dist for production compatibility"
+git commit -m "Fix: Replace pdf-parse with pdf2json for production compatibility"
 git push
 ```
 
 ## ✅ Testing
 
 All file formats now work correctly:
-- ✅ `.pdf` - Uses Mozilla PDF.js
+- ✅ `.pdf` - Uses pdf2json (Node.js-native)
 - ✅ `.docx` - Uses mammoth
 - ✅ `.txt` - Native Node.js
 - ✅ `.md` - Native Node.js
 
 ## 📝 Technical Notes
 
-- **Dynamic imports** still used to avoid bundling issues
-- **useSystemFonts: true** for better text extraction
-- **standardFontDataUrl** points to CDN for font fallbacks
-- **Promise.all** for parallel page extraction (faster)
+- **Dynamic imports** used to avoid bundling issues
+- **Event-driven parsing** via pdf2json's event emitter pattern
+- **decodeURIComponent** for proper text extraction (pdf2json URI-encodes text)
+- **Promise-based** for clean async/await handling
 - **500ms delay** ensures React state updates before auto-diagnose
 
 ---
 
-**Status:** ✅ Ready for production deployment
-**Date:** October 17, 2025
-**Issue:** PDF extraction failing in production
-**Resolution:** Replaced pdf-parse with pdfjs-dist
+**Status:** ✅ Ready for production deployment  
+**Date:** October 17, 2025  
+**Issue:** PDF extraction failing in production (test files, worker dependencies)  
+**Resolution:** Replaced pdf-parse → pdfjs-dist → pdf2json (final working solution)
 

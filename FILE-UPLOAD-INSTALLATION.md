@@ -4,10 +4,10 @@
 
 ### 1. Install Dependencies
 ```bash
-npm install pdfjs-dist mammoth
+npm install pdf2json mammoth
 ```
 
-> **Note:** We use Mozilla's PDF.js (`pdfjs-dist`) instead of `pdf-parse` for better production compatibility and reliability.
+> **Note:** We use `pdf2json` for PDF extraction - it's Node.js-native with no worker dependencies, unlike `pdf-parse` (test file issues) or `pdfjs-dist` (worker issues).
 
 ### 2. Test Locally
 ```bash
@@ -70,8 +70,8 @@ No special configuration needed! Just:
 
 ## Troubleshooting
 
-**Error: Cannot find module 'pdfjs-dist' or 'mammoth'**
-- Solution: Run `npm install pdfjs-dist mammoth`
+**Error: Cannot find module 'pdf2json' or 'mammoth'**
+- Solution: Run `npm install pdf2json mammoth`
 
 **Error: File too large**
 - Solution: File exceeds size limit, compress or split it
@@ -79,8 +79,8 @@ No special configuration needed! Just:
 **Error: No text found**
 - Solution: PDF may be scanned images (needs OCR)
 
-**Error: Test file not found (pdf-parse)**
-- Solution: This was an old issue with `pdf-parse`. We now use `pdfjs-dist` which doesn't have this problem.
+**Error: Worker/test file issues**
+- Solution: We use `pdf2json` which avoids both test file issues (pdf-parse) and worker issues (pdfjs-dist)
 
 ---
 
